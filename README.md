@@ -10,15 +10,24 @@ An isometric tower defense game. Zombies enter from the north and path toward th
 
 ## 在线试玩 / Play in the browser
 
-公开页面（GitHub Pages，单线程 Web 导出，不需要 SharedArrayBuffer）：
+单线程网页导出在 [`docs/`](docs/)（关闭了线程，GitHub Pages 不需要 COOP/COEP）。第一次打开大约要下 40 MB 的引擎，请等加载条走完。建议横屏。
 
-Public page (GitHub Pages, single-threaded web export, no SharedArrayBuffer headers required):
+The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pages does not need COOP/COEP headers). The first visit downloads about 40 MB. Wait for the loading bar. Landscape works best.
+
+发布地址 / public URL, after Pages is turned on:
 
 **https://choicelin94.github.io/villiage-td/**
 
-第一次打开会下载约十几 MB 的引擎与资源，请等加载条走完。建议横屏。
+这个仓库目前还没打开 GitHub Pages（接口返回 403，当前令牌不能改 Pages 设置）。在 GitHub 上打开 **Settings → Pages → Build and deployment → Deploy from a branch**，Branch 选 `cursor/tribal-village-td-4d8f`（合并进 `main` 之后改选 `main`），Folder 选 **`/docs`**，保存。一两分钟后上面的地址就会变成可玩的页面。
 
-The first visit downloads the engine and assets (on the order of 10–20 MB). Wait for the loading bar. Landscape orientation works best.
+GitHub Pages is not enabled on this repo yet (the API returned 403; this token cannot change that setting). In **Settings → Pages**, choose **Deploy from a branch**, branch `cursor/tribal-village-td-4d8f` (switch to `main` after merge), folder **`/docs`**, and save. The URL above becomes playable after the site finishes building.
+
+本地先看网页包 / preview the export locally:
+
+```bash
+python3 -m http.server -d docs 8765
+# open http://127.0.0.1:8765/
+```
 
 ## 怎么玩 / How to play
 
