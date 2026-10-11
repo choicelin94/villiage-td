@@ -73,12 +73,30 @@ var spawn_cursor := 0
 var _selftest := false
 var _selftest_t0 := 0
 var _male_i := 0
+var _map_min := Vector2.ZERO
+var _map_max := Vector2.ZERO
+var _cam_min_zoom := 0.12
+var _cam_max_zoom := 1.8
+var _mouse_down := false
+var _mouse_moved := false
+var _mouse_press := Vector2.ZERO
+var _mouse_cam := Vector2.ZERO
+var _touches := {}
+var _pinch_dist := 0.0
+var _single_origin := Vector2.ZERO
+var _single_cam := Vector2.ZERO
+var _single_moved := false
+var _cam_user := false
+var _syncing := false
 
 func _ready() -> void:
 	Engine.max_fps = 60
 	add_to_group("game")
 	font = load("res://assets/fonts/DroidSansFallback-subset.ttf")
 	_selftest = OS.get_environment("TD_SELFTEST") == "1"
+	if OS.get_environment("TD_UI") == "1":
+		get_window().size = Vector2i(390, 844)
+	_sync_pixels()
 	_build_world()
 	_paint_map()
 	_place_starter()
@@ -89,6 +107,13 @@ func _ready() -> void:
 	add_child(hud)
 	hud.start_pressed.connect(_try_start_wave)
 	hud.restart_pressed.connect(_restart)
+	hud.place_requested.connect(_on_place_requested)
+	hud.sell_pressed.connect(_on_sell_requested)
+	get_viewport().size_changed.connect(_on_viewport_resized)
+	_sync_pixels()
+	_apply_fit_zoom(true)
+	if hud:
+		hud._layout()
 	_refresh_beds()
 	_refresh_hud()
 	if (_selftest or OS.get_environment("TD_DEMO") == "1") and OS.get_environment("TD_NONE") != "1":
@@ -106,12 +131,12 @@ func _ready() -> void:
 			get_tree().quit(0)
 		else:
 			_flow_shot()
+	elif OS.get_environment("TD_UI") == "1":
+		_ui_shot()
 	elif OS.get_environment("TD_SHOT") == "1":
 		_opening_shot()
 
 func _process(delta: float) -> void:
-	if hud != null and hud.selected_kind() >= 0 and selected_villager != null:
-		_clear_villager_selection()
 	_refresh_beds()
 	_infect_contacts()
 	_update_ghost()
@@ -124,36 +149,78 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if hud != null and hud.is_blocking():
 		return
-	if event is InputEventMouseButton and event.pressed:
+	if event is InputEventScreenTouch:
+		_screen_touch(event as InputEventScreenTouch)
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventScreenDrag:
+		_screen_drag(event as InputEventScreenDrag)
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMagnifyGesture:
+		var magnify := event as InputEventMagnifyGesture
+		_zoom_at(magnify.position, camera.zoom.x * magnify.factor)
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventPanGesture:
+		var pan := event as InputEventPanGesture
+		camera.position -= pan.delta / camera.zoom
+		_clamp_camera()
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		var world := get_canvas_transform().affine_inverse() * mb.position
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			if not mb.pressed:
+				return
+			var step := 1.12 if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.12
+			_zoom_at(mb.position, camera.zoom.x * step)
+			get_viewport().set_input_as_handled()
+			return
+		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			_right_click(get_canvas_transform().affine_inverse() * mb.position)
+			get_viewport().set_input_as_handled()
+			return
 		if mb.button_index == MOUSE_BUTTON_LEFT:
-			_left_click(world)
-		elif mb.button_index == MOUSE_BUTTON_RIGHT:
-			_right_click(world)
-	elif event is InputEventKey and event.pressed and not event.echo:
+			if mb.pressed:
+				_mouse_down = true
+				_mouse_moved = false
+				_mouse_press = mb.position
+				_mouse_cam = camera.position
+			else:
+				_mouse_down = false
+				if not _mouse_moved:
+					_left_click(get_canvas_transform().affine_inverse() * mb.position)
+			get_viewport().set_input_as_handled()
+			return
+	if event is InputEventMouseMotion and _mouse_down:
+		var motion := event as InputEventMouseMotion
+		var delta := motion.position - _mouse_press
+		if delta.length() > 14.0:
+			_mouse_moved = true
+			_cam_user = true
+		if _mouse_moved:
+			camera.position = _mouse_cam - delta / camera.zoom
+			_clamp_camera()
+			get_viewport().set_input_as_handled()
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
 		var key := event as InputEventKey
 		match key.keycode:
 			KEY_1:
-				_clear_villager_selection()
-				hud.select_kind(Building.Kind.WALL)
+				_place_from_shortcut(Building.Kind.WALL)
 			KEY_2:
-				_clear_villager_selection()
-				hud.select_kind(Building.Kind.SPEAR)
+				_place_from_shortcut(Building.Kind.SPEAR)
 			KEY_3:
-				_clear_villager_selection()
-				hud.select_kind(Building.Kind.FIRE)
+				_place_from_shortcut(Building.Kind.FIRE)
 			KEY_4:
-				_clear_villager_selection()
-				hud.select_kind(Building.Kind.HOUSE)
+				_place_from_shortcut(Building.Kind.HOUSE)
 			KEY_5:
-				_clear_villager_selection()
-				hud.select_kind(Building.Kind.FARM)
+				_place_from_shortcut(Building.Kind.FARM)
 			KEY_6:
-				_clear_villager_selection()
-				hud.select_kind(Building.Kind.WORKSHOP)
+				_place_from_shortcut(Building.Kind.WORKSHOP)
 			KEY_ESCAPE:
-				hud.select_kind(-1)
+				hud.close_panel()
 				_clear_villager_selection()
 				inspected = null
 			KEY_SPACE, KEY_ENTER:
@@ -290,19 +357,149 @@ func _build_camera() -> void:
 		cell_center(Vector2i(0, ROWS - 1)),
 		cell_center(Vector2i(COLS - 1, ROWS - 1)),
 	]
-	var min_p := corners[0]
-	var max_p := corners[0]
+	_map_min = corners[0]
+	_map_max = corners[0]
 	for p in corners:
-		min_p.x = minf(min_p.x, p.x)
-		min_p.y = minf(min_p.y, p.y)
-		max_p.x = maxf(max_p.x, p.x)
-		max_p.y = maxf(max_p.y, p.y)
-	var span := max_p - min_p + Vector2(TILE.x, TILE.y)
-	var zoom_v := minf(1160.0 / span.x, 500.0 / span.y)
-	camera.position = (min_p + max_p) * 0.5 + Vector2(0, 20)
-	camera.zoom = Vector2(zoom_v, zoom_v)
+		_map_min.x = minf(_map_min.x, p.x)
+		_map_min.y = minf(_map_min.y, p.y)
+		_map_max.x = maxf(_map_max.x, p.x)
+		_map_max.y = maxf(_map_max.y, p.y)
+	_map_min -= Vector2(TILE.x, TILE.y) * 0.5
+	_map_max += Vector2(TILE.x, TILE.y) * 0.5
 	add_child(camera)
 	camera.make_current()
+	_apply_fit_zoom(true)
+
+func _sync_pixels() -> void:
+	if _syncing:
+		return
+	var win_size := DisplayServer.window_get_size()
+	if win_size.x < 8 or win_size.y < 8:
+		return
+	_syncing = true
+	var window := get_window()
+	window.content_scale_size = win_size
+	window.content_scale_factor = 1.0
+	window.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	window.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	_syncing = false
+
+func _on_viewport_resized() -> void:
+	_sync_pixels()
+	if _cam_user:
+		_clamp_camera()
+	else:
+		_apply_fit_zoom(true)
+	if hud:
+		hud._layout()
+
+func _apply_fit_zoom(force: bool) -> void:
+	var view := get_viewport_rect().size
+	if view.x < 8.0 or view.y < 8.0:
+		return
+	var span := _map_max - _map_min
+	var usable := Vector2(maxf(view.x - 8.0, 64.0), maxf(view.y - 160.0, 64.0))
+	var fit := minf(usable.x / span.x, usable.y / span.y)
+	_cam_min_zoom = maxf(fit * 0.92, 0.08)
+	_cam_max_zoom = maxf(fit * 6.0, 1.45)
+	if not force:
+		camera.zoom.x = clampf(camera.zoom.x, _cam_min_zoom, _cam_max_zoom)
+		camera.zoom.y = camera.zoom.x
+		_clamp_camera()
+		return
+	var zoom_v := fit
+	var focus := (_map_min + _map_max) * 0.5
+	if view.x < 760.0:
+		zoom_v = clampf(maxf(fit * 2.6, 0.4), _cam_min_zoom, _cam_max_zoom)
+		focus = cell_center(HEART)
+	camera.zoom = Vector2(zoom_v, zoom_v)
+	camera.position = focus
+	_clamp_camera()
+
+func _zoom_at(screen_point: Vector2, new_zoom: float) -> void:
+	var old := camera.zoom.x
+	var zoom_v := clampf(new_zoom, _cam_min_zoom, _cam_max_zoom)
+	if is_equal_approx(old, zoom_v) or old <= 0.001:
+		return
+	_cam_user = true
+	var view := get_viewport_rect().size
+	var before := camera.position + (screen_point - view * 0.5) / old
+	camera.zoom = Vector2(zoom_v, zoom_v)
+	var after := camera.position + (screen_point - view * 0.5) / zoom_v
+	camera.position += before - after
+	_clamp_camera()
+
+func _clamp_camera() -> void:
+	var view := get_viewport_rect().size
+	var half := view * 0.5 / camera.zoom
+	var span := _map_max - _map_min
+	if half.x * 2.0 >= span.x:
+		camera.position.x = (_map_min.x + _map_max.x) * 0.5
+	else:
+		camera.position.x = clampf(camera.position.x, _map_min.x + half.x * 0.25, _map_max.x - half.x * 0.25)
+	if half.y * 2.0 >= span.y:
+		camera.position.y = (_map_min.y + _map_max.y) * 0.5
+	else:
+		camera.position.y = clampf(camera.position.y, _map_min.y + half.y * 0.25, _map_max.y - half.y * 0.25)
+
+func _screen_touch(event: InputEventScreenTouch) -> void:
+	if event.pressed:
+		_touches[event.index] = event.position
+		if _touches.size() == 1:
+			_single_origin = event.position
+			_single_cam = camera.position
+			_single_moved = false
+		else:
+			_single_moved = true
+			_pinch_dist = _finger_span()
+	else:
+		var pos: Vector2 = _touches.get(event.index, event.position)
+		var was_tap := _touches.size() == 1 and not _single_moved
+		_touches.erase(event.index)
+		if _touches.size() == 1:
+			for key in _touches:
+				_single_origin = _touches[key]
+			_single_cam = camera.position
+			_single_moved = true
+		elif _touches.size() >= 2:
+			_pinch_dist = _finger_span()
+		elif was_tap:
+			_left_click(get_canvas_transform().affine_inverse() * pos)
+
+func _screen_drag(event: InputEventScreenDrag) -> void:
+	_touches[event.index] = event.position
+	if _touches.size() >= 2:
+		var span := _finger_span()
+		if _pinch_dist > 12.0 and span > 12.0:
+			_zoom_at(_finger_center(), camera.zoom.x * (span / _pinch_dist))
+		_pinch_dist = _finger_span()
+		_single_moved = true
+		return
+	var delta := event.position - _single_origin
+	if delta.length() > 16.0:
+		_single_moved = true
+		_cam_user = true
+	if _single_moved:
+		camera.position = _single_cam - delta / camera.zoom
+		_clamp_camera()
+
+func _finger_span() -> float:
+	var pts: Array[Vector2] = []
+	for key in _touches:
+		pts.append(_touches[key])
+	if pts.size() < 2:
+		return 0.0
+	return pts[0].distance_to(pts[1])
+
+func _finger_center() -> Vector2:
+	var acc := Vector2.ZERO
+	var n := 0
+	for key in _touches:
+		acc += _touches[key]
+		n += 1
+	if n == 0:
+		return get_viewport_rect().size * 0.5
+	return acc / float(n)
 
 func cell_center(cell: Vector2i) -> Vector2:
 	return ground.map_to_local(cell)
@@ -528,37 +725,62 @@ func _restart() -> void:
 	get_tree().reload_current_scene()
 
 func _left_click(world: Vector2) -> void:
-	if hud.selected_kind() >= 0:
-		var cell := world_to_cell(world)
-		if in_bounds(cell):
-			_try_place(hud.selected_kind(), cell)
+	var building := _building_at_world(world)
+	var person := _villager_at(world)
+	if selected_villager != null and is_instance_valid(selected_villager) and building != null:
+		hud.close_panel()
+		_assign(selected_villager, building)
 		return
-	if selected_villager != null and is_instance_valid(selected_villager):
-		var picked := _building_at_world(world)
-		if picked != null:
-			_assign(selected_villager, picked)
-			return
-	var hit := _villager_at(world)
-	if hit != null:
+	if person != null:
+		hud.close_panel()
 		_clear_villager_selection()
-		selected_villager = hit
-		hit.selected = true
-		hud.select_kind(-1)
+		selected_villager = person
+		person.selected = true
 		inspected = null
-		hud.flash("再点房屋、农场、工坊或塔来派人。  /  Now click a house, farm, workshop, or tower.")
+		hud.flash("再点房屋、农场、工坊或塔来派人。  /  Now tap a house, farm, workshop, or tower.")
 		return
-	var cell3 := world_to_cell(world)
-	inspected = buildings[cell3] if buildings.has(cell3) else null
-	_clear_villager_selection()
-
-func _right_click(world: Vector2) -> void:
+	if building != null:
+		_clear_villager_selection()
+		inspected = building
+		hud.open_building(building)
+		return
 	var cell := world_to_cell(world)
-	if buildings.has(cell):
-		_remove_building(cell, true)
-		return
-	hud.select_kind(-1)
 	_clear_villager_selection()
 	inspected = null
+	if not in_bounds(cell) or scenery.has(cell) or _is_spawn(cell):
+		hud.close_panel()
+		hud.flash("这里不能建造  /  Can't build here")
+		return
+	hud.open_ground(cell)
+
+func _right_click(world: Vector2) -> void:
+	var building := _building_at_world(world)
+	if building != null:
+		_remove_building(building.cell, true)
+		hud.close_panel()
+		return
+	hud.close_panel()
+	_clear_villager_selection()
+	inspected = null
+
+func _place_from_shortcut(kind: int) -> void:
+	if not hud.has_ground():
+		hud.flash("先点一块空地。  /  Tap an empty tile first.")
+		return
+	_clear_villager_selection()
+	if _try_place(kind, hud.ground_cell()):
+		hud.close_panel()
+
+func _on_place_requested(kind: int) -> void:
+	_place_from_shortcut(kind)
+
+func _on_sell_requested() -> void:
+	var building := hud.inspected_building()
+	if building == null or not is_instance_valid(building):
+		hud.close_panel()
+		return
+	_remove_building(building.cell, true)
+	hud.close_panel()
 
 func _assign(v: Villager, building: Building) -> void:
 	if v.infected or v.leaving:
@@ -584,22 +806,23 @@ func _assign(v: Villager, building: Building) -> void:
 	_refresh_beds()
 	_refresh_hud()
 
-func _try_place(kind: int, cell: Vector2i) -> void:
+func _try_place(kind: int, cell: Vector2i) -> bool:
 	var reason := _block_reason(cell)
 	if reason != "":
 		hud.flash(reason)
-		return
+		return false
 	var stats: Dictionary = Building.STATS[kind]
 	if kind == Building.Kind.WALL and _count_kind(Building.Kind.WALL) >= WALL_CAP:
 		hud.flash("木墙已达上限 %d。  /  Wall cap reached (%d)." % [WALL_CAP, WALL_CAP])
-		return
+		return false
 	if wood < int(stats.wood) or gold < int(stats.gold):
 		hud.flash("资源不足  /  Not enough wood or gold")
-		return
+		return false
 	wood -= int(stats.wood)
 	gold -= int(stats.gold)
 	_place_free(kind, cell)
 	_refresh_hud()
+	return true
 
 func _place_free(kind: int, cell: Vector2i) -> void:
 	if not in_bounds(cell) or _blocked(cell) or _is_spawn(cell):
@@ -736,7 +959,9 @@ func _building_at_world(world: Vector2) -> Building:
 	for key in buildings:
 		var building: Building = buildings[key]
 		var local := world - building.global_position
-		var on_body := absf(local.x) <= 78.0 and local.y <= 24.0 and local.y >= -130.0
+		var zoom_v := camera.zoom.x if camera else 1.0
+		var extra := clampf(28.0 / maxf(zoom_v, 0.05) - 48.0, 0.0, 40.0)
+		var on_body := absf(local.x) <= 78.0 + extra and local.y <= 24.0 + extra and local.y >= -130.0 - extra
 		if on_body and building.global_position.y >= best_y:
 			best_y = building.global_position.y
 			best = building
@@ -749,7 +974,9 @@ func _building_at_world(world: Vector2) -> Building:
 
 func _villager_at(world: Vector2) -> Villager:
 	var best: Villager = null
-	var best_d := 42.0
+	var zoom_v := camera.zoom.x if camera else 1.0
+	var best_d := maxf(48.0, 34.0 / maxf(zoom_v, 0.05))
+	best_d = minf(best_d, 96.0)
 	for v in _alive_villagers():
 		var d := world.distance_to(v.global_position + Vector2(0, -30))
 		if d < best_d:
@@ -762,17 +989,13 @@ func _clear_villager_selection() -> void:
 		selected_villager.selected = false
 	selected_villager = null
 
-func _mouse_cell() -> Vector2i:
-	return world_to_cell(get_global_mouse_position())
-
 func _update_ghost() -> void:
-	var ghost := fx.get_node_or_null("Ghost")
-	var kind := hud.selected_kind() if hud else -1
-	if kind < 0:
+	var ghost := fx.get_node_or_null("Ghost") as Node2D
+	if hud == null or not hud.has_ground():
 		if ghost:
 			ghost.visible = false
 		return
-	var cell := _mouse_cell()
+	var cell := hud.ground_cell()
 	if not in_bounds(cell):
 		if ghost:
 			ghost.visible = false
@@ -780,27 +1003,11 @@ func _update_ghost() -> void:
 	if ghost == null:
 		ghost = Node2D.new()
 		ghost.name = "Ghost"
+		ghost.set_script(load("res://scripts/tile_mark.gd"))
 		fx.add_child(ghost)
 	ghost.visible = true
 	ghost.position = cell_center(cell)
-	var tex: Texture2D = load(Building.STATS[kind].tex)
-	var sprite := ghost.get_node_or_null("Sprite") as Sprite2D
-	if sprite == null:
-		sprite = Sprite2D.new()
-		sprite.name = "Sprite"
-		sprite.centered = false
-		sprite.z_index = 1
-		ghost.add_child(sprite)
-	if sprite.texture != tex:
-		sprite.texture = tex
-		sprite.position = SPRITE_OFF
-	var ok := _block_reason(cell) == ""
-	var stats: Dictionary = Building.STATS[kind]
-	if wood < int(stats.wood) or gold < int(stats.gold):
-		ok = false
-	if kind == Building.Kind.WALL and _count_kind(Building.Kind.WALL) >= WALL_CAP:
-		ok = false
-	sprite.modulate = Color(0.6, 1, 0.6, 0.55) if ok else Color(1, 0.35, 0.3, 0.55)
+	ghost.queue_redraw()
 
 func _popup(at: Vector2, text: String, color: Color) -> void:
 	var pop := PopupText.new()
@@ -817,17 +1024,17 @@ func _burst(at: Vector2, radius: float, color: Color) -> Burst:
 func _refresh_hud() -> void:
 	if hud == null:
 		return
-	var label := "准备  Ready"
+	var label := "准备"
 	if phase == "combat":
-		label = "波次 Wave %d / %d" % [wave_number, TOTAL_WAVES]
+		label = "波 %d/%d" % [wave_number, TOTAL_WAVES]
 	elif wave_number > 0 and phase == "prep":
-		label = "下一波 Next %d / %d" % [wave_number + 1, TOTAL_WAVES]
+		label = "下一波 %d/%d" % [wave_number + 1, TOTAL_WAVES]
 	elif phase == "win":
-		label = "胜利 Victory"
+		label = "胜利"
 	elif phase == "lose":
-		label = "失败 Defeat"
+		label = "失败"
 	else:
-		label = "波次 Wave 0 / %d" % TOTAL_WAVES
+		label = "波 0/%d" % TOTAL_WAVES
 	var claim := 0.0
 	for v in _alive_villagers():
 		if v.refugee and v.claim_left > claim:
@@ -1089,7 +1296,7 @@ func _restart_button() -> Button:
 	var buttons: Array[Button] = []
 	_collect_buttons(hud, buttons)
 	for button in buttons:
-		if "重开" in button.text:
+		if button.name == "LeaveButton":
 			return button
 	return null
 
@@ -1118,6 +1325,90 @@ func _click_screen(screen: Vector2) -> void:
 	release.pressed = false
 	release.button_mask = 0
 	get_viewport().push_input(release, false)
+
+func _ui_shot() -> void:
+	var win := get_window()
+	win.size = Vector2i(390, 844)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_sync_pixels()
+	_cam_user = false
+	_apply_fit_zoom(true)
+	hud._layout()
+	await get_tree().process_frame
+	print("UI_VIEW ", get_viewport_rect().size, " win=", DisplayServer.window_get_size(), " zoom=", camera.zoom.x)
+	await _capture("/tmp/shots/phone.png")
+	var cell := _visible_open_cell()
+	print("UI_CELL ", cell, " screen=", get_viewport().get_canvas_transform() * cell_center(cell))
+	_click_world(cell_center(cell))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	print("UI_PANEL ", hud.has_ground(), " ", hud.ground_cell())
+	await _capture("/tmp/shots/phone_panel.png")
+	var placed := _try_place(Building.Kind.WALL, cell)
+	if placed:
+		hud.close_panel()
+	print("UI_PLACED ", placed, " ", buildings.has(cell), " panel=", hud.has_ground())
+	await _capture("/tmp/shots/phone_built.png")
+	var z0 := camera.zoom.x
+	_pinch_test()
+	var zoomed := camera.zoom.x > z0 + 0.02
+	print("UI_ZOOM ", z0, " -> ", camera.zoom.x)
+	var cam_before := camera.position
+	_drag_test()
+	var panned := camera.position.distance_to(cam_before) > 8.0
+	print("UI_PAN ", cam_before, " -> ", camera.position, " moved=", panned)
+	var icons := hud.get_node_or_null("StartButton") != null and hud.get_node_or_null("LeaveButton") != null
+	print("UI_ICONS ", icons)
+	if placed and zoomed and panned and icons and not hud.has_ground():
+		get_tree().quit(0)
+	get_tree().quit(1)
+
+func _visible_open_cell() -> Vector2i:
+	var view := get_viewport_rect().size
+	var xform := get_viewport().get_canvas_transform()
+	for y in range(1, ROWS - 1):
+		for x in range(1, COLS - 1):
+			var cell := Vector2i(x, y)
+			if scenery.has(cell) or buildings.has(cell) or _is_spawn(cell):
+				continue
+			var screen: Vector2 = xform * cell_center(cell)
+			if screen.x > 28.0 and screen.x < view.x * 0.5 and screen.y > 96.0 and screen.y < view.y - 160.0:
+				return cell
+	return Vector2i(3, 3)
+
+func _pinch_test() -> void:
+	var view := get_viewport_rect().size
+	var a := Vector2(view.x * 0.32, view.y * 0.42)
+	var b := Vector2(view.x * 0.48, view.y * 0.42)
+	var b2 := Vector2(view.x * 0.72, view.y * 0.42)
+	_push_touch(0, a, true)
+	_push_touch(1, b, true)
+	_push_drag(1, b2, b2 - b)
+	_push_touch(0, a, false)
+	_push_touch(1, b2, false)
+
+func _drag_test() -> void:
+	var view := get_viewport_rect().size
+	var a := Vector2(view.x * 0.45, view.y * 0.5)
+	var b := a + Vector2(90, 0)
+	_push_touch(0, a, true)
+	_push_drag(0, b, b - a)
+	_push_touch(0, b, false)
+
+func _push_touch(index: int, pos: Vector2, pressed: bool) -> void:
+	var ev := InputEventScreenTouch.new()
+	ev.index = index
+	ev.position = pos
+	ev.pressed = pressed
+	get_viewport().push_input(ev, false)
+
+func _push_drag(index: int, pos: Vector2, rel: Vector2) -> void:
+	var ev := InputEventScreenDrag.new()
+	ev.index = index
+	ev.position = pos
+	ev.relative = rel
+	get_viewport().push_input(ev, false)
 
 func _opening_shot() -> void:
 	await get_tree().create_timer(0.6).timeout

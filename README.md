@@ -10,17 +10,17 @@ An isometric tower defense game on a map about four times the previous area. Zom
 
 ## 在线试玩 / Play in the browser
 
-单线程网页导出在 [`docs/`](docs/)（关闭了线程，GitHub Pages 不需要 COOP/COEP）。第一次打开大约要下 40 MB 的引擎，请等加载条走完。建议横屏。点村民、点建筑、点屏幕按钮，这些操作在触屏上也能完成；完整的手机布局是下一步，不在这一版里。
+单线程网页导出在 [`docs/`](docs/)（关闭了线程，GitHub Pages 不需要 COOP/COEP）。第一次打开大约要下 40 MB 的引擎，请等加载条走完。手机浏览器可以双指缩放、单指拖动地图。窄屏会把村子拉近，方便点选。
 
-The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pages does not need COOP/COEP headers). The first visit downloads about 40 MB. Wait for the loading bar. Landscape works best. Tapping a villager, a building, and the on-screen buttons is the touch path. A full mobile layout is the next pass and is not part of this version.
+The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pages does not need COOP/COEP headers). The first visit downloads about 40 MB. Wait for the loading bar. Phone browsers can pinch to zoom and drag to pan. A narrow screen starts closer to the village so taps can land.
 
 发布地址 / public URL, after Pages is turned on:
 
 **https://choicelin94.github.io/villiage-td/**
 
-这个仓库目前还没打开 GitHub Pages（接口返回 403，当前令牌不能改 Pages 设置）。上面的地址在打开 Pages 之前打不开。在 GitHub 上打开 **Settings → Pages → Build and deployment → Deploy from a branch**，Branch 选 `cursor/villager-infection-4d8f`（合并进 `main` 之后改选 `main`），Folder 选 **`/docs`**，保存。一两分钟后上面的地址才会变成可玩的页面。
+这个仓库的 Pages 需要从 `main` 的 `/docs` 发布。本分支的网页包会在合并进 `main` 之后成为线上版本。在那之前，如果 Pages 还没打开，地址打不开。设置路径是 **Settings → Pages → Deploy from a branch**，Branch 选 `main`，Folder 选 **`/docs`**。
 
-GitHub Pages is not enabled on this repo yet (the API returned 403; this token cannot change that setting). The URL above is not live until Pages is enabled. In **Settings → Pages**, choose **Deploy from a branch**, branch `cursor/villager-infection-4d8f` (switch to `main` after merge), folder **`/docs`**, and save. The URL becomes playable after the site finishes building.
+Pages serves `/docs` from `main`. This branch's web export becomes the live build after it merges. Until Pages is enabled, the URL does not load. Use **Settings → Pages → Deploy from a branch**, branch `main`, folder **`/docs`**.
 
 本地先看网页包 / preview the export locally:
 
@@ -42,22 +42,33 @@ You lose only when every villager is infected and turns into a zombie. Refugees 
 
 ### 操作 / Controls
 
-派人只有一条主路径：先点村民，再点房屋、农场、工坊或塔。先点建筑只会查看，不会派人。选建造按钮会取消当前选中的村民。
+派人只有一条主路径：先点村民，再点房屋、农场、工坊或塔。先点建筑会打开右侧说明，可以出售，但不会派人。
 
-Staffing has one primary path: click a villager, then click a house, farm, workshop, or tower. Clicking a building first only inspects it. Choosing a build tool clears the villager selection.
+建造从空地开始：点一块能造的草地，右侧列出木墙、矛塔、火塔、房屋、农场、工坊。点其中一项就盖在那一格上。侧栏打开时，按 `1` 到 `6` 也会盖对应的建筑。
+
+地图可以单指拖动，双指或滚轮缩放。手机上开局会靠近村子，方便点选；缩小就能看到整张地图。左下角两个图标是开始波次（三角）和离开并重开（出门箭头），没有文字按钮，点一下就生效，不用确认。
+
+Staffing has one primary path: tap a villager, then tap a house, farm, workshop, or tower. Tapping a building first opens the side panel, where you can sell it. That tap does not assign anyone.
+
+Building starts from the ground: tap an empty tile and the right-hand panel lists the wall, spear tower, fire tower, house, farm, and workshop. Tap one to place it on that tile. With the panel open, keys `1` through `6` place the same way.
+
+Drag with one finger to pan. Pinch or use the mouse wheel to zoom. On a phone the view starts close to the village so taps land; zoom out to see the whole map. Two icons at the lower left start the wave (triangle) and leave for a fresh game (door arrow). They are not text buttons. One tap, no confirmation.
 
 | 操作 Action | 作用 Effect |
 | --- | --- |
-| 左键点村民 | 选中。再点一座功能建筑把这个人派过去 |
-| 左键点已选中的人要去的建筑 | 派人。一座建筑同时只留一个人，后来的人换下前一个人 |
-| 点击底部建筑按钮，或按 `1` 到 `6` | 选择木墙、矛塔、火塔、房屋、农场、工坊 |
-| 左键点击可建造的草地 | 放置。绿色虚影表示可以放，红色表示不行 |
-| 右键点击已放置的建筑 | 出售，返还一半木材和金币。出售会取消派工，但不会感染 |
-| 右键空地，或 `Esc` | 取消选择 |
-| **开始波次 / Start Wave**，或 `Space` / `Enter` | 在准备阶段放出下一波 |
-| 底部 **重开 / Restart**（始终可点，不用确认），或 `R`，或结束画面的按钮 | 立刻重开一局 |
+| 点村民 | 选中。再点一座功能建筑把这个人派过去 |
+| 点已选中的人要去的建筑 | 派人。一座建筑同时只留一个人 |
+| 点空地 | 右侧打开建造列表 |
+| 点右侧的一项，或侧栏打开时按 `1` 到 `6` | 把该建筑盖在选中的格子上 |
+| 点已有建筑（没有选中村民时） | 右侧显示说明和出售 |
+| 右键建筑，或侧栏里的出售 | 出售，返还一半资源。取消派工，不感染 |
+| 单指拖动，或鼠标拖动 | 平移地图 |
+| 双指张开捏合，或滚轮 | 缩放地图 |
+| 左下三角图标，或 `Space` / `Enter` | 开始下一波 |
+| 左下出门图标，或 `R`，或结束画面的图标 | 离开这一局并重开 |
+| `Esc` | 关掉侧栏并取消选中的村民 |
 
-Left-click a villager, then left-click a functional building to assign them. One building keeps one villager; a new assignment replaces the previous one. Click a build button (or press `1` through `6`), then left-click a tile. A green ghost can be placed; a red ghost cannot. Right-click a building to sell it for half the wood and gold. Selling unassigns the worker and does not infect them. Right-click empty ground or press `Esc` to cancel. The **Restart** button on the bar is always available and does not ask for confirmation. `R` and the end-screen button do the same.
+Tap a villager, then tap a functional building to assign them. One building keeps one villager. Tap empty ground to open the build list. Tap an existing building, with nobody selected, to inspect or sell it. Drag to pan and pinch to zoom. The triangle starts the next wave. The door icon leaves and restarts. `Esc` closes the panel.
 
 ### 村民 / Villagers
 
