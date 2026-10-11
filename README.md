@@ -18,9 +18,9 @@ The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pa
 
 **https://choicelin94.github.io/villiage-td/**
 
-这个仓库目前还没打开 GitHub Pages（接口返回 403，当前令牌不能改 Pages 设置）。在 GitHub 上打开 **Settings → Pages → Build and deployment → Deploy from a branch**，Branch 选 `cursor/tribal-village-td-4d8f`（合并进 `main` 之后改选 `main`），Folder 选 **`/docs`**，保存。一两分钟后上面的地址就会变成可玩的页面。
+这个仓库目前还没打开 GitHub Pages（接口返回 403，当前令牌不能改 Pages 设置）。在 GitHub 上打开 **Settings → Pages → Build and deployment → Deploy from a branch**，Branch 选 `cursor/village-population-4d8f`（合并进 `main` 之后改选 `main`），Folder 选 **`/docs`**，保存。一两分钟后上面的地址就会变成可玩的页面。
 
-GitHub Pages is not enabled on this repo yet (the API returned 403; this token cannot change that setting). In **Settings → Pages**, choose **Deploy from a branch**, branch `cursor/tribal-village-td-4d8f` (switch to `main` after merge), folder **`/docs`**, and save. The URL above becomes playable after the site finishes building.
+GitHub Pages is not enabled on this repo yet (the API returned 403; this token cannot change that setting). In **Settings → Pages**, choose **Deploy from a branch**, branch `cursor/village-population-4d8f` (switch to `main` after merge), folder **`/docs`**, and save. The URL above becomes playable after the site finishes building.
 
 本地先看网页包 / preview the export locally:
 
