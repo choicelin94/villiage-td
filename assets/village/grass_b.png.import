@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c3wfwdwjkne8s"
-path="res://.godot/imported/spear.png-6d897d574e1c5876674584d7784d29b2.ctex"
+uid="uid://b5jyvlsysi0sk"
+path="res://.godot/imported/grass_b.png-d9ec71aedb24f91afc0534acbe0566d1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/kenney/buildings/spear.png"
-dest_files=["res://.godot/imported/spear.png-6d897d574e1c5876674584d7784d29b2.ctex"]
+source_file="res://assets/village/grass_b.png"
+dest_files=["res://.godot/imported/grass_b.png-d9ec71aedb24f91afc0534acbe0566d1.ctex"]
 
 [params]
 

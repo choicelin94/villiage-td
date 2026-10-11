@@ -1,23 +1,47 @@
 class_name Building
 extends Node2D
 
-enum Kind { WALL, SPEAR, FIRE }
+enum Kind { WALL, SPEAR, FIRE, HOUSE, FARM, WORKSHOP }
+
+# Sprites are 256px renders. The ground diamond center sits at (127.5, 134).
+const SPRITE_OFF := Vector2(-127.5, -134.0)
 
 const STATS := {
 	Kind.WALL: {
-		"hp": 170, "wood": 12, "gold": 0,
+		"hp": 170, "wood": 10, "gold": 0,
 		"range": 0.0, "dmg": 0, "cd": 0.0, "splash": 0.0, "shot_speed": 0.0,
-		"tex": "res://assets/kenney/buildings/wall.png",
+		"defense": true, "cap": 0,
+		"tex": "res://assets/village/wall.png",
 	},
 	Kind.SPEAR: {
-		"hp": 100, "wood": 32, "gold": 48,
-		"range": 220.0, "dmg": 17, "cd": 0.68, "splash": 0.0, "shot_speed": 520.0,
-		"tex": "res://assets/kenney/buildings/spear.png",
+		"hp": 110, "wood": 24, "gold": 40,
+		"range": 300.0, "dmg": 17, "cd": 0.68, "splash": 0.0, "shot_speed": 700.0,
+		"defense": true, "cap": 0,
+		"tex": "res://assets/village/spear.png",
 	},
 	Kind.FIRE: {
-		"hp": 90, "wood": 22, "gold": 72,
-		"range": 185.0, "dmg": 13, "cd": 1.15, "splash": 88.0, "shot_speed": 280.0,
-		"tex": "res://assets/kenney/buildings/fire.png",
+		"hp": 96, "wood": 16, "gold": 64,
+		"range": 250.0, "dmg": 13, "cd": 1.15, "splash": 120.0, "shot_speed": 380.0,
+		"defense": true, "cap": 0,
+		"tex": "res://assets/village/fire.png",
+	},
+	Kind.HOUSE: {
+		"hp": 120, "wood": 22, "gold": 0,
+		"range": 0.0, "dmg": 0, "cd": 0.0, "splash": 0.0, "shot_speed": 0.0,
+		"defense": false, "cap": 4,
+		"tex": "res://assets/village/house.png",
+	},
+	Kind.FARM: {
+		"hp": 80, "wood": 16, "gold": 12,
+		"range": 0.0, "dmg": 0, "cd": 0.0, "splash": 0.0, "shot_speed": 0.0,
+		"defense": false, "cap": 0,
+		"tex": "res://assets/village/farm.png",
+	},
+	Kind.WORKSHOP: {
+		"hp": 100, "wood": 20, "gold": 28,
+		"range": 0.0, "dmg": 0, "cd": 0.0, "splash": 0.0, "shot_speed": 0.0,
+		"defense": false, "cap": 0,
+		"tex": "res://assets/village/workshop.png",
 	},
 }
 
@@ -40,22 +64,25 @@ func setup(p_kind: Kind, p_cell: Vector2i) -> void:
 	sprite.texture = tex
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	sprite.position = Vector2(-tex.get_width() * 0.5, 33.0 - tex.get_height())
+	sprite.position = SPRITE_OFF
 	sprite.z_index = 1
 	add_child(sprite)
 	if kind == Kind.FIRE:
 		var flame := Flame.new()
-		flame.position = sprite.position + Vector2(tex.get_width() * 0.5, 14)
+		flame.position = Vector2(8, -78)
 		flame.z_index = 2
 		add_child(flame)
 	var bar := HpBar.new()
 	bar.z_index = 3
-	bar.y_off = sprite.position.y - 8.0
+	bar.y_off = -148.0
 	add_child(bar)
+
+func is_defense() -> bool:
+	return bool(_stats.defense)
 
 func _process(delta: float) -> void:
 	queue_redraw()
-	if kind == Kind.WALL:
+	if float(_stats.range) <= 0.0:
 		return
 	cooldown -= delta
 	if cooldown > 0.0:
@@ -88,8 +115,13 @@ func _acquire() -> Zombie:
 func _shoot(target: Zombie) -> void:
 	var shot := Projectile.new()
 	var aim := target.global_position + target.step_hint * 0.12
-	shot.setup(global_position + Vector2(0, -28), aim, target, int(_stats.dmg), float(_stats.splash), float(_stats.shot_speed), kind == Kind.FIRE)
-	_game().fx.add_child(shot)
+	var bonus := 1.0
+	var game := _game()
+	if game:
+		bonus = float(game.tower_bonus())
+	var damage := maxi(int(round(float(_stats.dmg) * bonus)), 1)
+	shot.setup(global_position + Vector2(0, -70), aim, target, damage, float(_stats.splash), float(_stats.shot_speed), kind == Kind.FIRE)
+	game.fx.add_child(shot)
 
 func hurt(amount: int) -> bool:
 	hp -= amount
@@ -103,12 +135,12 @@ func _game() -> Node:
 
 func _draw() -> void:
 	var pts := PackedVector2Array()
-	var rad := 16.0 if kind == Kind.WALL else 20.0
+	var rad := 34.0 if is_defense() else 40.0
 	for i in 14:
 		var a := TAU * float(i) / 14.0
-		pts.append(Vector2(cos(a) * rad, sin(a) * rad * 0.42 + 8.0))
+		pts.append(Vector2(cos(a) * rad, sin(a) * rad * 0.42 + 10.0))
 	draw_colored_polygon(pts, Color(0, 0, 0, 0.28))
-	if kind != Kind.WALL and _game() and _game().inspected == self:
+	if float(_stats.range) > 0.0 and _game() and _game().inspected == self:
 		draw_arc(Vector2.ZERO, float(_stats.range), 0, TAU, 48, Color(1, 0.86, 0.35, 0.55), 2.0)
 
 
@@ -120,14 +152,14 @@ class Flame:
 
 	func _draw() -> void:
 		var flick := 0.8 + 0.25 * sin(Time.get_ticks_msec() / 70.0)
-		draw_circle(Vector2(0, 2), 8.0 * flick, Color(1, 0.38, 0.05, 0.75))
-		draw_circle(Vector2(0, -6.0 * flick), 4.5, Color(1, 0.9, 0.4, 0.95))
+		draw_circle(Vector2(0, 2), 10.0 * flick, Color(1, 0.38, 0.05, 0.75))
+		draw_circle(Vector2(0, -8.0 * flick), 5.5, Color(1, 0.9, 0.4, 0.95))
 
 
 class HpBar:
 	extends Node2D
 
-	var y_off := -70.0
+	var y_off := -140.0
 
 	func _process(_delta: float) -> void:
 		queue_redraw()
@@ -136,7 +168,7 @@ class HpBar:
 		var p := get_parent()
 		if p.hp >= p.max_hp and not p.always_bar:
 			return
-		var w := 40.0
+		var w := 46.0
 		var ratio := clampf(float(p.hp) / float(maxi(p.max_hp, 1)), 0.0, 1.0)
 		var col := Color(0.35, 0.78, 0.32) if ratio > 0.35 else Color(0.85, 0.28, 0.18)
 		draw_rect(Rect2(-w * 0.5, y_off, w, 5), Color(0, 0, 0, 0.65))

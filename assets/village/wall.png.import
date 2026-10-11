@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://mloopjfc0x1b"
-path="res://.godot/imported/dirt.png-fb4f92c5a45bacab1530ea6126ba51dc.ctex"
+uid="uid://bfqsnpc14br01"
+path="res://.godot/imported/wall.png-6c6edbf48fe4da12fb7d30571f029efd.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/kenney/landscape/dirt.png"
-dest_files=["res://.godot/imported/dirt.png-fb4f92c5a45bacab1530ea6126ba51dc.ctex"]
+source_file="res://assets/village/wall.png"
+dest_files=["res://.godot/imported/wall.png-6c6edbf48fe4da12fb7d30571f029efd.ctex"]
 
 [params]
 

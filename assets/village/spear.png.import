@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://rtfoji2xfsc3"
-path="res://.godot/imported/hut.png-53995087d8cb7e4949b7cfadcf6bc457.ctex"
+uid="uid://bjrtiwifmybe6"
+path="res://.godot/imported/spear.png-f85a9075b44512cef54a5e659ee8123f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/kenney/buildings/hut.png"
-dest_files=["res://.godot/imported/hut.png-53995087d8cb7e4949b7cfadcf6bc457.ctex"]
+source_file="res://assets/village/spear.png"
+dest_files=["res://.godot/imported/spear.png-f85a9075b44512cef54a5e659ee8123f.ctex"]
 
 [params]
 

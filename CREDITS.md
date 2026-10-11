@@ -2,52 +2,52 @@
 
 This game uses third-party art and a third-party font. Licenses below are copied from the files or pages those assets were downloaded from. Nothing here is a guessed license.
 
-## Terrain, towers, trees, and rocks
+## Village, trees, rocks, and roads
 
-- **Pack:** Tower Defense assets (isometric)
-- **Author:** Kenney Vleugels, for Kenney (www.kenney.nl)
-- **Download page:** https://opengameart.org/content/tower-defense-assets-isometric
-- **File downloaded:** `Tower Defense assets.zip` (1.5 MB) from that page
+- **Pack:** Fantasy Town Kit (2.0)
+- **Author:** Kenney (www.kenney.nl)
+- **Download page:** https://kenney.nl/assets/fantasy-town-kit
+- **File downloaded:** `kenney_fantasy-town-kit_2.0.zip`  
+  https://kenney.nl/media/pages/assets/fantasy-town-kit/efe948d309-1754222374/kenney_fantasy-town-kit_2.0.zip
 - **License:** Creative Commons Zero (CC0) 1.0 Universal  
   http://creativecommons.org/publicdomain/zero/1.0/
-- **License file shipped with the pack:** copied unchanged to [`assets/kenney/LICENSE.txt`](assets/kenney/LICENSE.txt)
+- **License file shipped with the pack:** copied unchanged to [`assets/village/LICENSE.txt`](assets/village/LICENSE.txt)
 
-The pack's own license text says:
+The pack's own `License.txt` says:
 
-> Tower Defense assets (isometric)  
-> by Kenney Vleugels for Kenney (www.kenney.nl)  
-> License (Creative Commons Zero, CC0)  
-> You may use these graphics in personal and commercial projects.  
-> Credit (Kenney or www.kenney.nl) would be nice but is not mandatory.
-
-Sprites used, by their original filenames:
-
-| In this game | Original file in the zip |
-| --- | --- |
-| `assets/kenney/landscape/grass_a.png` | `PNG/Landscape/landscape_13.png` |
-| `assets/kenney/landscape/grass_b.png` | `PNG/Landscape/landscape_19.png` |
-| `assets/kenney/landscape/grass_c.png` | `PNG/Landscape/landscape_24.png` |
-| `assets/kenney/landscape/grass_d.png` | `PNG/Landscape/landscape_26.png` |
-| `assets/kenney/landscape/dirt.png` | `PNG/Landscape/landscape_29.png` |
-| `assets/kenney/buildings/wall.png` | `PNG/Towers (brown)/tower_45.png` |
-| `assets/kenney/buildings/spear.png` | `PNG/Towers (brown)/tower_42.png` |
-| `assets/kenney/buildings/fire.png` | `PNG/Towers (brown)/tower_35.png` |
-| `assets/kenney/buildings/hut.png` | `PNG/Towers (brown)/tower_44.png` |
-| `assets/kenney/details/tree_a.png` | `PNG/Details/trees_1.png` |
-| `assets/kenney/details/tree_b.png` | `PNG/Details/trees_8.png` |
-| `assets/kenney/details/tree_core.png` | `PNG/Details/trees_5.png` |
-| `assets/kenney/details/rock.png` | `PNG/Details/rocks_1.png` |
-
-These PNGs were copied as-is (not recolored). `icon.png` is a small composite of `landscape_13` and `tower_42` from the same pack.
-
-### Kenney Tower Defense Kit (3D) was not shipped
-
-The current pack at https://kenney.nl/assets/tower-defense-kit (Tower Defense Kit 2.1, file `kenney_tower-defense-kit.zip`) was downloaded and checked. Its `License.txt` says:
-
+> Fantasy Town Kit (2.0)  
+> Created/distributed by Kenney (www.kenney.nl)  
 > License: (Creative Commons Zero, CC0)  
-> http://creativecommons.org/publicdomain/zero/1.0/
+> http://creativecommons.org/publicdomain/zero/1.0/  
+> You can use this content for personal, educational, and commercial purposes.  
+> Support by crediting 'Kenney' or 'www.kenney.nl' (this is not a requirement)
 
-That kit is a **3D** model pack (FBX, GLB, and OBJ). This playable build uses Kenney's **2D isometric** tower-defense sprites above so the game can stay a lightweight HTML5 export. The 3D models are not included in this repository.
+The download is a **3D** kit (FBX, GLB, OBJ). Those model files are not in this repository. The PNGs in `assets/village/` are isometric renders made for this game in Godot 4.7: orthographic camera, view direction along (1, 1, 1), GL Compatibility renderer. Several renders stack more than one model on the same 1×1 cell.
+
+| In this game | Kenney models in the render |
+| --- | --- |
+| `assets/village/road.png` | `road.glb` |
+| `assets/village/tree.png` | `tree.glb` |
+| `assets/village/tree_b.png` | `tree-crooked.glb` |
+| `assets/village/tree_c.png` | `tree-high.glb` |
+| `assets/village/rock.png` | `rock-large.glb` |
+| `assets/village/wall.png` | `fence.glb` (four sides) and `pillar-wood.glb` |
+| `assets/village/spear.png` | `planks.glb`, `wall-wood-corner.glb`, `roof-point.glb`, `banner-green.glb` |
+| `assets/village/fire.png` | `planks.glb`, `pillar-wood.glb`, `chimney.glb`, `banner-green.glb` |
+| `assets/village/house.png` | `planks.glb`, `wall-wood.glb`, `wall-wood-door.glb`, `roof.glb`, `chimney.glb` |
+| `assets/village/workshop.png` | `planks.glb`, `wall-wood.glb`, `wall-wood-window-shutters.glb`, `roof-point.glb`, `stall.glb` |
+| `assets/village/farm.png` | `fence.glb`, `hedge.glb`, plus an original dirt-colored ground slab (see below) |
+| `assets/village/grass_a.png`, `grass_b.png` | original grass-colored ground slabs, not a Kenney texture |
+
+`icon.png` is a scaled crop of `house.png`.
+
+The grass slabs and the farm's soil slab use small original albedo textures made for this game, rendered with the same camera and lights as the Kenney models. Those albedo textures are not from the Fantasy Town kit.
+
+### Packs that were checked and not shipped
+
+- **Isometric Miniature Farm (2.0)** by Kenney, CC0, from https://kenney.nl/assets/isometric-miniature-farm (`License.txt` in that zip says Creative Commons Zero). It is a strong 2D isometric set, but the buildings are modular blocks. This slice uses the Fantasy Town renders above instead, so the farm zip is not in the repository.
+- **Isometric Buildings** and **Isometric Landscape** by Kenney, both CC0 on their `License.txt`, are the older small isometric tiles. They are the same family as the previous tower-defense tiles and are not shipped.
+- The earlier build used Kenney's 2D pack "Tower Defense assets (isometric)" (CC0, https://opengameart.org/content/tower-defense-assets-isometric). Those PNGs have been removed from this repository.
 
 ## Zombies
 
@@ -62,6 +62,8 @@ That kit is a **3D** model pack (FBX, GLB, and OBJ). This playable build uses Ke
 - CC0 does not require credit. The author wrote: "if you feel like crediting, I won't say no."
 
 Frames in the zip are named `skeleton-move_*.png` and `skeleton-attack_*.png` (Spine export names). The published asset is the top-down zombie. This game keeps the move and attack cycles and scales every frame by the same factor (`311px` move-canvas height → `96px`) so the web download stays small. Idle frames are not used.
+
+A free isometric zombie pack on itch.io (Engvee, "FREE Animated Isometric Zombies") was not used. That page allows commercial use in the author's own words, but it does not state CC0 or CC-BY, so it is outside the license set this project ships.
 
 ## Font
 
