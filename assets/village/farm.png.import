@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://p7pqgmu3midg"
-path="res://.godot/imported/grass_d.png-5887bcf23e81a7043182ea1d0cd47b31.ctex"
+uid="uid://cjcnpvqvqqtyq"
+path="res://.godot/imported/farm.png-2b56c89fe00e86296ce17e95037249d9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/kenney/landscape/grass_d.png"
-dest_files=["res://.godot/imported/grass_d.png-5887bcf23e81a7043182ea1d0cd47b31.ctex"]
+source_file="res://assets/village/farm.png"
+dest_files=["res://.godot/imported/farm.png-2b56c89fe00e86296ce17e95037249d9.ctex"]
 
 [params]
 

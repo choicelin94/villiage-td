@@ -137,7 +137,7 @@ func _process(delta: float) -> void:
 	var goal: Vector2 = game.cell_center(_path[_path_i])
 	var diff: Vector2 = goal - global_position
 	var dist: float = diff.length()
-	if dist < 5.0:
+	if dist < 8.0:
 		_path_i += 1
 		if _path_i >= _path.size():
 			if _attack.x >= 0 or _attack_core:
@@ -180,8 +180,8 @@ func _separate(delta: float) -> void:
 			continue
 		var d := global_position - other.global_position
 		var len := d.length()
-		if len > 0.1 and len < 22.0:
-			push += d / len * (22.0 - len)
+		if len > 0.1 and len < 30.0:
+			push += d / len * (30.0 - len)
 	if push != Vector2.ZERO:
 		global_position += push * minf(delta * 3.0, 0.4)
 
@@ -198,7 +198,7 @@ func _repath() -> void:
 	_attack = info.attack
 	_attack_core = info.core
 	_attacking = false
-	while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 6.0:
+	while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 8.0:
 		_path_i += 1
 	if _path_i >= _path.size() and (_attack.x >= 0 or _attack_core):
 		_attacking = true

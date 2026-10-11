@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://due4v4nemc3sq"
-path="res://.godot/imported/grass_b.png-ab7ef5a3f8645288a10a41f1e435a6a1.ctex"
+uid="uid://du24d1kqxcf6o"
+path="res://.godot/imported/workshop.png-4ea6934fb0a9eee4d1123b1077dd322f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/kenney/landscape/grass_b.png"
-dest_files=["res://.godot/imported/grass_b.png-ab7ef5a3f8645288a10a41f1e435a6a1.ctex"]
+source_file="res://assets/village/workshop.png"
+dest_files=["res://.godot/imported/workshop.png-4ea6934fb0a9eee4d1123b1077dd322f.ctex"]
 
 [params]
 

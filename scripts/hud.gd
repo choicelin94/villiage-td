@@ -9,6 +9,7 @@ var _sync := false
 var _buttons := {}
 var _wood: Label
 var _gold: Label
+var _pop: Label
 var _wave: Label
 var _core: Label
 var _bar: ProgressBar
@@ -53,9 +54,10 @@ func flash(text: String) -> void:
 	_hint.text = text
 	_flash_t = 2.2
 
-func refresh(wood: int, gold: int, wave_label: String, core: int, core_max: int, phase: String) -> void:
+func refresh(wood: int, gold: int, pop: int, pop_cap: int, wave_label: String, core: int, core_max: int, phase: String) -> void:
 	_wood.text = "木材 Wood  %d" % wood
 	_gold.text = "金币 Gold  %d" % gold
+	_pop.text = "人口 Pop  %d/%d" % [pop, pop_cap]
 	_wave.text = wave_label
 	_core.text = "圣树 %d/%d" % [core, core_max]
 	_bar.max_value = core_max
@@ -79,7 +81,7 @@ func show_end(win: bool) -> void:
 		_end_body.text = "圣树被摧毁了。\nThe sacred tree has fallen."
 
 func _idle_hint() -> String:
-	return "左键放置，右键取消或出售。僵尸沿路进攻圣树，木墙会迫使它们绕路或拆墙。  |  Left click places. Right click cancels or sells. Walls reroute zombies or get attacked."
+	return "房屋提高人口。人口决定能建多少防御，并在每波后发金币。农场产木材，工坊让塔更强。  |  Houses raise population, which caps defenses and pays gold. Farms yield wood. The workshop strengthens towers."
 
 func _build_top(theme: Theme) -> void:
 	var panel := Panel.new()
@@ -97,10 +99,12 @@ func _build_top(theme: Theme) -> void:
 	panel.add_child(row)
 	_wood = _stat(theme, Color(0.86, 0.62, 0.32))
 	_gold = _stat(theme, Color(0.98, 0.82, 0.28))
+	_pop = _stat(theme, Color(0.65, 0.86, 0.98))
 	_wave = _stat(theme, Color(0.9, 0.92, 0.84))
 	_core = _stat(theme, Color(0.7, 0.9, 0.65))
 	row.add_child(_wood)
 	row.add_child(_gold)
+	row.add_child(_pop)
 	row.add_child(_wave)
 	row.add_child(_core)
 	_bar = ProgressBar.new()
@@ -129,7 +133,7 @@ func _build_bottom(theme: Theme) -> void:
 	var panel := Panel.new()
 	panel.theme = theme
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	panel.offset_top = -118
+	panel.offset_top = -132
 	panel.add_theme_stylebox_override("panel", _box(Color(0.07, 0.11, 0.08, 0.92), Color(0.35, 0.28, 0.14)))
 	add_child(panel)
 	var col := VBoxContainer.new()
@@ -151,12 +155,15 @@ func _build_bottom(theme: Theme) -> void:
 	row.add_theme_constant_override("separation", 10)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.add_child(row)
-	_add_build_button(row, theme, Building.Kind.WALL, "木墙 Wall", "挡住去路")
-	_add_build_button(row, theme, Building.Kind.SPEAR, "矛塔 Spear", "单体穿刺")
-	_add_build_button(row, theme, Building.Kind.FIRE, "火塔 Fire", "范围灼烧")
+	_add_build_button(row, theme, Building.Kind.WALL, "木墙 Wall", "挡路")
+	_add_build_button(row, theme, Building.Kind.SPEAR, "矛塔 Spear", "穿刺")
+	_add_build_button(row, theme, Building.Kind.FIRE, "火塔 Fire", "溅射")
+	_add_build_button(row, theme, Building.Kind.HOUSE, "房屋 House", "人口+4")
+	_add_build_button(row, theme, Building.Kind.FARM, "农场 Farm", "产木材")
+	_add_build_button(row, theme, Building.Kind.WORKSHOP, "工坊 Workshop", "强化塔")
 	_start = Button.new()
 	_start.theme = theme
-	_start.custom_minimum_size = Vector2(170, 62)
+	_start.custom_minimum_size = Vector2(148, 58)
 	_start.text = "开始波次\nStart Wave"
 	_style_button(_start, Color(0.18, 0.32, 0.18), Color(0.55, 0.75, 0.4))
 	_start.pressed.connect(func() -> void: start_pressed.emit())
@@ -172,7 +179,8 @@ func _add_build_button(row: HBoxContainer, theme: Theme, kind: int, title: Strin
 	var btn := Button.new()
 	btn.theme = theme
 	btn.toggle_mode = true
-	btn.custom_minimum_size = Vector2(176, 62)
+	btn.custom_minimum_size = Vector2(148, 58)
+	btn.add_theme_font_size_override("font_size", 15)
 	btn.text = "%s\n%s  %s" % [title, cost, blurb]
 	_style_button(btn, Color(0.24, 0.16, 0.09), Color(0.62, 0.46, 0.22))
 	btn.toggled.connect(func(on: bool) -> void: _on_toggled(kind, on))
