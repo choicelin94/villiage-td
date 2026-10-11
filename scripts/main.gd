@@ -1,52 +1,61 @@
 extends Node2D
 
-const COLS := 10
-const ROWS := 10
+const COLS := 20
+const ROWS := 20
 const TILE := Vector2i(176, 98)
 const SPRITE_OFF := Vector2(-127.5, -134.0)
-const CORE_CELL := Vector2i(5, 8)
+const HEART := Vector2i(10, 14)
 const SPAWNS: Array[Vector2i] = [
-	Vector2i(3, 0), Vector2i(4, 0), Vector2i(5, 0), Vector2i(6, 0)
+	Vector2i(8, 0), Vector2i(9, 0), Vector2i(10, 0), Vector2i(11, 0), Vector2i(12, 0)
 ]
 const DIRS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)
 ]
-const START_WOOD := 150
-const START_GOLD := 90
-const START_POP := 6
-const START_CAP := 6
-const HOUSE_CAP := 4
-const CORE_MAX := 20
-const TOTAL_WAVES := 8
+const START_WOOD := 100
+const START_GOLD := 70
+const WALL_CAP := 28
+const HOUSE_BEDS := 4
+const TOTAL_WAVES := 10
+const ZOMBIE_SPEED := 72.0
+const VILLAGER_SPEED := 108.0
+const CLAIM_TIME := 6.5
+const REFUGEES_PER_WAVE := 2
+const INFECT_RADIUS := 38.0
 
 const WAVES: Array[Dictionary] = [
-	{"n": 6, "hp": 36, "speed": 72.0, "gap": 0.85, "fast": 0, "brute": 0, "boss": 0},
-	{"n": 8, "hp": 48, "speed": 74.0, "gap": 0.74, "fast": 2, "brute": 0, "boss": 0},
-	{"n": 9, "hp": 60, "speed": 74.0, "gap": 0.66, "fast": 3, "brute": 1, "boss": 0},
-	{"n": 10, "hp": 74, "speed": 76.0, "gap": 0.58, "fast": 3, "brute": 2, "boss": 0},
-	{"n": 10, "hp": 90, "speed": 76.0, "gap": 0.54, "fast": 3, "brute": 2, "boss": 0},
-	{"n": 11, "hp": 104, "speed": 78.0, "gap": 0.5, "fast": 4, "brute": 3, "boss": 0},
-	{"n": 12, "hp": 120, "speed": 78.0, "gap": 0.46, "fast": 4, "brute": 3, "boss": 0},
-	{"n": 10, "hp": 132, "speed": 76.0, "gap": 0.5, "fast": 3, "brute": 3, "boss": 1},
+	{"n": 5, "hp": 34, "speed": 72.0, "gap": 0.9, "fast": 0, "brute": 0, "boss": 0},
+	{"n": 7, "hp": 44, "speed": 74.0, "gap": 0.78, "fast": 2, "brute": 0, "boss": 0},
+	{"n": 8, "hp": 54, "speed": 74.0, "gap": 0.7, "fast": 2, "brute": 1, "boss": 0},
+	{"n": 8, "hp": 66, "speed": 76.0, "gap": 0.64, "fast": 3, "brute": 1, "boss": 0},
+	{"n": 9, "hp": 78, "speed": 76.0, "gap": 0.58, "fast": 3, "brute": 2, "boss": 0},
+	{"n": 9, "hp": 90, "speed": 78.0, "gap": 0.54, "fast": 3, "brute": 2, "boss": 0},
+	{"n": 10, "hp": 102, "speed": 78.0, "gap": 0.5, "fast": 4, "brute": 2, "boss": 0},
+	{"n": 10, "hp": 114, "speed": 78.0, "gap": 0.48, "fast": 4, "brute": 3, "boss": 0},
+	{"n": 11, "hp": 126, "speed": 80.0, "gap": 0.46, "fast": 4, "brute": 3, "boss": 0},
+	{"n": 8, "hp": 130, "speed": 76.0, "gap": 0.5, "fast": 3, "brute": 2, "boss": 1},
 ]
 
 const KIND_MOD := {
-	"normal": {"hp": 1.0, "speed": 1.0, "scale": 1.55, "dmg": 1, "wood": 2, "gold": 4, "mod": Color(1, 1, 1)},
-	"fast": {"hp": 0.7, "speed": 1.48, "scale": 1.35, "dmg": 1, "wood": 1, "gold": 5, "mod": Color(0.82, 1, 0.78)},
-	"brute": {"hp": 2.35, "speed": 0.68, "scale": 1.9, "dmg": 2, "wood": 3, "gold": 9, "mod": Color(0.72, 0.86, 0.68)},
-	"boss": {"hp": 4.8, "speed": 0.58, "scale": 2.25, "dmg": 3, "wood": 8, "gold": 30, "mod": Color(0.62, 0.82, 0.55)},
+	"normal": {"hp": 1.0, "speed": 1.0, "scale": 1.05, "dmg": 1, "wood": 2, "gold": 4, "mod": Color(1, 1, 1)},
+	"fast": {"hp": 0.7, "speed": 1.35, "scale": 0.95, "dmg": 1, "wood": 1, "gold": 5, "mod": Color(0.82, 1, 0.78)},
+	"brute": {"hp": 2.2, "speed": 0.7, "scale": 1.3, "dmg": 2, "wood": 3, "gold": 9, "mod": Color(0.72, 0.86, 0.68)},
+	"boss": {"hp": 4.2, "speed": 0.6, "scale": 1.6, "dmg": 3, "wood": 8, "gold": 30, "mod": Color(0.62, 0.82, 0.55)},
 }
+
+const MALE_TEX := [
+	"res://assets/people/man_brown.png",
+	"res://assets/people/man_old.png",
+	"res://assets/people/man_blue.png",
+]
+const FEMALE_TEX := "res://assets/people/woman.png"
 
 var wood := START_WOOD
 var gold := START_GOLD
-var pop := START_POP
-var pop_cap := START_CAP
-var core_hp := CORE_MAX
-var core_cell := CORE_CELL
 var core_pos := Vector2.ZERO
 var phase := "prep"
 var wave_number := 0
 var inspected: Building = null
+var selected_villager: Villager = null
 
 var ground: TileMapLayer
 var actors: Node2D
@@ -54,7 +63,6 @@ var fx: Node2D
 var camera: Camera2D
 var hud: Hud
 var font: Font
-var core_marker: Node2D
 
 var buildings := {}
 var scenery := {}
@@ -64,6 +72,7 @@ var spawn_gap := 0.8
 var spawn_cursor := 0
 var _selftest := false
 var _selftest_t0 := 0
+var _male_i := 0
 
 func _ready() -> void:
 	Engine.max_fps = 60
@@ -72,12 +81,15 @@ func _ready() -> void:
 	_selftest = OS.get_environment("TD_SELFTEST") == "1"
 	_build_world()
 	_paint_map()
-	_check_opening()
+	_place_starter()
+	_spawn_starter_people()
+	core_pos = cell_center(HEART)
 	_build_camera()
 	hud = Hud.new()
 	add_child(hud)
 	hud.start_pressed.connect(_try_start_wave)
 	hud.restart_pressed.connect(_restart)
+	_refresh_beds()
 	_refresh_hud()
 	if (_selftest or OS.get_environment("TD_DEMO") == "1") and OS.get_environment("TD_NONE") != "1":
 		_scripted_defense()
@@ -88,57 +100,66 @@ func _ready() -> void:
 	elif OS.get_environment("TD_DEMO") == "1":
 		_try_start_wave()
 		_demo_shot()
+	elif OS.get_environment("TD_FLOW") == "1":
+		if FileAccess.file_exists("/tmp/td_flow_restarted"):
+			print("FLOW_RESTARTED")
+			get_tree().quit(0)
+		else:
+			_flow_shot()
 	elif OS.get_environment("TD_SHOT") == "1":
 		_opening_shot()
 
 func _process(delta: float) -> void:
-	queue_redraw()
+	if hud != null and hud.selected_kind() >= 0 and selected_villager != null:
+		_clear_villager_selection()
+	_refresh_beds()
+	_infect_contacts()
 	_update_ghost()
 	if phase == "combat":
 		_tick_spawns(delta)
-	if _selftest and Time.get_ticks_msec() - _selftest_t0 > 120000:
-		print("SELFTEST_TIMEOUT core=", core_hp, " wave=", wave_number, " alive=", _living().size())
+	if _selftest and Time.get_ticks_msec() - _selftest_t0 > 180000:
+		print("SELFTEST_TIMEOUT people=", _alive_villagers().size(), " wave=", wave_number)
 		get_tree().quit(1)
-
-func _draw() -> void:
-	if OS.get_environment("TD_GRID") != "1" or ground == null:
-		return
-	for y in ROWS:
-		for x in COLS:
-			draw_circle(ground.map_to_local(Vector2i(x, y)), 4, Color(1, 0.2, 0.2, 0.85))
 
 func _unhandled_input(event: InputEvent) -> void:
 	if hud != null and hud.is_blocking():
 		return
 	if event is InputEventMouseButton and event.pressed:
 		var mb := event as InputEventMouseButton
+		var world := get_canvas_transform().affine_inverse() * mb.position
 		if mb.button_index == MOUSE_BUTTON_LEFT:
-			_left_click()
+			_left_click(world)
 		elif mb.button_index == MOUSE_BUTTON_RIGHT:
-			_right_click()
+			_right_click(world)
 	elif event is InputEventKey and event.pressed and not event.echo:
 		var key := event as InputEventKey
 		match key.keycode:
 			KEY_1:
+				_clear_villager_selection()
 				hud.select_kind(Building.Kind.WALL)
 			KEY_2:
+				_clear_villager_selection()
 				hud.select_kind(Building.Kind.SPEAR)
 			KEY_3:
+				_clear_villager_selection()
 				hud.select_kind(Building.Kind.FIRE)
 			KEY_4:
+				_clear_villager_selection()
 				hud.select_kind(Building.Kind.HOUSE)
 			KEY_5:
+				_clear_villager_selection()
 				hud.select_kind(Building.Kind.FARM)
 			KEY_6:
+				_clear_villager_selection()
 				hud.select_kind(Building.Kind.WORKSHOP)
 			KEY_ESCAPE:
 				hud.select_kind(-1)
+				_clear_villager_selection()
 				inspected = null
 			KEY_SPACE, KEY_ENTER:
 				_try_start_wave()
 			KEY_R:
-				if phase == "win" or phase == "lose":
-					_restart()
+				_restart()
 
 func _build_world() -> void:
 	ground = TileMapLayer.new()
@@ -161,17 +182,14 @@ func _build_world() -> void:
 		atlas.texture_region_size = Vector2i(tex.get_width(), tex.get_height())
 		atlas.create_tile(Vector2i.ZERO)
 		var data := atlas.get_tile_data(Vector2i.ZERO, 0)
-		# Diamond center of the render is 7px below the texture center.
 		data.texture_origin = Vector2i(0, -6)
 		tileset.add_source(atlas, i)
 	ground.tile_set = tileset
 	add_child(ground)
-
 	actors = Node2D.new()
 	actors.name = "Actors"
 	actors.y_sort_enabled = true
 	add_child(actors)
-
 	fx = Node2D.new()
 	fx.name = "Fx"
 	fx.z_index = 4
@@ -183,32 +201,27 @@ func _paint_map() -> void:
 			var cell := Vector2i(x, y)
 			if _is_border(cell) and not _is_spawn(cell):
 				scenery[cell] = true
-	scenery[Vector2i(2, 4)] = true
-	scenery[Vector2i(7, 6)] = true
-	scenery[Vector2i(4, 8)] = true
-	scenery[Vector2i(6, 8)] = true
-
+	for rock_cell in [Vector2i(4, 8), Vector2i(16, 8), Vector2i(4, 16), Vector2i(16, 16)]:
+		scenery[rock_cell] = true
 	var trail := {}
 	for spawn in SPAWNS:
-		for cell in _astar(spawn, CORE_CELL).path:
+		for cell in _astar(spawn, HEART).path:
 			trail[cell] = true
-
 	for y in ROWS:
 		for x in COLS:
 			var cell := Vector2i(x, y)
-			var source := (x * 3 + y * 5) % 2
-			if trail.has(cell) and cell != CORE_CELL and not scenery.has(cell):
+			var source := (x + y) % 2
+			if trail.has(cell) and not scenery.has(cell):
 				source = 2
 			ground.set_cell(cell, source, Vector2i.ZERO)
-
-	_place_prop(Vector2i(2, 4), load("res://assets/village/rock.png"))
-	_place_prop(Vector2i(7, 6), load("res://assets/village/rock.png"))
-	_place_prop(Vector2i(4, 8), load("res://assets/village/tree.png"))
-	_place_prop(Vector2i(6, 8), load("res://assets/village/tree_b.png"))
+	for rock_cell in [Vector2i(4, 8), Vector2i(16, 8), Vector2i(4, 16), Vector2i(16, 16)]:
+		_place_prop(rock_cell, load("res://assets/village/rock.png"))
 	for y in ROWS:
 		for x in COLS:
 			var cell := Vector2i(x, y)
-			if not _is_border(cell) or _is_spawn(cell):
+			if not scenery.has(cell) or _is_spawn(cell):
+				continue
+			if not _is_border(cell):
 				continue
 			var trees := [
 				"res://assets/village/tree.png",
@@ -217,37 +230,49 @@ func _paint_map() -> void:
 			]
 			_place_prop(cell, load(trees[(x + y) % trees.size()]))
 
-	var tree: Texture2D = load("res://assets/village/tree_c.png")
-	var heart := Node2D.new()
-	heart.position = cell_center(CORE_CELL)
-	var shadow := Polygon2D.new()
-	shadow.color = Color(0, 0, 0, 0.3)
-	shadow.polygon = _ellipse(22, 9, 6)
-	heart.add_child(shadow)
-	var sprite := Sprite2D.new()
-	sprite.texture = tree
-	sprite.centered = false
-	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	sprite.position = SPRITE_OFF
-	sprite.z_index = 1
-	heart.add_child(sprite)
-	core_marker = preload("res://scripts/marker.gd").new()
-	core_marker.position = Vector2(0, sprite.position.y - 6)
-	core_marker.z_index = 3
-	core_marker.hp = core_hp
-	core_marker.max_hp = CORE_MAX
-	core_marker.title = "圣树"
-	heart.add_child(core_marker)
-	actors.add_child(heart)
-	core_pos = heart.position
+func _place_starter() -> void:
+	var plan := [
+		[Building.Kind.HOUSE, Vector2i(8, 14)],
+		[Building.Kind.HOUSE, Vector2i(12, 14)],
+		[Building.Kind.FARM, Vector2i(9, 16)],
+		[Building.Kind.WORKSHOP, Vector2i(11, 16)],
+		[Building.Kind.SPEAR, Vector2i(7, 12)],
+		[Building.Kind.SPEAR, Vector2i(13, 12)],
+		[Building.Kind.FIRE, Vector2i(10, 12)],
+		[Building.Kind.WALL, Vector2i(6, 11)],
+		[Building.Kind.WALL, Vector2i(8, 11)],
+		[Building.Kind.WALL, Vector2i(12, 11)],
+		[Building.Kind.WALL, Vector2i(14, 11)],
+		[Building.Kind.WALL, Vector2i(9, 10)],
+		[Building.Kind.WALL, Vector2i(11, 10)],
+	]
+	for item in plan:
+		_place_free(int(item[0]), item[1])
+
+func _spawn_starter_people() -> void:
+	var spots: Array[Vector2i] = [
+		Vector2i(9, 15), Vector2i(10, 15), Vector2i(11, 15), Vector2i(8, 15), Vector2i(12, 15)
+	]
+	var sexes := ["m", "f", "m", "f", "m"]
+	for i in spots.size():
+		_make_villager(spots[i], sexes[i], false)
+
+func _make_villager(cell: Vector2i, sex: String, as_refugee: bool) -> Villager:
+	var v := Villager.new()
+	v.position = cell_center(cell)
+	var tex_path := FEMALE_TEX
+	if sex == "m":
+		tex_path = MALE_TEX[_male_i % MALE_TEX.size()]
+		_male_i += 1
+	v.setup(load(tex_path), sex, VILLAGER_SPEED)
+	v.refugee = as_refugee
+	v.claim_left = CLAIM_TIME if as_refugee else -1.0
+	actors.add_child(v)
+	return v
 
 func _place_prop(cell: Vector2i, tex: Texture2D) -> void:
 	var node := Node2D.new()
 	node.position = cell_center(cell)
-	var shadow := Polygon2D.new()
-	shadow.color = Color(0, 0, 0, 0.25)
-	shadow.polygon = _ellipse(16, 7, 6)
-	node.add_child(shadow)
 	var sprite := Sprite2D.new()
 	sprite.texture = tex
 	sprite.centered = false
@@ -257,27 +282,27 @@ func _place_prop(cell: Vector2i, tex: Texture2D) -> void:
 	node.add_child(sprite)
 	actors.add_child(node)
 
-func _ellipse(rx: float, ry: float, lift: float) -> PackedVector2Array:
-	var pts := PackedVector2Array()
-	for i in 14:
-		var a := TAU * float(i) / 14.0
-		pts.append(Vector2(cos(a) * rx, sin(a) * ry + lift))
-	return pts
-
 func _build_camera() -> void:
 	camera = Camera2D.new()
-	var a := cell_center(Vector2i(0, 0))
-	var b := cell_center(Vector2i(COLS - 1, ROWS - 1))
-	camera.position = (a + b) * 0.5 + Vector2(0, 36)
-	camera.zoom = Vector2(0.5, 0.5)
+	var corners: Array[Vector2] = [
+		cell_center(Vector2i(0, 0)),
+		cell_center(Vector2i(COLS - 1, 0)),
+		cell_center(Vector2i(0, ROWS - 1)),
+		cell_center(Vector2i(COLS - 1, ROWS - 1)),
+	]
+	var min_p := corners[0]
+	var max_p := corners[0]
+	for p in corners:
+		min_p.x = minf(min_p.x, p.x)
+		min_p.y = minf(min_p.y, p.y)
+		max_p.x = maxf(max_p.x, p.x)
+		max_p.y = maxf(max_p.y, p.y)
+	var span := max_p - min_p + Vector2(TILE.x, TILE.y)
+	var zoom_v := minf(1160.0 / span.x, 500.0 / span.y)
+	camera.position = (min_p + max_p) * 0.5 + Vector2(0, 20)
+	camera.zoom = Vector2(zoom_v, zoom_v)
 	add_child(camera)
 	camera.make_current()
-
-func _check_opening() -> void:
-	for spawn in SPAWNS:
-		var info := _astar(spawn, CORE_CELL)
-		if info.path.is_empty():
-			push_error("No path from %s to the core. Map is sealed." % str(spawn))
 
 func cell_center(cell: Vector2i) -> Vector2:
 	return ground.map_to_local(cell)
@@ -298,22 +323,70 @@ func nearest_spawn(world: Vector2) -> Vector2i:
 			best = cell
 	return best
 
+func walkable(world: Vector2) -> bool:
+	var cell := world_to_cell(world)
+	return in_bounds(cell) and not _blocked(cell)
+
+func should_panic(v: Villager) -> bool:
+	if wave_number <= 0 or phase == "win" or phase == "lose":
+		return false
+	if v.job != null and is_instance_valid(v.job):
+		return false
+	return not v.housed
+
+func safe_point() -> Vector2:
+	var heart := cell_center(HEART)
+	var best := heart
+	var best_d := INF
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		if building.kind == Building.Kind.HOUSE and building.has_staff():
+			var d := heart.distance_squared_to(building.global_position)
+			if d < best_d:
+				best_d = d
+				best = building.global_position
+	return best
+
+func wander_cell(v: Villager, panic: bool) -> Vector2i:
+	var cell := HEART
+	for _try in 8:
+		var x := randi_range(6, 14)
+		var y := randi_range(12, 17)
+		if panic:
+			var pull := world_to_cell(safe_point())
+			x = clampi(pull.x + randi_range(-2, 2), 5, 15)
+			y = clampi(pull.y + randi_range(0, 2), 11, 17)
+		cell = Vector2i(x, y)
+		if not _blocked(cell):
+			return cell
+	if not _blocked(Vector2i(10, 15)):
+		return Vector2i(10, 15)
+	return v_cell_or_heart(v)
+
+func v_cell_or_heart(v: Villager) -> Vector2i:
+	var cell := world_to_cell(v.global_position)
+	if in_bounds(cell) and not _blocked(cell):
+		return cell
+	return HEART
+
 func route_from(start: Vector2i) -> Dictionary:
-	var info := _astar(start, CORE_CELL)
-	if not info.path.is_empty():
-		return {"path": info.path, "attack": Vector2i(-1, -1), "core": true}
+	var open_goal := _nearest_open_villager_cell(start)
+	if open_goal.x >= 0:
+		var chased := _astar(start, open_goal)
+		if not chased.path.is_empty():
+			return {"path": chased.path, "attack": Vector2i(-1, -1)}
+	var shelter := _nearest_staffed_cell(start)
+	if shelter.x >= 0:
+		var hit := _path_to_attack(start, shelter)
+		if int(hit.attack.x) >= 0:
+			return hit
 	return _path_to_building(start)
 
-func can_attack_cell(cell: Vector2i, attack_core: bool) -> bool:
-	if attack_core:
-		return core_hp > 0 and phase != "lose"
+func can_attack_cell(cell: Vector2i) -> bool:
 	return buildings.has(cell)
 
-func damage_cell(cell: Vector2i, attack_core: bool, amount: int) -> void:
+func damage_cell(cell: Vector2i, amount: int) -> void:
 	if phase == "win" or phase == "lose":
-		return
-	if attack_core:
-		_hurt_core(amount)
 		return
 	if not buildings.has(cell):
 		return
@@ -325,7 +398,7 @@ func damage_cell(cell: Vector2i, attack_core: bool, amount: int) -> void:
 func apply_hit(at: Vector2, damage: int, splash: float, is_fire: bool, target: Node2D) -> void:
 	if is_fire or splash > 0.0:
 		fx.add_child(_burst(at, splash if splash > 0.0 else 28.0, Color(1, 0.45, 0.1)))
-		for z in _living():
+		for z in _living_zombies():
 			if z.global_position.distance_to(at) <= splash:
 				z.hurt(damage)
 	else:
@@ -335,7 +408,7 @@ func apply_hit(at: Vector2, damage: int, splash: float, is_fire: bool, target: N
 		else:
 			var nearest: Zombie = null
 			var best := 26.0
-			for z in _living():
+			for z in _living_zombies():
 				var d := z.global_position.distance_to(at)
 				if d < best:
 					best = d
@@ -351,14 +424,12 @@ func on_zombie_killed(z: Zombie) -> void:
 	_popup(z.global_position, "+%d金" % z.reward_gold, Color(1, 0.86, 0.3))
 	_refresh_hud()
 
-func _hurt_core(amount: int) -> void:
-	core_hp = maxi(core_hp - amount, 0)
-	if core_marker:
-		core_marker.hp = core_hp
-	_popup(core_pos + Vector2(0, -70), "-%d" % amount, Color(1, 0.45, 0.35))
-	_refresh_hud()
-	if core_hp <= 0 and phase != "lose":
-		_finish(false)
+func tower_bonus() -> float:
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		if building.kind == Building.Kind.WORKSHOP and building.has_staff():
+			return 1.25
+	return 1.0
 
 func _try_start_wave() -> void:
 	if phase != "prep":
@@ -376,8 +447,7 @@ func _try_start_wave() -> void:
 
 func _compose_wave(spec: Dictionary) -> Array[String]:
 	var list: Array[String] = []
-	var normals := int(spec.n)
-	for _i in normals:
+	for _i in int(spec.n):
 		list.append("normal")
 	for _i in int(spec.fast):
 		list.append("fast")
@@ -392,75 +462,127 @@ func _tick_spawns(delta: float) -> void:
 	if not spawn_queue.is_empty():
 		spawn_cd -= delta
 		if spawn_cd <= 0.0:
-			_spawn_zombie(spawn_queue.pop_front())
+			_spawn_zombie(spawn_queue.pop_front(), false, Vector2.ZERO)
 			spawn_cd = spawn_gap
-	elif _living().is_empty():
+	elif _living_zombies().is_empty():
 		_on_wave_cleared()
 
-func _spawn_zombie(kind: String) -> void:
-	var spec: Dictionary = WAVES[wave_number - 1]
+func _spawn_zombie(kind: String, turned: bool, at: Vector2) -> void:
+	var spec: Dictionary = WAVES[maxi(wave_number, 1) - 1]
 	var mod: Dictionary = KIND_MOD[kind]
 	var z := Zombie.new()
-	var cell := SPAWNS[spawn_cursor % SPAWNS.size()]
-	spawn_cursor += 1
-	z.position = cell_center(cell)
-	z.setup(
-		maxi(int(round(float(spec.hp) * float(mod.hp))), 1),
-		float(spec.speed) * float(mod.speed),
-		float(mod.scale),
-		int(mod.dmg),
-		int(mod.wood),
-		int(mod.gold),
-		kind,
-		mod.mod
-	)
+	if turned:
+		z.position = at
+		z.mark_fresh()
+	else:
+		var cell := SPAWNS[spawn_cursor % SPAWNS.size()]
+		spawn_cursor += 1
+		z.position = cell_center(cell)
+	var hp := maxi(int(round(float(spec.hp) * float(mod.hp))), 1)
+	if turned:
+		hp = maxi(int(hp * 0.65), 12)
+	z.setup(hp, float(spec.speed) * float(mod.speed), float(mod.scale), int(mod.dmg), int(mod.wood), int(mod.gold), kind, mod.mod)
 	actors.add_child(z)
 
 func _on_wave_cleared() -> void:
 	if phase != "combat":
 		return
+	var farms := _staffed_count(Building.Kind.FARM)
+	wood += 8 + farms * 6
+	gold += 14
 	if wave_number >= TOTAL_WAVES:
 		_finish(true)
 		return
-	var farms := _count_kind(Building.Kind.FARM)
-	wood += 6 + farms * 5
-	gold += 8 + pop * 2
 	phase = "prep"
-	hud.flash("第 %d 波已清除。准备下一波。  /  Wave %d cleared." % [wave_number, wave_number])
+	_spawn_refugees()
+	hud.flash("第 %d 波已清除。难民到来，请在 %.0f 秒内收留或派工。  /  Wave %d cleared. Refugees are waiting." % [wave_number, CLAIM_TIME, wave_number])
 	_refresh_hud()
 	if _selftest:
 		_try_start_wave()
 
+func _spawn_refugees() -> void:
+	var spots: Array[Vector2i] = [Vector2i(10, 17), Vector2i(9, 17), Vector2i(11, 17), Vector2i(8, 17)]
+	var made := 0
+	for cell in spots:
+		if made >= REFUGEES_PER_WAVE:
+			break
+		if _blocked(cell):
+			continue
+		var sex := "f" if made % 2 == 0 else "m"
+		_make_villager(cell, sex, true)
+		made += 1
+
 func _finish(win: bool) -> void:
+	if phase == "win" or phase == "lose":
+		return
 	phase = "win" if win else "lose"
 	hud.show_end(win)
 	_refresh_hud()
 	if _selftest:
 		print("SELFTEST_%s" % ("WIN" if win else "LOSE"))
-		print("SELFTEST_CORE ", core_hp, " WAVE ", wave_number)
+		print("SELFTEST_PEOPLE ", _alive_villagers().size(), " WAVE ", wave_number)
 		get_tree().quit(0 if win else 1)
 
 func _restart() -> void:
 	Engine.time_scale = 1.0
 	get_tree().reload_current_scene()
 
-func _left_click() -> void:
-	var cell := _mouse_cell()
-	if not in_bounds(cell):
+func _left_click(world: Vector2) -> void:
+	if hud.selected_kind() >= 0:
+		var cell := world_to_cell(world)
+		if in_bounds(cell):
+			_try_place(hud.selected_kind(), cell)
 		return
-	var kind := hud.selected_kind()
-	if kind < 0:
-		inspected = buildings[cell] if buildings.has(cell) else null
+	if selected_villager != null and is_instance_valid(selected_villager):
+		var picked := _building_at_world(world)
+		if picked != null:
+			_assign(selected_villager, picked)
+			return
+	var hit := _villager_at(world)
+	if hit != null:
+		_clear_villager_selection()
+		selected_villager = hit
+		hit.selected = true
+		hud.select_kind(-1)
+		inspected = null
+		hud.flash("再点房屋、农场、工坊或塔来派人。  /  Now click a house, farm, workshop, or tower.")
 		return
-	_try_place(kind, cell)
+	var cell3 := world_to_cell(world)
+	inspected = buildings[cell3] if buildings.has(cell3) else null
+	_clear_villager_selection()
 
-func _right_click() -> void:
-	var cell := _mouse_cell()
+func _right_click(world: Vector2) -> void:
+	var cell := world_to_cell(world)
 	if buildings.has(cell):
 		_remove_building(cell, true)
 		return
 	hud.select_kind(-1)
+	_clear_villager_selection()
 	inspected = null
+
+func _assign(v: Villager, building: Building) -> void:
+	if v.infected or v.leaving:
+		return
+	if not building.is_functional():
+		hud.flash("木墙不用派人。  /  Walls do not need a villager.")
+		return
+	if building.staff != null and is_instance_valid(building.staff) and building.staff != v:
+		var old := building.staff as Villager
+		if old:
+			old.job = null
+		building.staff = null
+	if v.job != null and is_instance_valid(v.job) and v.job != building:
+		if v.job.staff == v:
+			v.job.staff = null
+		v.job = null
+	building.staff = v
+	v.job = building
+	v.refugee = false
+	v.claim_left = -1.0
+	_clear_villager_selection()
+	_popup(building.global_position + Vector2(0, -80), "已派人", Color(0.7, 0.95, 1))
+	_refresh_beds()
+	_refresh_hud()
 
 func _try_place(kind: int, cell: Vector2i) -> void:
 	var reason := _block_reason(cell)
@@ -468,36 +590,38 @@ func _try_place(kind: int, cell: Vector2i) -> void:
 		hud.flash(reason)
 		return
 	var stats: Dictionary = Building.STATS[kind]
-	if bool(stats.defense) and _defense_count() >= pop:
-		hud.flash("人口不足，防御已满员  /  Not enough villagers for another defense")
+	if kind == Building.Kind.WALL and _count_kind(Building.Kind.WALL) >= WALL_CAP:
+		hud.flash("木墙已达上限 %d。  /  Wall cap reached (%d)." % [WALL_CAP, WALL_CAP])
 		return
 	if wood < int(stats.wood) or gold < int(stats.gold):
 		hud.flash("资源不足  /  Not enough wood or gold")
 		return
 	wood -= int(stats.wood)
 	gold -= int(stats.gold)
+	_place_free(kind, cell)
+	_refresh_hud()
+
+func _place_free(kind: int, cell: Vector2i) -> void:
+	if not in_bounds(cell) or _blocked(cell) or _is_spawn(cell):
+		return
 	var building := Building.new()
 	building.position = cell_center(cell)
 	building.setup(kind as Building.Kind, cell)
 	actors.add_child(building)
 	buildings[cell] = building
 	inspected = building
-	if int(stats.cap) > 0:
-		pop_cap += int(stats.cap)
-		pop = pop_cap
-		_popup(building.global_position + Vector2(0, -90), "+%d人口" % int(stats.cap), Color(0.7, 0.9, 1))
 	_notify_zombies()
-	_refresh_hud()
 
 func _remove_building(cell: Vector2i, refund: bool) -> void:
 	if not buildings.has(cell):
 		return
 	var building: Building = buildings[cell]
-	var stats: Dictionary = Building.STATS[building.kind]
-	if int(stats.cap) > 0:
-		pop_cap = maxi(START_CAP, pop_cap - int(stats.cap))
-		pop = mini(pop, pop_cap)
+	var person: Villager = building.staff as Villager
+	building.staff = null
+	if person != null and is_instance_valid(person):
+		person.job = null
 	if refund:
+		var stats: Dictionary = Building.STATS[building.kind]
 		var rw := int(stats.wood) / 2
 		var rg := int(stats.gold) / 2
 		wood += rw
@@ -509,30 +633,134 @@ func _remove_building(cell: Vector2i, refund: bool) -> void:
 	building.queue_free()
 	_notify_zombies()
 	_refresh_hud()
+	if not refund and person != null and is_instance_valid(person):
+		_infect(person)
 
 func _block_reason(cell: Vector2i) -> String:
 	if not in_bounds(cell):
 		return "超出地图  /  Outside the map"
-	if cell == CORE_CELL or scenery.has(cell) or _is_spawn(cell):
+	if scenery.has(cell) or _is_spawn(cell):
 		return "这里不能建造  /  Can't build here"
 	if buildings.has(cell):
 		return "格子已占用  /  Tile occupied"
-	for z in _living():
+	for z in _living_zombies():
 		if world_to_cell(z.global_position) == cell:
 			return "僵尸占着格子  /  A zombie is standing here"
 	return ""
 
 func _notify_zombies() -> void:
-	for z in _living():
+	for z in _living_zombies():
 		z.notify_map_changed()
 
-func _living() -> Array[Zombie]:
+func _infect_contacts() -> void:
+	if phase == "win" or phase == "lose":
+		return
+	for z in _living_zombies():
+		for v in _alive_villagers():
+			if z.global_position.distance_to(v.global_position) <= INFECT_RADIUS:
+				_infect(v)
+				if phase == "lose":
+					return
+				break
+
+func _infect(v: Villager) -> void:
+	if v == null or not is_instance_valid(v) or v.infected:
+		return
+	v.infected = true
+	v.leaving = false
+	if v.job != null and is_instance_valid(v.job) and v.job.staff == v:
+		v.job.staff = null
+	v.job = null
+	if selected_villager == v:
+		selected_villager = null
+	var at := v.global_position
+	v.queue_free()
+	_popup(at + Vector2(0, -30), "感染!", Color(0.65, 1, 0.45))
+	_spawn_zombie("normal", true, at)
+	if _alive_villagers().is_empty():
+		_finish(false)
+
+func _refresh_beds() -> void:
+	var beds := 0
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		if building.kind == Building.Kind.HOUSE and building.has_staff():
+			beds += HOUSE_BEDS
+	var people := _alive_villagers()
+	for v in people:
+		v.housed = false
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		if building.kind != Building.Kind.HOUSE or not building.has_staff():
+			continue
+		var staff := building.staff as Villager
+		if staff and not staff.infected:
+			staff.housed = true
+			beds -= 1
+	var pool: Array[Villager] = []
+	for v in people:
+		if v.housed or v.job != null:
+			continue
+		pool.append(v)
+	pool.sort_custom(func(a: Villager, b: Villager) -> bool: return a.refugee and not b.refugee)
+	for v in pool:
+		if beds <= 0:
+			break
+		v.housed = true
+		beds -= 1
+		if v.refugee:
+			v.refugee = false
+			v.claim_left = -1.0
+
+func _alive_villagers() -> Array[Villager]:
+	var list: Array[Villager] = []
+	for node in get_tree().get_nodes_in_group("villagers"):
+		var v := node as Villager
+		if v != null and not v.infected and not v.leaving:
+			list.append(v)
+	return list
+
+func _living_zombies() -> Array[Zombie]:
 	var list: Array[Zombie] = []
 	for node in get_tree().get_nodes_in_group("zombies"):
 		var z := node as Zombie
 		if z != null and not z.dying:
 			list.append(z)
 	return list
+
+func _building_at_world(world: Vector2) -> Building:
+	# Sprites stand above the diamond, so a click on the art often falls in the
+	# cell behind the building. Prefer the front-most body under the cursor.
+	var best: Building = null
+	var best_y := -INF
+	for key in buildings:
+		var building: Building = buildings[key]
+		var local := world - building.global_position
+		var on_body := absf(local.x) <= 78.0 and local.y <= 24.0 and local.y >= -130.0
+		if on_body and building.global_position.y >= best_y:
+			best_y = building.global_position.y
+			best = building
+	if best != null:
+		return best
+	var cell := world_to_cell(world)
+	if buildings.has(cell):
+		return buildings[cell]
+	return null
+
+func _villager_at(world: Vector2) -> Villager:
+	var best: Villager = null
+	var best_d := 42.0
+	for v in _alive_villagers():
+		var d := world.distance_to(v.global_position + Vector2(0, -30))
+		if d < best_d:
+			best_d = d
+			best = v
+	return best
+
+func _clear_villager_selection() -> void:
+	if selected_villager != null and is_instance_valid(selected_villager):
+		selected_villager.selected = false
+	selected_villager = null
 
 func _mouse_cell() -> Vector2i:
 	return world_to_cell(get_global_mouse_position())
@@ -570,16 +798,9 @@ func _update_ghost() -> void:
 	var stats: Dictionary = Building.STATS[kind]
 	if wood < int(stats.wood) or gold < int(stats.gold):
 		ok = false
-	if bool(stats.defense) and _defense_count() >= pop:
+	if kind == Building.Kind.WALL and _count_kind(Building.Kind.WALL) >= WALL_CAP:
 		ok = false
 	sprite.modulate = Color(0.6, 1, 0.6, 0.55) if ok else Color(1, 0.35, 0.3, 0.55)
-	var ring := ghost.get_node_or_null("Ring") as Node2D
-	if ring == null:
-		ring = RangeRing.new()
-		ring.name = "Ring"
-		ghost.add_child(ring)
-	ring.visible = float(stats.range) > 0.0
-	ring.set("radius", float(stats.range))
 
 func _popup(at: Vector2, text: String, color: Color) -> void:
 	var pop := PopupText.new()
@@ -607,7 +828,39 @@ func _refresh_hud() -> void:
 		label = "失败 Defeat"
 	else:
 		label = "波次 Wave 0 / %d" % TOTAL_WAVES
-	hud.refresh(wood, gold, pop, pop_cap, label, core_hp, CORE_MAX, phase)
+	var claim := 0.0
+	for v in _alive_villagers():
+		if v.refugee and v.claim_left > claim:
+			claim = v.claim_left
+	var housed := 0
+	for v in _alive_villagers():
+		if v.housed:
+			housed += 1
+	hud.refresh(wood, gold, _alive_villagers().size(), housed, _bed_cap(), _count_kind(Building.Kind.WALL), WALL_CAP, label, phase, claim)
+
+func _bed_cap() -> int:
+	var n := 0
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		if building.kind == Building.Kind.HOUSE and building.has_staff():
+			n += HOUSE_BEDS
+	return n
+
+func _staffed_count(kind: int) -> int:
+	var n := 0
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		if building.kind == kind and building.has_staff():
+			n += 1
+	return n
+
+func _count_kind(kind: int) -> int:
+	var n := 0
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		if building.kind == kind:
+			n += 1
+	return n
 
 func _is_border(cell: Vector2i) -> bool:
 	return cell.x == 0 or cell.y == 0 or cell.x == COLS - 1 or cell.y == ROWS - 1
@@ -618,17 +871,43 @@ func _is_spawn(cell: Vector2i) -> bool:
 func _blocked(cell: Vector2i) -> bool:
 	if not in_bounds(cell):
 		return true
-	if scenery.has(cell):
-		return true
-	if buildings.has(cell):
+	if scenery.has(cell) or buildings.has(cell):
 		return true
 	return false
+
+func _nearest_open_villager_cell(from: Vector2i) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := 999999
+	for v in _alive_villagers():
+		if v.job != null and is_instance_valid(v.job):
+			continue
+		var cell := world_to_cell(v.global_position)
+		if not in_bounds(cell) or _blocked(cell):
+			continue
+		var d := absi(cell.x - from.x) + absi(cell.y - from.y)
+		if d < best_d:
+			best_d = d
+			best = cell
+	return best
+
+func _nearest_staffed_cell(from: Vector2i) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := 999999
+	for v in _alive_villagers():
+		if v.job == null or not is_instance_valid(v.job):
+			continue
+		var cell: Vector2i = v.job.cell
+		var d := absi(cell.x - from.x) + absi(cell.y - from.y)
+		if d < best_d:
+			best_d = d
+			best = cell
+	return best
 
 func _astar(start: Vector2i, goal: Vector2i) -> Dictionary:
 	if start == goal:
 		var only: Array[Vector2i] = [start]
 		return {"path": only}
-	if _blocked(start):
+	if not in_bounds(start) or not in_bounds(goal):
 		return {"path": [] as Array[Vector2i]}
 	var open: Array[Vector2i] = [start]
 	var came := {}
@@ -651,11 +930,9 @@ func _astar(start: Vector2i, goal: Vector2i) -> Dictionary:
 		closed[current] = true
 		for dir in DIRS:
 			var nxt: Vector2i = current + dir
-			if closed.has(nxt):
+			if closed.has(nxt) or not in_bounds(nxt):
 				continue
 			if nxt != goal and _blocked(nxt):
-				continue
-			if not in_bounds(nxt):
 				continue
 			var tentative := int(gscore[current]) + 1
 			if tentative < int(gscore.get(nxt, 999999)):
@@ -664,10 +941,35 @@ func _astar(start: Vector2i, goal: Vector2i) -> Dictionary:
 				open.append(nxt)
 	return {"path": [] as Array[Vector2i]}
 
+func _path_to_attack(start: Vector2i, goal: Vector2i) -> Dictionary:
+	var empty: Array[Vector2i] = []
+	var none := {"path": empty, "attack": Vector2i(-1, -1)}
+	if not in_bounds(start) or not buildings.has(goal):
+		return none
+	var queue: Array[Vector2i] = [start]
+	var came := {}
+	var seen := {start: true}
+	var index := 0
+	while index < queue.size():
+		var current: Vector2i = queue[index]
+		index += 1
+		for dir in DIRS:
+			var nxt: Vector2i = current + dir
+			if not in_bounds(nxt) or seen.has(nxt):
+				continue
+			if nxt == goal:
+				return {"path": _rebuild(came, current), "attack": goal}
+			if _blocked(nxt):
+				continue
+			seen[nxt] = true
+			came[nxt] = current
+			queue.append(nxt)
+	return none
+
 func _path_to_building(start: Vector2i) -> Dictionary:
 	var empty: Array[Vector2i] = []
 	if not in_bounds(start):
-		return {"path": empty, "attack": Vector2i(-1, -1), "core": false}
+		return {"path": empty, "attack": Vector2i(-1, -1)}
 	var queue: Array[Vector2i] = [start]
 	var came := {}
 	var seen := {start: true}
@@ -695,8 +997,8 @@ func _path_to_building(start: Vector2i) -> Dictionary:
 			came[nxt] = current
 			queue.append(nxt)
 	if best_cell.x < 0:
-		return {"path": empty, "attack": Vector2i(-1, -1), "core": false}
-	return {"path": _rebuild(came, best_from), "attack": best_cell, "core": false}
+		return {"path": empty, "attack": Vector2i(-1, -1)}
+	return {"path": _rebuild(came, best_from), "attack": best_cell}
 
 func _chain_length(came: Dictionary, cell: Vector2i) -> int:
 	var n := 0
@@ -704,112 +1006,132 @@ func _chain_length(came: Dictionary, cell: Vector2i) -> int:
 	while came.has(cursor):
 		cursor = came[cursor]
 		n += 1
-		if n > 400:
+		if n > 800:
 			break
 	return n
 
 func _rebuild(came: Dictionary, current: Vector2i) -> Array[Vector2i]:
 	var path: Array[Vector2i] = [current]
 	var guard := 0
-	while came.has(current) and guard < 400:
+	while came.has(current) and guard < 800:
 		current = came[current]
 		path.push_front(current)
 		guard += 1
 	return path
 
-func tower_bonus() -> float:
-	if _count_kind(Building.Kind.WORKSHOP) > 0:
-		return 1.25
-	return 1.0
-
-func _count_kind(kind: int) -> int:
-	var n := 0
-	for cell in buildings:
-		var building: Building = buildings[cell]
-		if building.kind == kind:
-			n += 1
-	return n
-
-func _defense_count() -> int:
-	var n := 0
-	for cell in buildings:
-		var building: Building = buildings[cell]
-		if building.is_defense():
-			n += 1
-	return n
-
 func _scripted_defense() -> void:
 	wood = 999
 	gold = 999
-	var plan := [
-		[Building.Kind.HOUSE, Vector2i(1, 7)],
-		[Building.Kind.HOUSE, Vector2i(2, 7)],
-		[Building.Kind.HOUSE, Vector2i(1, 8)],
-		[Building.Kind.HOUSE, Vector2i(2, 8)],
-		[Building.Kind.FARM, Vector2i(3, 8)],
-		[Building.Kind.WORKSHOP, Vector2i(4, 7)],
-		[Building.Kind.WALL, Vector2i(1, 2)],
-		[Building.Kind.WALL, Vector2i(2, 2)],
-		[Building.Kind.WALL, Vector2i(3, 2)],
-		[Building.Kind.SPEAR, Vector2i(4, 2)],
-		[Building.Kind.WALL, Vector2i(5, 2)],
-		[Building.Kind.SPEAR, Vector2i(6, 2)],
-		[Building.Kind.SPEAR, Vector2i(3, 4)],
-		[Building.Kind.WALL, Vector2i(4, 4)],
-		[Building.Kind.FIRE, Vector2i(5, 4)],
-		[Building.Kind.WALL, Vector2i(6, 4)],
-		[Building.Kind.WALL, Vector2i(7, 4)],
-		[Building.Kind.WALL, Vector2i(8, 4)],
-		[Building.Kind.WALL, Vector2i(1, 6)],
-		[Building.Kind.FIRE, Vector2i(2, 6)],
-		[Building.Kind.WALL, Vector2i(3, 6)],
-		[Building.Kind.SPEAR, Vector2i(4, 6)],
-		[Building.Kind.WALL, Vector2i(5, 6)],
-		[Building.Kind.WALL, Vector2i(6, 6)],
-		[Building.Kind.SPEAR, Vector2i(3, 7)],
-	]
-	if OS.get_environment("TD_MODEST") == "1":
-		plan = [
-			[Building.Kind.WALL, Vector2i(2, 3)],
-			[Building.Kind.WALL, Vector2i(7, 3)],
-			[Building.Kind.SPEAR, Vector2i(3, 2)],
-			[Building.Kind.SPEAR, Vector2i(6, 5)],
-			[Building.Kind.FIRE, Vector2i(4, 6)],
+	var modest := OS.get_environment("TD_MODEST") == "1"
+	var people := _alive_villagers()
+	var want: Array[int] = []
+	if modest:
+		want = [Building.Kind.SPEAR]
+	else:
+		want = [Building.Kind.HOUSE, Building.Kind.SPEAR, Building.Kind.SPEAR, Building.Kind.FIRE, Building.Kind.WORKSHOP]
+	var pi := 0
+	for kind in want:
+		if pi >= people.size():
+			break
+		for cell in buildings:
+			var building: Building = buildings[cell]
+			if building.kind == kind and not building.has_staff():
+				_assign(people[pi], building)
+				pi += 1
+				break
+	if not modest:
+		var extra := [
+			Vector2i(5, 8), Vector2i(7, 8), Vector2i(9, 8), Vector2i(11, 8), Vector2i(13, 8), Vector2i(15, 8),
+			Vector2i(5, 6), Vector2i(6, 6), Vector2i(7, 6), Vector2i(8, 6), Vector2i(12, 6), Vector2i(13, 6), Vector2i(14, 6), Vector2i(15, 6),
 		]
-	for item in plan:
-		_try_place(int(item[0]), item[1])
-	var route: Dictionary = route_from(SPAWNS[1])
-	print("SCRIPTED buildings=", buildings.size(), " path=", route.path.size(), " core=", route.core)
+		for cell in extra:
+			if _count_kind(Building.Kind.WALL) >= WALL_CAP:
+				break
+			_try_place(Building.Kind.WALL, cell)
+	var route: Dictionary = route_from(SPAWNS[2])
+	print("SCRIPTED buildings=", buildings.size(), " people=", _alive_villagers().size(), " path=", route.path.size())
+
+func _flow_shot() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await _capture("/tmp/shots/start.png")
+	var spear: Building = buildings[Vector2i(7, 12)]
+	_click_world(spear.global_position + Vector2(0, -70))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	print("FLOW_BUILDING_FIRST staff=", spear.has_staff(), " selected=", selected_villager != null)
+	var people := _alive_villagers()
+	_click_world(people[0].global_position + Vector2(0, -30))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	print("FLOW_VILLAGER_SELECTED ", selected_villager == people[0])
+	await _capture("/tmp/shots/selected.png")
+	_click_world(spear.global_position + Vector2(0, -70))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	print("FLOW_ASSIGNED ", spear.has_staff() and spear.staff == people[0])
+	await _capture("/tmp/shots/assigned.png")
+	var restart := _restart_button()
+	print("FLOW_RESTART_BUTTON ", restart != null)
+	var marker := FileAccess.open("/tmp/td_flow_restarted", FileAccess.WRITE)
+	if marker:
+		marker.store_line("1")
+		marker.close()
+	if restart:
+		_click_screen(restart.get_global_rect().get_center())
+		return
+	print("FLOW_RESTART_FAILED")
+	get_tree().quit(1)
+
+func _restart_button() -> Button:
+	if hud == null:
+		return null
+	var buttons: Array[Button] = []
+	_collect_buttons(hud, buttons)
+	for button in buttons:
+		if "重开" in button.text:
+			return button
+	return null
+
+func _collect_buttons(node: Node, into: Array[Button]) -> void:
+	if node is Button:
+		into.append(node)
+	for child in node.get_children():
+		_collect_buttons(child, into)
+
+func _click_world(world: Vector2) -> void:
+	_click_screen(get_viewport().get_canvas_transform() * world)
+
+func _click_screen(screen: Vector2) -> void:
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	var motion := InputEventMouseMotion.new()
+	motion.position = screen
+	motion.global_position = screen
+	get_viewport().push_input(motion, false)
+	press.position = screen
+	press.global_position = screen
+	press.button_mask = MOUSE_BUTTON_MASK_LEFT
+	get_viewport().push_input(press, false)
+	var release := press.duplicate() as InputEventMouseButton
+	release.pressed = false
+	release.button_mask = 0
+	get_viewport().push_input(release, false)
 
 func _opening_shot() -> void:
-	await get_tree().create_timer(0.4).timeout
+	await get_tree().create_timer(0.6).timeout
 	await _capture(OS.get_environment("TD_SHOT_PATH") if OS.get_environment("TD_SHOT_PATH") != "" else "/tmp/shots/start.png")
 	get_tree().quit(0)
 
 func _demo_shot() -> void:
-	await get_tree().create_timer(3.2).timeout
+	await get_tree().create_timer(2.4).timeout
 	await _capture(OS.get_environment("TD_SHOT_PATH") if OS.get_environment("TD_SHOT_PATH") != "" else "/tmp/shots/combat.png")
 	get_tree().quit(0)
 
 func _capture(path: String) -> void:
 	await RenderingServer.frame_post_draw
 	var image := get_viewport().get_texture().get_image()
-	var dir := path.get_base_dir()
-	DirAccess.make_dir_recursive_absolute(dir)
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var err := image.save_png(path)
 	print("SHOT", path, " err=", err, " ", image.get_width(), "x", image.get_height())
-
-
-class RangeRing:
-	extends Node2D
-
-	var radius := 100.0
-
-	func _process(_delta: float) -> void:
-		queue_redraw()
-
-	func _draw() -> void:
-		if radius <= 1.0:
-			return
-		draw_arc(Vector2.ZERO, radius, 0, TAU, 56, Color(1, 0.86, 0.35, 0.7), 2.0)
-		draw_circle(Vector2.ZERO, radius, Color(1, 0.86, 0.35, 0.08))

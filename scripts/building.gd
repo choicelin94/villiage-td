@@ -8,20 +8,20 @@ const SPRITE_OFF := Vector2(-127.5, -134.0)
 
 const STATS := {
 	Kind.WALL: {
-		"hp": 170, "wood": 10, "gold": 0,
+		"hp": 170, "wood": 18, "gold": 0,
 		"range": 0.0, "dmg": 0, "cd": 0.0, "splash": 0.0, "shot_speed": 0.0,
 		"defense": true, "cap": 0,
 		"tex": "res://assets/village/wall.png",
 	},
 	Kind.SPEAR: {
-		"hp": 110, "wood": 24, "gold": 40,
-		"range": 300.0, "dmg": 17, "cd": 0.68, "splash": 0.0, "shot_speed": 700.0,
+		"hp": 200, "wood": 24, "gold": 40,
+		"range": 460.0, "dmg": 24, "cd": 0.64, "splash": 0.0, "shot_speed": 700.0,
 		"defense": true, "cap": 0,
 		"tex": "res://assets/village/spear.png",
 	},
 	Kind.FIRE: {
-		"hp": 96, "wood": 16, "gold": 64,
-		"range": 250.0, "dmg": 13, "cd": 1.15, "splash": 120.0, "shot_speed": 380.0,
+		"hp": 160, "wood": 16, "gold": 64,
+		"range": 420.0, "dmg": 18, "cd": 1.05, "splash": 120.0, "shot_speed": 380.0,
 		"defense": true, "cap": 0,
 		"tex": "res://assets/village/fire.png",
 	},
@@ -52,6 +52,13 @@ var max_hp := 1
 var always_bar := true
 var cooldown := 0.0
 var _stats: Dictionary = {}
+var staff: Node2D = null
+
+func has_staff() -> bool:
+	return staff != null and is_instance_valid(staff) and not bool(staff.get("infected")) and not bool(staff.get("leaving"))
+
+func is_functional() -> bool:
+	return kind != Kind.WALL
 
 func setup(p_kind: Kind, p_cell: Vector2i) -> void:
 	kind = p_kind
@@ -82,7 +89,7 @@ func is_defense() -> bool:
 
 func _process(delta: float) -> void:
 	queue_redraw()
-	if float(_stats.range) <= 0.0:
+	if float(_stats.range) <= 0.0 or not has_staff():
 		return
 	cooldown -= delta
 	if cooldown > 0.0:
@@ -140,6 +147,9 @@ func _draw() -> void:
 		var a := TAU * float(i) / 14.0
 		pts.append(Vector2(cos(a) * rad, sin(a) * rad * 0.42 + 10.0))
 	draw_colored_polygon(pts, Color(0, 0, 0, 0.28))
+	if is_functional():
+		var dot := Color(0.4, 0.85, 0.45) if has_staff() else Color(0.85, 0.35, 0.3)
+		draw_circle(Vector2(0, -150), 6, dot)
 	if float(_stats.range) > 0.0 and _game() and _game().inspected == self:
 		draw_arc(Vector2.ZERO, float(_stats.range), 0, TAU, 48, Color(1, 0.86, 0.35, 0.55), 2.0)
 

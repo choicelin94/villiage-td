@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b7q28g771nqoc"
-path="res://.godot/imported/move_16.png-1598dc83faf9912de4f3c2737371cdfc.ctex"
+uid="uid://d3ejohv1we3ve"
+path="res://.godot/imported/man_blue.png-627733367461035326cc8da6d070e5b8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/enemies/move_16.png"
-dest_files=["res://.godot/imported/move_16.png-1598dc83faf9912de4f3c2737371cdfc.ctex"]
+source_file="res://assets/people/man_blue.png"
+dest_files=["res://.godot/imported/man_blue.png-627733367461035326cc8da6d070e5b8.ctex"]
 
 [params]
 
