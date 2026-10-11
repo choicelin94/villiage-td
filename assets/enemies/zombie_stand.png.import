@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ule1jh1kaec3"
-path="res://.godot/imported/attack_05.png-d920c5bd6abd986e18b026f2c401f9d6.ctex"
+uid="uid://c0vshej24rpjj"
+path="res://.godot/imported/zombie_stand.png-91883a42fadb445bcdec7ad3e9444744.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/enemies/attack_05.png"
-dest_files=["res://.godot/imported/attack_05.png-d920c5bd6abd986e18b026f2c401f9d6.ctex"]
+source_file="res://assets/enemies/zombie_stand.png"
+dest_files=["res://.godot/imported/zombie_stand.png-91883a42fadb445bcdec7ad3e9444744.ctex"]
 
 [params]
 

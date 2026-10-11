@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cqegtaiphqm31"
-path="res://.godot/imported/move_15.png-294d8d24375e5dced117000b9264dc4e.ctex"
+uid="uid://byfmy6cpcqocq"
+path="res://.godot/imported/woman.png-610e52107b3c30a4fb2a17b352b5d169.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/enemies/move_15.png"
-dest_files=["res://.godot/imported/move_15.png-294d8d24375e5dced117000b9264dc4e.ctex"]
+source_file="res://assets/people/woman.png"
+dest_files=["res://.godot/imported/woman.png-610e52107b3c30a4fb2a17b352b5d169.ctex"]
 
 [params]
 

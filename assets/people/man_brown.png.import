@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://eeah5ku6kby"
-path="res://.godot/imported/attack_01.png-0752e641b28a348cbd6d4a388c5320cf.ctex"
+uid="uid://bvdmj0y7wyicc"
+path="res://.godot/imported/man_brown.png-e05a84609899109d079985c09b69664f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/enemies/attack_01.png"
-dest_files=["res://.godot/imported/attack_01.png-0752e641b28a348cbd6d4a388c5320cf.ctex"]
+source_file="res://assets/people/man_brown.png"
+dest_files=["res://.godot/imported/man_brown.png-e05a84609899109d079985c09b69664f.ctex"]
 
 [params]
 

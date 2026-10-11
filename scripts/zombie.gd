@@ -1,32 +1,32 @@
 class_name Zombie
 extends Node2D
 
-const FOOT_PAD := 31.0 * 96.0 / 311.0
-
 var hp := 1
 var max_hp := 1
-var speed := 48.0
-var core_damage := 1
+var speed := 72.0
+var bite := 1
 var reward_wood := 2
 var reward_gold := 4
 var body_scale := 1.0
 var dying := false
-var always_bar := false
 var step_hint := Vector2.ZERO
 var kind_name := "normal"
+var fresh := 0.0
 
 var _path: Array[Vector2i] = []
 var _path_i := 0
 var _attack := Vector2i(-1, -1)
-var _attack_core := false
 var _attacking := false
 var _cooldown := 0.0
 var _flash := 0.0
 var _death := 0.0
 var _repath_cd := 0.0
+var _stuck_t := 0.0
+var _last_pos := Vector2.ZERO
 var _rewarded := false
 var _anim: AnimatedSprite2D
 var _base_mod := Color.WHITE
+var _frame := 0.0
 
 static var _frames: SpriteFrames
 
@@ -35,22 +35,26 @@ func setup(p_hp: int, p_speed: float, p_scale: float, p_dmg: int, p_wood: int, p
 	hp = p_hp
 	speed = p_speed
 	body_scale = p_scale
-	core_damage = p_dmg
 	reward_wood = p_wood
 	reward_gold = p_gold
 	kind_name = p_kind
 	_base_mod = p_mod
+	bite = maxi(p_dmg, 1)
 	scale = Vector2(p_scale, p_scale)
+
+func mark_fresh() -> void:
+	fresh = 0.85
 
 func _ready() -> void:
 	add_to_group("zombies")
 	_anim = AnimatedSprite2D.new()
 	_anim.sprite_frames = _get_frames()
 	_anim.centered = false
-	_anim.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	_anim.z_index = 1
+	_anim.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_anim.z_index = 2
 	add_child(_anim)
-	_play("move")
+	_anim.play("move")
+	_anchor()
 	var bar := HpBarZ.new()
 	bar.z_index = 3
 	add_child(bar)
@@ -60,27 +64,23 @@ func _get_frames() -> SpriteFrames:
 	if _frames != null:
 		return _frames
 	_frames = SpriteFrames.new()
-	_add_anim("move", "move", 17, 9.0)
-	_add_anim("attack", "attack", 9, 12.0)
+	_frames.add_animation("move")
+	_frames.set_animation_loop("move", true)
+	_frames.set_animation_speed("move", 6.0)
+	_frames.add_frame("move", load("res://assets/enemies/zombie_stand.png"))
+	_frames.add_frame("move", load("res://assets/enemies/zombie_hold.png"))
+	_frames.add_animation("attack")
+	_frames.set_animation_loop("attack", true)
+	_frames.set_animation_speed("attack", 8.0)
+	_frames.add_frame("attack", load("res://assets/enemies/zombie_hold.png"))
+	_frames.add_frame("attack", load("res://assets/enemies/zombie_stand.png"))
 	return _frames
 
-func _add_anim(anim_name: String, prefix: String, count: int, fps: float) -> void:
-	_frames.add_animation(anim_name)
-	_frames.set_animation_loop(anim_name, true)
-	_frames.set_animation_speed(anim_name, fps)
-	for i in count:
-		_frames.add_frame(anim_name, load("res://assets/enemies/%s_%02d.png" % [prefix, i]))
-
-func _play(anim_name: String) -> void:
-	if _anim.animation != anim_name:
-		_anim.play(anim_name)
-	_anchor()
-
 func _anchor() -> void:
-	var tex := _anim.sprite_frames.get_frame_texture(_anim.animation, 0)
+	var tex := _anim.sprite_frames.get_frame_texture("move", 0)
 	if tex == null:
 		return
-	_anim.position = Vector2(-tex.get_width() * 0.5, FOOT_PAD - tex.get_height())
+	_anim.position = Vector2(-tex.get_width() * 0.5, -tex.get_height() + 4.0)
 
 func notify_map_changed() -> void:
 	_repath()
@@ -107,6 +107,7 @@ func _die() -> void:
 
 func _process(delta: float) -> void:
 	queue_redraw()
+	fresh = maxf(fresh - delta, 0.0)
 	if dying:
 		_death -= delta
 		modulate.a = clampf(_death / 0.28, 0.0, 1.0)
@@ -114,65 +115,74 @@ func _process(delta: float) -> void:
 			queue_free()
 		return
 	_flash = maxf(_flash - delta, 0.0)
-	_anim.modulate = Color(1, 0.55, 0.5) if _flash > 0.0 else _base_mod
+	if fresh > 0.0:
+		_anim.modulate = Color(1, 1, 0.45)
+	else:
+		_anim.modulate = Color(1, 0.55, 0.5) if _flash > 0.0 else _base_mod
+	_repath_cd -= delta
+	var moved := global_position.distance_to(_last_pos)
+	if _last_pos != Vector2.ZERO and moved < speed * delta * 0.25:
+		_stuck_t += delta
+	else:
+		_stuck_t = 0.0
+	_last_pos = global_position
+	if _path_i >= _path.size() and not _attacking:
+		_repath_cd = minf(_repath_cd, 0.0)
+	var need_path := _repath_cd <= 0.0 or _stuck_t > 0.85
 	if _attacking:
-		_repath_cd -= delta
-		if _repath_cd <= 0.0:
-			_repath_cd = 0.55
+		if need_path:
+			_repath_cd = 0.7
+			_stuck_t = 0.0
 			_repath()
 			if not _attacking:
 				return
 		_do_attack(delta)
 		return
-	if _path_i >= _path.size():
+	if need_path:
+		_repath_cd = 0.7
+		_stuck_t = 0.0
 		_repath()
-		if _path_i >= _path.size():
-			if _attack.x >= 0 or _attack_core:
-				_attacking = true
-				_play("attack")
-			return
+	if _path_i >= _path.size():
+		return
 	var game := _game()
 	if game == null:
 		return
 	var goal: Vector2 = game.cell_center(_path[_path_i])
 	var diff: Vector2 = goal - global_position
 	var dist: float = diff.length()
-	if dist < 8.0:
+	if dist < 12.0:
 		_path_i += 1
-		if _path_i >= _path.size():
-			if _attack.x >= 0 or _attack_core:
-				_attacking = true
-				_play("attack")
+		if _path_i >= _path.size() and _attack.x >= 0:
+			_attacking = true
+			_anim.play("attack")
 		return
 	var dir: Vector2 = diff / dist
 	var step := minf(speed * delta, dist)
 	global_position += dir * step
 	step_hint = dir * speed
 	_anim.flip_h = dir.x < 0.0
-	_separate(delta)
+	_separate(delta, dir)
 	if _anim.animation != "move":
-		_play("move")
+		_anim.play("move")
 
 func _do_attack(delta: float) -> void:
 	var game := _game()
 	if game == null:
 		return
-	var target_cell: Vector2i = _attack if _attack.x >= 0 else game.core_cell
-	var target_pos: Vector2 = game.cell_center(target_cell)
-	var diff: Vector2 = target_pos - global_position
-	if diff.x != 0.0:
-		_anim.flip_h = diff.x < 0.0
-	if not game.can_attack_cell(_attack, _attack_core):
+	if _attack.x < 0 or not game.can_attack_cell(_attack):
 		_attacking = false
 		_repath()
 		return
+	var target_pos: Vector2 = game.cell_center(_attack)
+	if target_pos.x != global_position.x:
+		_anim.flip_h = target_pos.x < global_position.x
 	_cooldown -= delta
 	if _cooldown <= 0.0:
 		_cooldown = 0.9
-		game.damage_cell(_attack, _attack_core, core_damage)
-		_play("attack")
+		game.damage_cell(_attack, bite)
+		_anim.play("attack")
 
-func _separate(delta: float) -> void:
+func _separate(delta: float, forward: Vector2) -> void:
 	var push := Vector2.ZERO
 	for node in get_tree().get_nodes_in_group("zombies"):
 		var other := node as Zombie
@@ -180,10 +190,14 @@ func _separate(delta: float) -> void:
 			continue
 		var d := global_position - other.global_position
 		var len := d.length()
-		if len > 0.1 and len < 30.0:
-			push += d / len * (30.0 - len)
-	if push != Vector2.ZERO:
-		global_position += push * minf(delta * 3.0, 0.4)
+		if len > 0.1 and len < 28.0:
+			push += d / len * (28.0 - len)
+	if push == Vector2.ZERO:
+		return
+	var along := push.dot(forward)
+	if along < 0.0:
+		push -= forward * along
+	global_position += push * minf(delta * 3.0, 0.35)
 
 func _repath() -> void:
 	var game := _game()
@@ -193,26 +207,38 @@ func _repath() -> void:
 	if not game.in_bounds(here):
 		here = game.nearest_spawn(global_position)
 	var info: Dictionary = game.route_from(here)
-	_path = info.path
-	_path_i = 0
+	var new_path: Array[Vector2i] = info.path
+	var idx := 0
+	# A refresh used to restart at the cell under the zombie, so they walked
+	# back to a center they had already left and jittered in place.
+	while idx < new_path.size():
+		var center: Vector2 = game.cell_center(new_path[idx])
+		var close := global_position.distance_to(center) < 16.0
+		var occupied := new_path[idx] == here and idx < new_path.size() - 1
+		if close or occupied:
+			idx += 1
+			continue
+		break
+	_path = new_path
+	_path_i = idx
 	_attack = info.attack
-	_attack_core = info.core
 	_attacking = false
-	while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 8.0:
-		_path_i += 1
-	if _path_i >= _path.size() and (_attack.x >= 0 or _attack_core):
+	if _path_i >= _path.size() and _attack.x >= 0:
 		_attacking = true
-		_play("attack")
+		if _anim:
+			_anim.play("attack")
 
 func _game() -> Node:
 	return get_tree().get_first_node_in_group("game")
 
 func _draw() -> void:
+	if fresh > 0.0:
+		draw_arc(Vector2(0, -30), 26, 0, TAU, 20, Color(1, 0.95, 0.4, fresh), 3.0)
 	var pts := PackedVector2Array()
 	for i in 12:
 		var a := TAU * float(i) / 12.0
-		pts.append(Vector2(cos(a) * 14.0, sin(a) * 6.0 + 4.0))
-	draw_colored_polygon(pts, Color(0, 0, 0, 0.3))
+		pts.append(Vector2(cos(a) * 16.0, sin(a) * 7.0 + 2.0))
+	draw_colored_polygon(pts, Color(0, 0, 0, 0.28))
 
 
 class HpBarZ:
@@ -226,7 +252,7 @@ class HpBarZ:
 		if p.hp >= p.max_hp:
 			return
 		var w := 32.0
-		var y := -52.0
+		var y := -70.0
 		var ratio := clampf(float(p.hp) / float(maxi(p.max_hp, 1)), 0.0, 1.0)
 		draw_rect(Rect2(-w * 0.5, y, w, 4), Color(0, 0, 0, 0.65))
 		draw_rect(Rect2(-w * 0.5, y, w * ratio, 4), Color(0.75, 0.2, 0.18))

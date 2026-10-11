@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d233y6166cgw5"
-path="res://.godot/imported/move_03.png-052036d47a1b5e95ed4f6608e0f03561.ctex"
+uid="uid://bm3p2kv38ut8u"
+path="res://.godot/imported/zombie_hold.png-68998be9b5b9416b763dc760e1dbcf60.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/enemies/move_03.png"
-dest_files=["res://.godot/imported/move_03.png-052036d47a1b5e95ed4f6608e0f03561.ctex"]
+source_file="res://assets/enemies/zombie_hold.png"
+dest_files=["res://.godot/imported/zombie_hold.png-68998be9b5b9416b763dc760e1dbcf60.ctex"]
 
 [params]
 

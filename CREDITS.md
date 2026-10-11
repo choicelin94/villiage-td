@@ -49,21 +49,47 @@ The grass slabs and the farm's soil slab use small original albedo textures made
 - **Isometric Buildings** and **Isometric Landscape** by Kenney, both CC0 on their `License.txt`, are the older small isometric tiles. They are the same family as the previous tower-defense tiles and are not shipped.
 - The earlier build used Kenney's 2D pack "Tower Defense assets (isometric)" (CC0, https://opengameart.org/content/tower-defense-assets-isometric). Those PNGs have been removed from this repository.
 
-## Zombies
+## Villagers and zombies
 
-- **Pack:** Animated Top Down Zombie
-- **Author:** Riley Gombart (OpenGameArt user `rileygombart`)
-- **Page attribution notice:** "Riley Gombart or ChessMasterRiley"
-- **Download page:** https://opengameart.org/content/animated-top-down-zombie
-- **File downloaded:** `tds_zombie.zip`
-- **License stated on that page:** CC0 1.0  
-  The page shows a CC0 license icon linking to http://creativecommons.org/publicdomain/zero/1.0/
-- The zip does not contain its own license file. The license above is the one selected on the OpenGameArt page.
-- CC0 does not require credit. The author wrote: "if you feel like crediting, I won't say no."
+Villagers and zombies are stills from the same pack, so an infected villager reads as the same style of character.
 
-Frames in the zip are named `skeleton-move_*.png` and `skeleton-attack_*.png` (Spine export names). The published asset is the top-down zombie. This game keeps the move and attack cycles and scales every frame by the same factor (`311px` move-canvas height → `96px`) so the web download stays small. Idle frames are not used.
+- **Pack:** Topdown Shooter
+- **Author:** Kenney Vleugels (Kenney.nl)
+- **Download page:** https://kenney.nl/assets/topdown-shooter
+- **OpenGameArt page:** https://opengameart.org/content/topdown-shooter
+- **File downloaded:** `topdown-shooter.zip`  
+  https://opengameart.org/sites/default/files/topdown-shooter.zip
+- **License:** Creative Commons Zero (CC0) 1.0 Universal  
+  http://creativecommons.org/publicdomain/zero/1.0/
+- **License file shipped with the pack:** copied unchanged to [`assets/people/LICENSE.txt`](assets/people/LICENSE.txt) and [`assets/enemies/LICENSE.txt`](assets/enemies/LICENSE.txt)
 
-A free isometric zombie pack on itch.io (Engvee, "FREE Animated Isometric Zombies") was not used. That page allows commercial use in the author's own words, but it does not state CC0 or CC-BY, so it is outside the license set this project ships.
+The pack's own `License.txt` says:
+
+> Topdown (Shooter) Pack  
+> by Kenney Vleugels (Kenney.nl)  
+> License (Creative Commons Zero, CC0)  
+> http://creativecommons.org/publicdomain/zero/1.0/  
+> You may use these assets in personal and commercial projects.  
+> Credit (Kenney or www.kenney.nl) would be nice but is not mandatory.
+
+Each sprite below is the pack PNG scaled 2× with nearest-neighbor filtering.
+
+| In this game | Original file in the zip |
+| --- | --- |
+| `assets/people/man_brown.png` | `PNG/Man Brown/manBrown_stand.png` |
+| `assets/people/man_old.png` | `PNG/Man Old/manOld_stand.png` |
+| `assets/people/man_blue.png` | `PNG/Man Blue/manBlue_stand.png` |
+| `assets/people/woman.png` | `PNG/Woman Green/womanGreen_stand.png` |
+| `assets/enemies/zombie_stand.png` | `PNG/Zombie 1/zoimbie1_stand.png` |
+| `assets/enemies/zombie_hold.png` | `PNG/Zombie 1/zoimbie1_hold.png` |
+
+The zombie filenames use the pack's spelling `zoimbie`. Only these two zombie frames are shipped. Gun, reload, and machine poses are not used. The two frames alternate for walking and biting.
+
+### Removed and not shipped
+
+- Riley Gombart's "Animated Top Down Zombie" (OpenGameArt, CC0 on that page) was the previous zombie. Those `move_*.png` and `attack_*.png` frames have been removed from this repository.
+- Engvee, "FREE Animated Isometric Zombies" on itch.io, was not used. That page allows commercial use in the author's own words, but it does not state CC0 or CC-BY.
+- Other CC0 character packs were looked at and not shipped, including a side-view civilian set and separate top-down zombie sheets, so the village uses one Kenney set for people and zombies.
 
 ## Font
 
