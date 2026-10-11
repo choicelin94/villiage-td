@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c1pcf4edw3cc8"
-path="res://.godot/imported/rock.png-5c84ef47c1a9e4d49c8553df2fe4f9e9.ctex"
+uid="uid://sojv2fe12utk"
+path="res://.godot/imported/road.png-cad1fe6a7dccc99b7cc83050c210eb6a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/kenney/details/rock.png"
-dest_files=["res://.godot/imported/rock.png-5c84ef47c1a9e4d49c8553df2fe4f9e9.ctex"]
+source_file="res://assets/village/road.png"
+dest_files=["res://.godot/imported/road.png-cad1fe6a7dccc99b7cc83050c210eb6a.ctex"]
 
 [params]
 

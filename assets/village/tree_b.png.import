@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b36ge1pfii0gj"
-path="res://.godot/imported/tree_b.png-eb481f0cc1f0a5360cd69daa4684866f.ctex"
+uid="uid://k5ih184brtdq"
+path="res://.godot/imported/tree_b.png-53fba68a50c118528853c14caef4cdbb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/kenney/details/tree_b.png"
-dest_files=["res://.godot/imported/tree_b.png-eb481f0cc1f0a5360cd69daa4684866f.ctex"]
+source_file="res://assets/village/tree_b.png"
+dest_files=["res://.godot/imported/tree_b.png-53fba68a50c118528853c14caef4cdbb.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bm35w7k3dk3yl"
-path="res://.godot/imported/wall.png-31efb541e3e4ebe469b8eaf17cba9dbb.ctex"
+uid="uid://kjqjvq3eaofd"
+path="res://.godot/imported/house.png-1ebebfe074b8e7589d580b72d54aeca8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/kenney/buildings/wall.png"
-dest_files=["res://.godot/imported/wall.png-31efb541e3e4ebe469b8eaf17cba9dbb.ctex"]
+source_file="res://assets/village/house.png"
+dest_files=["res://.godot/imported/house.png-1ebebfe074b8e7589d580b72d54aeca8.ctex"]
 
 [params]
 

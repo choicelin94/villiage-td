@@ -2,7 +2,8 @@ extends Node2D
 
 const COLS := 10
 const ROWS := 10
-const TILE := Vector2i(132, 66)
+const TILE := Vector2i(176, 98)
+const SPRITE_OFF := Vector2(-127.5, -134.0)
 const CORE_CELL := Vector2i(5, 8)
 const SPAWNS: Array[Vector2i] = [
 	Vector2i(3, 0), Vector2i(4, 0), Vector2i(5, 0), Vector2i(6, 0)
@@ -10,31 +11,36 @@ const SPAWNS: Array[Vector2i] = [
 const DIRS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)
 ]
-const START_WOOD := 120
-const START_GOLD := 80
+const START_WOOD := 150
+const START_GOLD := 90
+const START_POP := 6
+const START_CAP := 6
+const HOUSE_CAP := 4
 const CORE_MAX := 20
 const TOTAL_WAVES := 8
 
 const WAVES: Array[Dictionary] = [
-	{"n": 6, "hp": 36, "speed": 52.0, "gap": 0.85, "fast": 0, "brute": 0, "boss": 0},
-	{"n": 8, "hp": 48, "speed": 54.0, "gap": 0.74, "fast": 2, "brute": 0, "boss": 0},
-	{"n": 9, "hp": 60, "speed": 54.0, "gap": 0.66, "fast": 3, "brute": 1, "boss": 0},
-	{"n": 10, "hp": 74, "speed": 56.0, "gap": 0.58, "fast": 3, "brute": 2, "boss": 0},
-	{"n": 10, "hp": 90, "speed": 56.0, "gap": 0.54, "fast": 3, "brute": 2, "boss": 0},
-	{"n": 11, "hp": 104, "speed": 58.0, "gap": 0.5, "fast": 4, "brute": 3, "boss": 0},
-	{"n": 12, "hp": 120, "speed": 58.0, "gap": 0.46, "fast": 4, "brute": 3, "boss": 0},
-	{"n": 10, "hp": 132, "speed": 56.0, "gap": 0.5, "fast": 3, "brute": 3, "boss": 1},
+	{"n": 6, "hp": 36, "speed": 72.0, "gap": 0.85, "fast": 0, "brute": 0, "boss": 0},
+	{"n": 8, "hp": 48, "speed": 74.0, "gap": 0.74, "fast": 2, "brute": 0, "boss": 0},
+	{"n": 9, "hp": 60, "speed": 74.0, "gap": 0.66, "fast": 3, "brute": 1, "boss": 0},
+	{"n": 10, "hp": 74, "speed": 76.0, "gap": 0.58, "fast": 3, "brute": 2, "boss": 0},
+	{"n": 10, "hp": 90, "speed": 76.0, "gap": 0.54, "fast": 3, "brute": 2, "boss": 0},
+	{"n": 11, "hp": 104, "speed": 78.0, "gap": 0.5, "fast": 4, "brute": 3, "boss": 0},
+	{"n": 12, "hp": 120, "speed": 78.0, "gap": 0.46, "fast": 4, "brute": 3, "boss": 0},
+	{"n": 10, "hp": 132, "speed": 76.0, "gap": 0.5, "fast": 3, "brute": 3, "boss": 1},
 ]
 
 const KIND_MOD := {
-	"normal": {"hp": 1.0, "speed": 1.0, "scale": 1.18, "dmg": 1, "wood": 2, "gold": 4, "mod": Color(1, 1, 1)},
-	"fast": {"hp": 0.7, "speed": 1.48, "scale": 1.0, "dmg": 1, "wood": 1, "gold": 5, "mod": Color(0.82, 1, 0.78)},
-	"brute": {"hp": 2.35, "speed": 0.68, "scale": 1.38, "dmg": 2, "wood": 3, "gold": 9, "mod": Color(0.72, 0.86, 0.68)},
-	"boss": {"hp": 4.8, "speed": 0.58, "scale": 1.7, "dmg": 3, "wood": 8, "gold": 30, "mod": Color(0.62, 0.82, 0.55)},
+	"normal": {"hp": 1.0, "speed": 1.0, "scale": 1.55, "dmg": 1, "wood": 2, "gold": 4, "mod": Color(1, 1, 1)},
+	"fast": {"hp": 0.7, "speed": 1.48, "scale": 1.35, "dmg": 1, "wood": 1, "gold": 5, "mod": Color(0.82, 1, 0.78)},
+	"brute": {"hp": 2.35, "speed": 0.68, "scale": 1.9, "dmg": 2, "wood": 3, "gold": 9, "mod": Color(0.72, 0.86, 0.68)},
+	"boss": {"hp": 4.8, "speed": 0.58, "scale": 2.25, "dmg": 3, "wood": 8, "gold": 30, "mod": Color(0.62, 0.82, 0.55)},
 }
 
 var wood := START_WOOD
 var gold := START_GOLD
+var pop := START_POP
+var pop_cap := START_CAP
 var core_hp := CORE_MAX
 var core_cell := CORE_CELL
 var core_pos := Vector2.ZERO
@@ -119,6 +125,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				hud.select_kind(Building.Kind.SPEAR)
 			KEY_3:
 				hud.select_kind(Building.Kind.FIRE)
+			KEY_4:
+				hud.select_kind(Building.Kind.HOUSE)
+			KEY_5:
+				hud.select_kind(Building.Kind.FARM)
+			KEY_6:
+				hud.select_kind(Building.Kind.WORKSHOP)
 			KEY_ESCAPE:
 				hud.select_kind(-1)
 				inspected = null
@@ -138,11 +150,9 @@ func _build_world() -> void:
 	tileset.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
 	tileset.tile_size = TILE
 	var files := [
-		"res://assets/kenney/landscape/grass_a.png",
-		"res://assets/kenney/landscape/grass_b.png",
-		"res://assets/kenney/landscape/grass_c.png",
-		"res://assets/kenney/landscape/grass_d.png",
-		"res://assets/kenney/landscape/dirt.png",
+		"res://assets/village/grass_a.png",
+		"res://assets/village/grass_b.png",
+		"res://assets/village/road.png",
 	]
 	for i in files.size():
 		var atlas := TileSetAtlasSource.new()
@@ -151,7 +161,8 @@ func _build_world() -> void:
 		atlas.texture_region_size = Vector2i(tex.get_width(), tex.get_height())
 		atlas.create_tile(Vector2i.ZERO)
 		var data := atlas.get_tile_data(Vector2i.ZERO, 0)
-		data.texture_origin = Vector2i(0, -16)
+		# Diamond center of the render is 7px below the texture center.
+		data.texture_origin = Vector2i(0, -6)
 		tileset.add_source(atlas, i)
 	ground.tile_set = tileset
 	add_child(ground)
@@ -185,26 +196,28 @@ func _paint_map() -> void:
 	for y in ROWS:
 		for x in COLS:
 			var cell := Vector2i(x, y)
-			var source := (x * 3 + y * 5) % 4
+			var source := (x * 3 + y * 5) % 2
 			if trail.has(cell) and cell != CORE_CELL and not scenery.has(cell):
-				source = 4
+				source = 2
 			ground.set_cell(cell, source, Vector2i.ZERO)
 
-	_place_prop(Vector2i(2, 4), load("res://assets/kenney/details/rock.png"))
-	_place_prop(Vector2i(7, 6), load("res://assets/kenney/details/rock.png"))
-	_place_prop(Vector2i(4, 8), load("res://assets/kenney/buildings/hut.png"))
+	_place_prop(Vector2i(2, 4), load("res://assets/village/rock.png"))
+	_place_prop(Vector2i(7, 6), load("res://assets/village/rock.png"))
+	_place_prop(Vector2i(4, 8), load("res://assets/village/tree.png"))
+	_place_prop(Vector2i(6, 8), load("res://assets/village/tree_b.png"))
 	for y in ROWS:
 		for x in COLS:
 			var cell := Vector2i(x, y)
 			if not _is_border(cell) or _is_spawn(cell):
 				continue
 			var trees := [
-				"res://assets/kenney/details/tree_a.png",
-				"res://assets/kenney/details/tree_b.png",
+				"res://assets/village/tree.png",
+				"res://assets/village/tree_b.png",
+				"res://assets/village/tree_c.png",
 			]
 			_place_prop(cell, load(trees[(x + y) % trees.size()]))
 
-	var tree: Texture2D = load("res://assets/kenney/details/tree_core.png")
+	var tree: Texture2D = load("res://assets/village/tree_c.png")
 	var heart := Node2D.new()
 	heart.position = cell_center(CORE_CELL)
 	var shadow := Polygon2D.new()
@@ -215,7 +228,7 @@ func _paint_map() -> void:
 	sprite.texture = tree
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	sprite.position = Vector2(-tree.get_width() * 0.5, 33.0 - tree.get_height())
+	sprite.position = SPRITE_OFF
 	sprite.z_index = 1
 	heart.add_child(sprite)
 	core_marker = preload("res://scripts/marker.gd").new()
@@ -239,7 +252,7 @@ func _place_prop(cell: Vector2i, tex: Texture2D) -> void:
 	sprite.texture = tex
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	sprite.position = Vector2(-tex.get_width() * 0.5, 33.0 - tex.get_height())
+	sprite.position = SPRITE_OFF
 	sprite.z_index = 1
 	node.add_child(sprite)
 	actors.add_child(node)
@@ -255,8 +268,8 @@ func _build_camera() -> void:
 	camera = Camera2D.new()
 	var a := cell_center(Vector2i(0, 0))
 	var b := cell_center(Vector2i(COLS - 1, ROWS - 1))
-	camera.position = (a + b) * 0.5 + Vector2(0, 48)
-	camera.zoom = Vector2(0.78, 0.78)
+	camera.position = (a + b) * 0.5 + Vector2(0, 36)
+	camera.zoom = Vector2(0.5, 0.5)
 	add_child(camera)
 	camera.make_current()
 
@@ -409,8 +422,9 @@ func _on_wave_cleared() -> void:
 	if wave_number >= TOTAL_WAVES:
 		_finish(true)
 		return
-	wood += 14 + wave_number * 2
-	gold += 18 + wave_number * 4
+	var farms := _count_kind(Building.Kind.FARM)
+	wood += 6 + farms * 5
+	gold += 8 + pop * 2
 	phase = "prep"
 	hud.flash("第 %d 波已清除。准备下一波。  /  Wave %d cleared." % [wave_number, wave_number])
 	_refresh_hud()
@@ -454,6 +468,9 @@ func _try_place(kind: int, cell: Vector2i) -> void:
 		hud.flash(reason)
 		return
 	var stats: Dictionary = Building.STATS[kind]
+	if bool(stats.defense) and _defense_count() >= pop:
+		hud.flash("人口不足，防御已满员  /  Not enough villagers for another defense")
+		return
 	if wood < int(stats.wood) or gold < int(stats.gold):
 		hud.flash("资源不足  /  Not enough wood or gold")
 		return
@@ -465,6 +482,10 @@ func _try_place(kind: int, cell: Vector2i) -> void:
 	actors.add_child(building)
 	buildings[cell] = building
 	inspected = building
+	if int(stats.cap) > 0:
+		pop_cap += int(stats.cap)
+		pop = pop_cap
+		_popup(building.global_position + Vector2(0, -90), "+%d人口" % int(stats.cap), Color(0.7, 0.9, 1))
 	_notify_zombies()
 	_refresh_hud()
 
@@ -472,8 +493,11 @@ func _remove_building(cell: Vector2i, refund: bool) -> void:
 	if not buildings.has(cell):
 		return
 	var building: Building = buildings[cell]
+	var stats: Dictionary = Building.STATS[building.kind]
+	if int(stats.cap) > 0:
+		pop_cap = maxi(START_CAP, pop_cap - int(stats.cap))
+		pop = mini(pop, pop_cap)
 	if refund:
-		var stats: Dictionary = Building.STATS[building.kind]
 		var rw := int(stats.wood) / 2
 		var rg := int(stats.gold) / 2
 		wood += rw
@@ -541,10 +565,12 @@ func _update_ghost() -> void:
 		ghost.add_child(sprite)
 	if sprite.texture != tex:
 		sprite.texture = tex
-		sprite.position = Vector2(-tex.get_width() * 0.5, 33.0 - tex.get_height())
+		sprite.position = SPRITE_OFF
 	var ok := _block_reason(cell) == ""
 	var stats: Dictionary = Building.STATS[kind]
 	if wood < int(stats.wood) or gold < int(stats.gold):
+		ok = false
+	if bool(stats.defense) and _defense_count() >= pop:
 		ok = false
 	sprite.modulate = Color(0.6, 1, 0.6, 0.55) if ok else Color(1, 0.35, 0.3, 0.55)
 	var ring := ghost.get_node_or_null("Ring") as Node2D
@@ -581,7 +607,7 @@ func _refresh_hud() -> void:
 		label = "失败 Defeat"
 	else:
 		label = "波次 Wave 0 / %d" % TOTAL_WAVES
-	hud.refresh(wood, gold, label, core_hp, CORE_MAX, phase)
+	hud.refresh(wood, gold, pop, pop_cap, label, core_hp, CORE_MAX, phase)
 
 func _is_border(cell: Vector2i) -> bool:
 	return cell.x == 0 or cell.y == 0 or cell.x == COLS - 1 or cell.y == ROWS - 1
@@ -691,10 +717,37 @@ func _rebuild(came: Dictionary, current: Vector2i) -> Array[Vector2i]:
 		guard += 1
 	return path
 
+func tower_bonus() -> float:
+	if _count_kind(Building.Kind.WORKSHOP) > 0:
+		return 1.25
+	return 1.0
+
+func _count_kind(kind: int) -> int:
+	var n := 0
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		if building.kind == kind:
+			n += 1
+	return n
+
+func _defense_count() -> int:
+	var n := 0
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		if building.is_defense():
+			n += 1
+	return n
+
 func _scripted_defense() -> void:
 	wood = 999
 	gold = 999
 	var plan := [
+		[Building.Kind.HOUSE, Vector2i(1, 7)],
+		[Building.Kind.HOUSE, Vector2i(2, 7)],
+		[Building.Kind.HOUSE, Vector2i(1, 8)],
+		[Building.Kind.HOUSE, Vector2i(2, 8)],
+		[Building.Kind.FARM, Vector2i(3, 8)],
+		[Building.Kind.WORKSHOP, Vector2i(4, 7)],
 		[Building.Kind.WALL, Vector2i(1, 2)],
 		[Building.Kind.WALL, Vector2i(2, 2)],
 		[Building.Kind.WALL, Vector2i(3, 2)],
