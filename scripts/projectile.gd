@@ -39,14 +39,14 @@ func _process(delta: float) -> void:
 		_impact()
 
 func _reached(a: Vector2, b: Vector2, p: Vector2) -> bool:
-	if b.distance_to(p) < 16.0 or a.distance_to(p) < 16.0:
+	if b.distance_to(p) < 16.0 * IsoVolume.WORLD_SCALE or a.distance_to(p) < 16.0 * IsoVolume.WORLD_SCALE:
 		return true
 	var ab := b - a
 	var denom := ab.length_squared()
 	if denom < 0.001:
 		return false
 	var t := clampf((p - a).dot(ab) / denom, 0.0, 1.0)
-	return a.lerp(b, t).distance_to(p) < 16.0 and t < 1.0
+	return a.lerp(b, t).distance_to(p) < 16.0 * IsoVolume.WORLD_SCALE and t < 1.0
 
 func _impact() -> void:
 	fired = false

@@ -156,7 +156,7 @@ func _process(delta: float) -> void:
 	var goal: Vector2 = game.cell_center(_path[_path_i])
 	var diff: Vector2 = goal - global_position
 	var dist: float = diff.length()
-	if dist < 12.0:
+	if dist < 12.0 * IsoVolume.WORLD_SCALE:
 		_path_i += 1
 		if _path_i >= _path.size() and _attack.x >= 0:
 			_attacking = true
@@ -167,7 +167,7 @@ func _process(delta: float) -> void:
 	if game.can_step(global_position, nxt):
 		global_position = nxt
 		step_hint = dir * speed
-		_face(dir, delta, false)
+		_face(diff, delta, false)
 	else:
 		_stuck_t += delta
 	_separate(delta, dir)
@@ -195,7 +195,7 @@ func _separate(delta: float, forward: Vector2) -> void:
 			continue
 		var d := global_position - other.global_position
 		var len := d.length()
-		if len > 0.1 and len < 28.0:
+		if len > 0.1 and len < 28.0 * IsoVolume.WORLD_SCALE:
 			push += d / len * (28.0 - len)
 	if push == Vector2.ZERO:
 		return
@@ -221,7 +221,7 @@ func _repath() -> void:
 	# back to a center they had already left and jittered in place.
 	while idx < new_path.size():
 		var center: Vector2 = game.cell_center(new_path[idx])
-		var close := global_position.distance_to(center) < 16.0
+		var close := global_position.distance_to(center) < 16.0 * IsoVolume.WORLD_SCALE
 		var occupied := new_path[idx] == here and idx < new_path.size() - 1
 		if close or occupied:
 			idx += 1
