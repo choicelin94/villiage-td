@@ -55,10 +55,12 @@ func _ready() -> void:
 	_anim.texture = _atlas
 	_anim.centered = false
 	_anim.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_anim.z_as_relative = true
 	_anim.z_index = 0
 	_anim.position = Vector2(-LpcFacing.FRAME * 0.5, -LpcFacing.FRAME + 6.0)
 	add_child(_anim)
 	var bar := HpBarZ.new()
+	bar.z_as_relative = true
 	bar.z_index = 0
 	add_child(bar)
 	_repath()
@@ -98,7 +100,13 @@ func _die() -> void:
 		if game:
 			game.on_zombie_killed(self)
 
+func _apply_depth() -> void:
+	var game := _game()
+	if game:
+		z_index = game.depth_z(global_position.y)
+
 func _process(delta: float) -> void:
+	_apply_depth()
 	queue_redraw()
 	fresh = maxf(fresh - delta, 0.0)
 	if dying:
@@ -150,9 +158,13 @@ func _process(delta: float) -> void:
 		return
 	var dir: Vector2 = diff / dist
 	var step := minf(speed * delta, dist)
-	global_position += dir * step
-	step_hint = dir * speed
-	_face(dir, delta, false)
+	var nxt: Vector2 = global_position + dir * step
+	if game.can_step(global_position, nxt):
+		global_position = nxt
+		step_hint = dir * speed
+		_face(dir, delta, false)
+	else:
+		_stuck_t += delta
 	_separate(delta, dir)
 
 func _do_attack(delta: float) -> void:
@@ -185,7 +197,10 @@ func _separate(delta: float, forward: Vector2) -> void:
 	var along := push.dot(forward)
 	if along < 0.0:
 		push -= forward * along
-	global_position += push * minf(delta * 3.0, 0.35)
+	var game := _game()
+	var nxt: Vector2 = global_position + push * minf(delta * 3.0, 0.35)
+	if game == null or game.can_step(global_position, nxt):
+		global_position = nxt
 
 func _repath() -> void:
 	var game := _game()

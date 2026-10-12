@@ -111,6 +111,7 @@ func _ready() -> void:
 	hud.zoom_out_pressed.connect(_on_zoom_out)
 	hud.place_requested.connect(_on_place_requested)
 	hud.sell_pressed.connect(_on_sell_requested)
+	hud.staff_selected.connect(_on_staff_selected)
 	get_viewport().size_changed.connect(_on_viewport_resized)
 	_sync_pixels()
 	_apply_fit_zoom(true)
@@ -139,6 +140,8 @@ func _ready() -> void:
 		_face_check()
 	elif OS.get_environment("TD_LANG") == "1":
 		_lang_shot()
+	elif OS.get_environment("TD_MOVE") == "1":
+		_move_shot()
 	elif OS.get_environment("TD_SHOT") == "1":
 		_opening_shot()
 
@@ -237,7 +240,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _build_world() -> void:
 	ground = TileMapLayer.new()
 	ground.name = "Ground"
-	ground.z_index = -1
+	ground.z_index = -4096
 	ground.y_sort_enabled = true
 	var tileset := TileSet.new()
 	tileset.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
@@ -265,7 +268,7 @@ func _build_world() -> void:
 	add_child(actors)
 	fx = Node2D.new()
 	fx.name = "Fx"
-	fx.z_index = 4
+	fx.z_index = 4096
 	add_child(fx)
 
 func _paint_map() -> void:
@@ -351,9 +354,11 @@ func _place_prop(cell: Vector2i, tex: Texture2D) -> void:
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	sprite.position = SPRITE_OFF
+	sprite.z_as_relative = true
 	sprite.z_index = 0
 	node.add_child(sprite)
 	actors.add_child(node)
+	node.z_index = depth_z(node.position.y + Building.front_bias(tex))
 
 func _build_camera() -> void:
 	camera = Camera2D.new()
@@ -827,6 +832,19 @@ func _place_from_shortcut(kind: int) -> void:
 func _on_place_requested(kind: int) -> void:
 	_place_from_shortcut(kind)
 
+func _on_staff_selected() -> void:
+	var building := hud.inspected_building()
+	if building == null or not building.has_staff():
+		return
+	var person := building.staff as Villager
+	if person == null or person.infected or person.leaving:
+		return
+	hud.close_panel()
+	_clear_villager_selection()
+	selected_villager = person
+	person.selected = true
+	hud.flash(Locale.text("flash.assign_next"))
+
 func _on_sell_requested() -> void:
 	var building := hud.inspected_building()
 	if building == null or not is_instance_valid(building):
@@ -1031,6 +1049,8 @@ func _villager_at(world: Vector2) -> Villager:
 	var best_d := maxf(48.0, 34.0 / maxf(zoom_v, 0.05))
 	best_d = minf(best_d, 96.0)
 	for v in _alive_villagers():
+		if v.job != null and is_instance_valid(v.job):
+			continue
 		var d := world.distance_to(v.global_position + Vector2(0, -30))
 		if d < best_d:
 			best_d = d
@@ -1122,6 +1142,22 @@ func _is_border(cell: Vector2i) -> bool:
 
 func _is_spawn(cell: Vector2i) -> bool:
 	return cell in SPAWNS
+
+func depth_z(world_y: float) -> int:
+	return clampi(int(round(world_y)), -4000, 4000)
+
+func can_step(from_pos: Vector2, to_pos: Vector2) -> bool:
+	var to_cell := world_to_cell(to_pos)
+	if not in_bounds(to_cell):
+		return false
+	if not _blocked(to_cell):
+		return true
+	return to_cell == world_to_cell(from_pos)
+
+func route_cells(start: Vector2i, goal: Vector2i) -> Array[Vector2i]:
+	var found: Dictionary = _astar(start, goal)
+	var path: Array[Vector2i] = found.path
+	return path
 
 func _blocked(cell: Vector2i) -> bool:
 	if not in_bounds(cell):
@@ -1506,6 +1542,171 @@ func _lang_shot() -> void:
 		marker.close()
 	get_tree().quit(0 if zh_ok and en_ok and panel_en else 1)
 
+func _move_shot() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var people := _alive_villagers()
+	for v in people:
+		v.anchored = true
+	var house_cell := Vector2i(8, 14)
+	var from_cell := Vector2i(8, 15)
+	var goal_cell := Vector2i(8, 13)
+	var into := can_step(cell_center(from_cell), cell_center(house_cell))
+	var out := can_step(cell_center(house_cell), cell_center(from_cell))
+	var tree_cell := Vector2i(0, 5)
+	var into_tree := can_step(cell_center(Vector2i(1, 5)), cell_center(tree_cell))
+	var into_rock := can_step(cell_center(Vector2i(5, 8)), cell_center(Vector2i(4, 8)))
+	var path := route_cells(from_cell, goal_cell)
+	var path_hits := false
+	for cell in path:
+		if _blocked(cell):
+			path_hits = true
+			print("PATH_BLOCKED ", cell)
+	var clip := false
+	for i in maxi(path.size() - 1, 0):
+		var a: Vector2 = cell_center(path[i])
+		var b: Vector2 = cell_center(path[i + 1])
+		for s in 9:
+			var p: Vector2 = a.lerp(b, float(s) / 8.0)
+			var stepped: Vector2i = world_to_cell(p)
+			if _blocked(stepped):
+				clip = true
+				print("CLIP ", path[i], "->", path[i + 1], " via ", stepped)
+	print("MOVE_STEP into_house=", into, " out=", out, " tree=", into_tree, " rock=", into_rock, " path=", path, " hits=", path_hits, " clip=", clip)
+	var walker: Villager = people[0]
+	walker.anchored = false
+	walker.job = null
+	walker.global_position = cell_center(from_cell)
+	walker._path = path
+	walker._path_i = 0
+	walker._retarget = 40.0
+	var entered := false
+	var reached := false
+	for _i in 420:
+		await get_tree().process_frame
+		var at := world_to_cell(walker.global_position)
+		if _blocked(at):
+			entered = true
+			print("ENTERED ", at, " pos=", walker.global_position)
+			break
+		if at == goal_cell:
+			reached = true
+			break
+	walker.anchored = true
+	print("MOVE_WALK entered=", entered, " reached=", reached, " at=", world_to_cell(walker.global_position))
+	var rock_cell := Vector2i(4, 8)
+	var rock_pos := cell_center(rock_cell)
+	var rock_tex: Texture2D = load("res://assets/village/rock.png")
+	var bias := Building.front_bias(rock_tex)
+	var rock_z := 0
+	for child in actors.get_children():
+		if child is Node2D and (child as Node2D).global_position.distance_to(rock_pos) < 2.0:
+			rock_z = (child as Node2D).z_index
+	for v in people:
+		v.anchored = true
+		v.visible = false
+	var probe: Villager = people[1]
+	probe.visible = true
+	probe.global_position = rock_pos + Vector2(-78, -18)
+	camera.position = rock_pos
+	camera.zoom = Vector2(1.45, 1.45)
+	_cam_user = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var behind_z := probe.z_index
+	var with_behind := await _grab()
+	await _capture("/opt/cursor/artifacts/depth-behind.png")
+	probe.visible = false
+	await get_tree().process_frame
+	var rock_only := await _grab()
+	var behind_ratio := _cover_ratio(rock_pos, rock_tex, with_behind, rock_only)
+	probe.global_position = rock_pos + Vector2(-36, bias + 12.0)
+	probe.visible = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var front_z := probe.z_index
+	var with_front := await _grab()
+	await _capture("/opt/cursor/artifacts/depth-front.png")
+	var front_ratio := _cover_ratio(rock_pos, rock_tex, with_front, rock_only)
+	var tree_pos := cell_center(tree_cell)
+	var tree_bias := Building.front_bias(load("res://assets/village/tree.png"))
+	var tree_z := 0
+	for child in actors.get_children():
+		if child is Node2D and (child as Node2D).global_position.distance_to(tree_pos) < 2.0:
+			tree_z = (child as Node2D).z_index
+	var depth_ok := behind_z < rock_z and front_z > rock_z and behind_ratio < 0.08 and front_ratio > behind_ratio + 0.03
+	var tree_ok := depth_z(tree_pos.y - 24.0) < tree_z and tree_z < depth_z(tree_pos.y + tree_bias + 16.0)
+	print("DEPTH rock_z=", rock_z, " behind_z=", behind_z, " front_z=", front_z, " behind_ratio=", behind_ratio, " front_ratio=", front_ratio, " bias=", bias, " tree_z=", tree_z, " tree_bias=", tree_bias, " depth_ok=", depth_ok, " tree_ok=", tree_ok)
+	var person: Villager = people[0]
+	for v in people:
+		v.anchored = false
+		v.visible = true
+	var spear: Building = buildings[Vector2i(7, 12)]
+	_assign(person, spear)
+	for v in people:
+		if v != person:
+			v.anchored = true
+			v.visible = false
+	if Locale.code != "zh":
+		Locale.set_code("zh")
+	hud.open_building(spear)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var hidden: bool = not person.visible and person.global_position.distance_to(spear.global_position) < 4.0
+	camera.position = spear.global_position + Vector2(-30, 10)
+	camera.zoom = Vector2(1.2, 1.2)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var panel := _ui_texts()
+	var expect := Locale.text("villager.female" if person.sex == "f" else "villager.male")
+	var count := Locale.format("panel.station_count", [1])
+	var panel_ok := panel.contains(expect) and panel.contains(count) and not panel.contains(" / ")
+	print("STAFF hidden=", hidden, " sex=", person.sex, " panel_ok=", panel_ok)
+	print("STAFF_PANEL ", panel)
+	await _capture("/opt/cursor/artifacts/staff-panel.png")
+	var staff_btn := hud.find_child("StaffButton", true, false) as Button
+	if staff_btn:
+		_click_screen(staff_btn.get_global_rect().get_center())
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var selected: bool = selected_villager == person
+	print("STAFF_SELECT ", selected)
+	var ok := (not into) and out and (not into_tree) and (not into_rock) and (not path_hits) and (not clip) and (not entered) and reached and depth_ok and tree_ok and hidden and panel_ok and selected
+	print("MOVE_OK ", ok)
+	get_tree().quit(0 if ok else 1)
+
+func _grab() -> Image:
+	await RenderingServer.frame_post_draw
+	return get_viewport().get_texture().get_image()
+
+func _cover_ratio(origin: Vector2, tex: Texture2D, covered: Image, bare: Image) -> float:
+	var img := tex.get_image()
+	if img == null or covered == null or bare == null:
+		return 1.0
+	var changed := 0
+	var opaque := 0
+	var sprite_origin := origin + SPRITE_OFF
+	var xform := get_viewport().get_canvas_transform()
+	for y in range(0, img.get_height(), 3):
+		for x in range(0, img.get_width(), 3):
+			if img.get_pixel(x, y).a < 0.45:
+				continue
+			var screen: Vector2 = xform * (sprite_origin + Vector2(x, y))
+			var sx := int(screen.x)
+			var sy := int(screen.y)
+			if sx < 0 or sy < 0 or sx >= covered.get_width() or sy >= covered.get_height():
+				continue
+			if sx >= bare.get_width() or sy >= bare.get_height():
+				continue
+			opaque += 1
+			var ca := covered.get_pixel(sx, sy)
+			var cb := bare.get_pixel(sx, sy)
+			if absf(ca.r - cb.r) + absf(ca.g - cb.g) + absf(ca.b - cb.b) > 0.18:
+				changed += 1
+	if opaque == 0:
+		return 1.0
+	return float(changed) / float(opaque)
+
 func _hint_text() -> String:
 	var label := hud.find_child("HintLabel", true, false) as Label
 	return label.text if label else ""
@@ -1573,6 +1774,8 @@ func _face_check() -> void:
 		var v: Villager = people[i]
 		v.global_position = cell_center(spots[i])
 		v.job = null
+		v._path.clear()
+		v._path_i = 0
 		v._goal = v.global_position + dirs[i]
 		v._retarget = 8.0
 		starts.append(v.global_position)

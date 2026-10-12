@@ -16,10 +16,13 @@ var _sprite: Sprite2D
 var _atlas: AtlasTexture
 var _goal := Vector2.ZERO
 var _retarget := 0.0
-var _bob := 0.0
 var _facing := 2
 var _frame := 0
 var _frame_t := 0.0
+var _path: Array[Vector2i] = []
+var _path_i := 0
+var _held_job := false
+var anchored := false
 
 func setup(p_tex: Texture2D, p_sex: String, p_speed: float) -> void:
 	sex = p_sex
@@ -36,31 +39,58 @@ func _ready() -> void:
 	_sprite.centered = false
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_sprite.position = Vector2(-LpcFacing.FRAME * 0.5, -LpcFacing.FRAME + 6.0)
+	_sprite.z_as_relative = true
 	_sprite.z_index = 0
 	add_child(_sprite)
 	_goal = global_position
 	_retarget = randf_range(0.2, 1.0)
 
+func face_texture() -> AtlasTexture:
+	var atlas := AtlasTexture.new()
+	atlas.atlas = _tex
+	atlas.region = LpcFacing.region(0, 2)
+	return atlas
+
+func _apply_depth() -> void:
+	var game := _game()
+	if game:
+		z_index = game.depth_z(global_position.y)
+
 func _process(delta: float) -> void:
+	if job != null and is_instance_valid(job) and not infected and not leaving:
+		visible = false
+		global_position = job.global_position
+		_held_job = true
+		_path.clear()
+		_path_i = 0
+		return
+	if anchored:
+		_apply_depth()
+		queue_redraw()
+		return
 	if infected or leaving:
+		_apply_depth()
 		queue_redraw()
 		if leaving:
 			_leave(delta)
 		return
-	_bob += delta
 	var game := _game()
 	if game == null:
 		return
-	if job != null and is_instance_valid(job):
-		global_position = job.global_position + Vector2(0, 8 + sin(_bob * 3.0) * 2.0)
-		_set_frame(2, 0)
-		queue_redraw()
-		return
+	if _held_job:
+		_held_job = false
+		visible = true
+		_retarget = 0.0
+		_path.clear()
+		_path_i = 0
+	visible = true
 	if refugee and claim_left > 0.0:
 		claim_left -= delta
 		if claim_left <= 0.0 and game.phase != "win" and game.phase != "lose":
 			if not housed:
 				leaving = true
+				_path.clear()
+				_path_i = 0
 				_goal = global_position + Vector2(0, -800)
 				queue_redraw()
 				return
@@ -70,38 +100,54 @@ func _process(delta: float) -> void:
 	if _retarget <= 0.0:
 		_pick_goal(game)
 	_walk(delta, game)
+	_apply_depth()
 	queue_redraw()
 
 func _pick_goal(game: Node) -> void:
 	var panic: bool = game.should_panic(self)
 	_retarget = randf_range(0.35, 0.7) if panic else randf_range(1.1, 2.2)
 	var cell: Vector2i = game.wander_cell(self, panic)
-	_goal = game.cell_center(cell)
+	var here: Vector2i = game.world_to_cell(global_position)
+	_path = game.route_cells(here, cell)
+	_path_i = 0
+	while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 10.0:
+		_path_i += 1
+	if _path_i < _path.size():
+		_goal = game.cell_center(_path[_path_i])
+	else:
+		_goal = game.cell_center(cell)
 
 func _walk(delta: float, game: Node) -> void:
 	var panic: bool = game.should_panic(self)
+	if _path_i < _path.size():
+		_goal = game.cell_center(_path[_path_i])
 	var vel := _goal - global_position
-	if panic:
-		var pull: Vector2 = game.safe_point() - global_position
-		if pull.length() > 8.0:
-			vel = vel.normalized() * 0.45 + pull.normalized() * 0.55
-			vel *= 140.0
-	if vel.length() < 6.0:
+	if vel.length() < 8.0:
+		if _path_i < _path.size():
+			_path_i += 1
+			if _path_i >= _path.size():
+				_retarget = 0.0
+			return
 		_retarget = 0.0
 		return
 	var dir := vel.normalized()
 	var step_speed := speed * (1.15 if panic else 0.72)
-	var nxt: Vector2 = global_position + dir * step_speed * delta
-	if game.walkable(nxt):
+	var step := minf(step_speed * delta, vel.length())
+	var nxt: Vector2 = global_position + dir * step
+	if game.can_step(global_position, nxt):
 		global_position = nxt
-	else:
-		var slide := Vector2(dir.x, 0) if absf(dir.x) > absf(dir.y) else Vector2(0, dir.y)
-		var alt: Vector2 = global_position + slide.normalized() * step_speed * delta
-		if game.walkable(alt):
+		_step_anim(dir, delta)
+		return
+	var slide := Vector2(dir.x, 0) if absf(dir.x) > absf(dir.y) else Vector2(0, dir.y)
+	if slide.length_squared() > 0.001:
+		var alt: Vector2 = global_position + slide.normalized() * step
+		if game.can_step(global_position, alt):
 			global_position = alt
-		else:
-			_retarget = 0.0
-	_step_anim(dir, delta)
+			_step_anim(slide, delta)
+			return
+	_path.clear()
+	_path_i = 0
+	_retarget = 0.0
 
 func _step_anim(vel: Vector2, delta: float) -> void:
 	if vel.length_squared() > 1.0:
@@ -120,12 +166,37 @@ func _set_frame(row: int, frame: int) -> void:
 		_atlas.region = LpcFacing.region(frame, row)
 
 func _leave(delta: float) -> void:
-	var vel := Vector2(0, -speed)
-	global_position += vel * delta
-	_step_anim(vel, delta)
 	var game := _game()
-	if game and global_position.y < game.cell_center(Vector2i(0, 0)).y - 80.0:
-		queue_free()
+	if game == null:
+		return
+	if _path_i >= _path.size():
+		if _path.is_empty():
+			var here: Vector2i = game.world_to_cell(global_position)
+			var exit_cell: Vector2i = game.nearest_spawn(global_position)
+			_path = game.route_cells(here, exit_cell)
+			_path_i = 0
+			while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 10.0:
+				_path_i += 1
+		if _path_i >= _path.size():
+			var vel := Vector2(0, -speed)
+			global_position += vel * delta
+			_step_anim(vel, delta)
+			if global_position.y < game.cell_center(Vector2i(0, 0)).y - 80.0:
+				queue_free()
+			return
+	var goal: Vector2 = game.cell_center(_path[_path_i])
+	var vel := goal - global_position
+	if vel.length() < 8.0:
+		_path_i += 1
+		return
+	var dir := vel.normalized()
+	var nxt: Vector2 = global_position + dir * minf(speed * delta, vel.length())
+	if game.can_step(global_position, nxt):
+		global_position = nxt
+		_step_anim(dir, delta)
+	else:
+		_path.clear()
+		_path_i = 0
 
 func _game() -> Node:
 	return get_tree().get_first_node_in_group("game")
