@@ -1,15 +1,21 @@
 class_name IsoSort
 extends RefCounted
 
-# One drawable, one place in the list. Characters are a foot point.
-# Houses, walls, trees, and rocks are the two near edges of their tile
-# (west corner → south corner → east corner). Overlapping sprites become
-# edges in a graph; a topological sort assigns draw order.
-# A single screen-Y cannot follow a diagonal corner. The line can.
+# One sorter for every standing thing.
+# Buildings, trees, and rocks all use the southern contour of their own
+# sprite (front_edge). Walkers are horizontal slices of one body; each
+# slice is a point at that band's bottom, so the chest can pass behind a
+# trunk while the legs stay in front. Overlapping pieces become a graph
+# and a topological draw order.
+# Marks that trace a front edge are children of that object, so they share
+# its depth. Ground highlights live under every standing rank.
 
 const HALF_W := 88.0
 const HALF_H := 49.0
 const TIE := 2.0
+const _SAMPLE := 4
+
+static var _edge_cache: Dictionary = {}
 
 static func footprint(center: Vector2) -> PackedVector2Array:
 	return PackedVector2Array([
@@ -39,16 +45,41 @@ static func sprite_rect(sprite: Sprite2D) -> Rect2:
 		mx.y = maxf(mx.y, g.y)
 	return Rect2(mn, mx - mn)
 
+# Local southern contour of a sprite, cached per texture. Same routine for
+# every building, tree, and rock.
+static func front_edge(sprite: Sprite2D) -> PackedVector2Array:
+	var local := _local_edge(sprite)
+	var out := PackedVector2Array()
+	if sprite == null:
+		return out
+	var xf := sprite.get_global_transform()
+	for p in local:
+		out.append(xf * p)
+	return out
+
+static func front_rect(sprite: Sprite2D) -> Rect2:
+	var local: Rect2 = _local_rect(sprite)
+	if sprite == null:
+		return Rect2()
+	return _xform_rect(sprite.get_global_transform(), local)
+
+static func y_at(pts: PackedVector2Array, x: float) -> float:
+	return _y_at(pts, x)
+
 # Positive when A is closer to the camera than B (A draws later).
+# A point standing on a front edge is still behind that edge.
+# Two points do not constrain each other. Bands of people overlap, and a
+# point-vs-point edge cycles with a front edge. Their order is the baseline
+# used to break ties.
 static func compare_points(a: PackedVector2Array, b: PackedVector2Array) -> int:
 	if a.is_empty() or b.is_empty():
 		return 0
 	if a.size() <= 1 and b.size() <= 1:
-		return _cmp_y(a[0].y, b[0].y)
+		return 0
 	if a.size() <= 1:
-		return _cmp_y(a[0].y, _y_at(b, a[0].x))
+		return _cmp_actor(a[0], b)
 	if b.size() <= 1:
-		return -_cmp_y(b[0].y, _y_at(a, b[0].x))
+		return -_cmp_actor(b[0], a)
 	return _cmp_lines(a, b)
 
 static func apply(entries: Array) -> void:
@@ -116,7 +147,99 @@ static func apply(entries: Array) -> void:
 	for rank in ordered.size():
 		var node: Node2D = entries[ordered[rank]].node
 		if is_instance_valid(node):
+			node.z_as_relative = false
 			node.z_index = rank
+			if node.has_method("sync_root"):
+				node.sync_root()
+
+static func _cmp_actor(point: Vector2, line: PackedVector2Array) -> int:
+	if point.y > _y_at(line, point.x) + TIE:
+		return 1
+	return -1
+
+static func _local_edge(sprite: Sprite2D) -> PackedVector2Array:
+	var found: Dictionary = _scan(sprite)
+	return found.edge as PackedVector2Array
+
+static func _local_rect(sprite: Sprite2D) -> Rect2:
+	var found: Dictionary = _scan(sprite)
+	return found.rect
+
+static func _scan(sprite: Sprite2D) -> Dictionary:
+	var empty := {
+		"edge": PackedVector2Array([Vector2.ZERO, Vector2(8, 0)]),
+		"rect": Rect2(),
+	}
+	if sprite == null or sprite.texture == null:
+		return empty
+	var key := str(sprite.texture.get_rid())
+	if _edge_cache.has(key):
+		return _edge_cache[key]
+	var img := sprite.texture.get_image()
+	if img == null:
+		_edge_cache[key] = empty
+		return empty
+	if img.is_compressed():
+		img.decompress()
+	var w := img.get_width()
+	var h := img.get_height()
+	var min_x := w
+	var min_y := h
+	var max_x := -1
+	var max_y := -1
+	var cols: Array = []
+	cols.resize(w)
+	for x in w:
+		cols[x] = -1
+	for y in h:
+		for x in w:
+			if img.get_pixel(x, y).a <= 0.15:
+				continue
+			if int(cols[x]) < y:
+				cols[x] = y
+			min_x = mini(min_x, x)
+			min_y = mini(min_y, y)
+			max_x = maxi(max_x, x)
+			max_y = maxi(max_y, y)
+	var edge := PackedVector2Array()
+	if max_x < 0:
+		_edge_cache[key] = empty
+		return empty
+	var x := min_x
+	while x <= max_x:
+		var south := int(cols[x])
+		var best := south
+		var end := mini(x + _SAMPLE - 1, max_x)
+		for k in range(x, end + 1):
+			best = maxi(best, int(cols[k]))
+		if best >= 0:
+			edge.append(Vector2(x, best))
+		x += _SAMPLE
+	if edge.size() == 1:
+		edge.append(edge[0] + Vector2(4, 0))
+	var packed := {
+		"edge": edge,
+		"rect": Rect2(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1),
+	}
+	_edge_cache[key] = packed
+	return packed
+
+static func _xform_rect(xf: Transform2D, rec: Rect2) -> Rect2:
+	var corners: Array[Vector2] = [
+		rec.position,
+		rec.position + Vector2(rec.size.x, 0.0),
+		rec.position + Vector2(0.0, rec.size.y),
+		rec.position + rec.size,
+	]
+	var mn := xf * corners[0]
+	var mx := mn
+	for corner in corners:
+		var g: Vector2 = xf * corner
+		mn.x = minf(mn.x, g.x)
+		mn.y = minf(mn.y, g.y)
+		mx.x = maxf(mx.x, g.x)
+		mx.y = maxf(mx.y, g.y)
+	return Rect2(mn, mx - mn)
 
 static func _cmp_y(a: float, b: float) -> int:
 	if absf(a - b) <= TIE:

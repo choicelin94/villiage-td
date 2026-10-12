@@ -59,6 +59,7 @@ var selected_villager: Villager = null
 
 var ground: TileMapLayer
 var actors: Node2D
+var decals: Node2D
 var fx: Node2D
 var camera: Camera2D
 var hud: Hud
@@ -272,8 +273,15 @@ func _build_world() -> void:
 	actors.name = "Actors"
 	actors.y_sort_enabled = true
 	add_child(actors)
+	# Ground highlights sit above the grass and under every standing rank.
+	decals = Node2D.new()
+	decals.name = "Decals"
+	decals.z_as_relative = false
+	decals.z_index = -4000
+	add_child(decals)
 	fx = Node2D.new()
 	fx.name = "Fx"
+	fx.z_as_relative = false
 	fx.z_index = 4096
 	add_child(fx)
 
@@ -1070,7 +1078,7 @@ func _clear_villager_selection() -> void:
 	selected_villager = null
 
 func _update_ghost() -> void:
-	var ghost := fx.get_node_or_null("Ghost") as Node2D
+	var ghost := decals.get_node_or_null("Ghost") as Node2D
 	if hud == null or not hud.has_ground():
 		if ghost:
 			ghost.visible = false
@@ -1084,7 +1092,9 @@ func _update_ghost() -> void:
 		ghost = Node2D.new()
 		ghost.name = "Ghost"
 		ghost.set_script(load("res://scripts/tile_mark.gd"))
-		fx.add_child(ghost)
+		ghost.z_as_relative = true
+		ghost.z_index = 0
+		decals.add_child(ghost)
 	ghost.visible = true
 	ghost.position = cell_center(cell)
 	ghost.queue_redraw()
@@ -1632,35 +1642,38 @@ func _move_shot() -> void:
 	var rock_cell := Vector2i(4, 8)
 	var rock_pos := cell_center(rock_cell)
 	var rock_tex: Texture2D = load("res://assets/village/rock.png")
+	var rock := _actor_near(rock_pos)
+	var tip := _south_tip(rock)
 	for v in people:
 		v.anchored = true
 		v.visible = false
 	var probe: Villager = people[1]
 	probe.visible = true
-	probe.global_position = rock_pos + Vector2(-78, -18)
+	probe.global_position = Vector2(tip.x, tip.y - 40.0)
 	camera.position = rock_pos
 	camera.zoom = Vector2(1.45, 1.45)
 	_cam_user = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var behind_z := probe.z_index
-	var behind_rock_z := _z_near(rock_pos)
+	var behind_head := probe.head_slice().z_index
+	var behind_rock_z := rock.z_index
 	var with_behind := await _grab()
 	await _capture("/opt/cursor/artifacts/depth-behind.png")
 	probe.visible = false
 	await get_tree().process_frame
 	var rock_only := await _grab()
 	var behind_ratio := _cover_ratio(rock_pos, rock_tex, with_behind, rock_only)
-	probe.global_position = rock_pos + Vector2(-36, 74.0)
+	probe.global_position = Vector2(tip.x, tip.y + 16.0)
 	probe.visible = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var front_z := probe.z_index
-	var front_rock_z := _z_near(rock_pos)
+	var front_head := probe.head_slice().z_index
+	var front_rock_z := rock.z_index
 	var with_front := await _grab()
 	await _capture("/opt/cursor/artifacts/depth-front.png")
-	var front_ratio := _cover_ratio(rock_pos, rock_tex, with_front, rock_only)
-	var depth_ok := behind_z < behind_rock_z and front_z > front_rock_z and behind_ratio < 0.08 and front_ratio > behind_ratio + 0.03
+	var depth_ok := behind_z < behind_rock_z and behind_head < behind_rock_z and front_z > front_rock_z and front_head < front_rock_z and behind_ratio < 0.08
 	var house: Building = buildings[Vector2i(8, 14)]
 	var hpos := house.global_position
 	var near_pt := hpos + Vector2(70, 30)
@@ -1676,7 +1689,7 @@ func _move_shot() -> void:
 	await get_tree().process_frame
 	var far_behind := probe.z_index < house.z_index
 	var tree_ok := cmp_near > 0 and cmp_far < 0 and near_front and far_behind
-	print("DEPTH behind_z=", behind_z, " behind_rock=", behind_rock_z, " front_z=", front_z, " front_rock=", front_rock_z, " behind_ratio=", behind_ratio, " front_ratio=", front_ratio, " depth_ok=", depth_ok)
+	print("DEPTH behind_z=", behind_z, " behind_head=", behind_head, " behind_rock=", behind_rock_z, " front_z=", front_z, " front_head=", front_head, " front_rock=", front_rock_z, " behind_ratio=", behind_ratio, " depth_ok=", depth_ok)
 	print("CORNER cmp_near=", cmp_near, " cmp_far=", cmp_far, " near_front=", near_front, " far_behind=", far_behind, " corner_ok=", tree_ok)
 	var person: Villager = people[0]
 	for v in people:
@@ -1716,11 +1729,19 @@ func _move_shot() -> void:
 	print("MOVE_OK ", ok)
 	get_tree().quit(0 if ok else 1)
 
-func _z_near(pos: Vector2) -> int:
+func _actor_near(pos: Vector2) -> Node2D:
 	for child in actors.get_children():
 		if child is Node2D and (child as Node2D).global_position.distance_to(pos) < 2.0:
-			return (child as Node2D).z_index
-	return 0
+			return child
+	return null
+
+func _south_tip(node: Node2D) -> Vector2:
+	var pts: PackedVector2Array = node.iso_points()
+	var tip := pts[0]
+	for p in pts:
+		if p.y > tip.y:
+			tip = p
+	return tip
 
 func _grab() -> Image:
 	await RenderingServer.frame_post_draw

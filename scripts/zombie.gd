@@ -25,7 +25,7 @@ var _stuck_t := 0.0
 var _last_pos := Vector2.ZERO
 var _rewarded := false
 var _anim: Sprite2D
-var _atlas: AtlasTexture
+var _slices: Array[IsoSlice] = []
 var _base_mod := Color.WHITE
 var _facing := 2
 var _frame_i := 0
@@ -48,18 +48,8 @@ func mark_fresh() -> void:
 
 func _ready() -> void:
 	add_to_group("zombies")
-	add_to_group("iso")
-	_atlas = AtlasTexture.new()
-	_atlas.atlas = load("res://assets/enemies/zombie_walk.png")
-	_atlas.region = LpcFacing.region(0, _facing)
-	_anim = Sprite2D.new()
-	_anim.texture = _atlas
-	_anim.centered = false
-	_anim.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_anim.z_as_relative = true
-	_anim.z_index = 0
-	_anim.position = Vector2(-LpcFacing.FRAME * 0.5, -LpcFacing.FRAME + 6.0)
-	add_child(_anim)
+	_slices = IsoBody.attach(self, load("res://assets/enemies/zombie_walk.png"))
+	_anim = _slices[_slices.size() - 1]
 	var bar := HpBarZ.new()
 	bar.z_as_relative = true
 	bar.z_index = 0
@@ -74,9 +64,7 @@ func _face(vel: Vector2, delta: float, faster: bool) -> void:
 	if _frame_t >= step:
 		_frame_t = 0.0
 		_frame_i = (_frame_i + 1) % LpcFacing.COLS
-	_anim.flip_h = false
-	if _atlas:
-		_atlas.region = LpcFacing.region(_frame_i, _facing)
+	IsoBody.paint(_slices, _frame_i, _facing)
 
 func notify_map_changed() -> void:
 	_repath()
@@ -117,10 +105,13 @@ func _process(delta: float) -> void:
 			queue_free()
 		return
 	_flash = maxf(_flash - delta, 0.0)
+	var tint := _base_mod
 	if fresh > 0.0:
-		_anim.modulate = Color(1, 1, 0.45)
-	else:
-		_anim.modulate = Color(1, 0.55, 0.5) if _flash > 0.0 else _base_mod
+		tint = Color(1, 1, 0.45)
+	elif _flash > 0.0:
+		tint = Color(1, 0.55, 0.5)
+	for slice in _slices:
+		slice.modulate = tint
 	_repath_cd -= delta
 	var moved := global_position.distance_to(_last_pos)
 	if _last_pos != Vector2.ZERO and moved < speed * delta * 0.25:
