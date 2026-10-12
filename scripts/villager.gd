@@ -13,7 +13,7 @@ var selected := false
 
 var _tex: Texture2D
 var _sprite: Sprite2D
-var _slices: Array[IsoSlice] = []
+var _atlas: AtlasTexture
 var _goal := Vector2.ZERO
 var _retarget := 0.0
 var _facing := 2
@@ -31,16 +31,20 @@ func setup(p_tex: Texture2D, p_sex: String, p_speed: float) -> void:
 
 func _ready() -> void:
 	add_to_group("villagers")
-	_slices = IsoBody.attach(self, _tex)
-	_sprite = _slices[_slices.size() - 1]
+	add_to_group("iso")
+	_atlas = AtlasTexture.new()
+	_atlas.atlas = _tex
+	_sprite = Sprite2D.new()
+	_sprite.texture = _atlas
+	_sprite.centered = false
+	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_sprite.position = Vector2(-LpcFacing.FRAME * 0.5, -LpcFacing.FRAME + 6.0)
+	_sprite.z_as_relative = true
+	_sprite.z_index = 0
+	add_child(_sprite)
+	_set_frame(2, 0)
 	_goal = global_position
 	_retarget = randf_range(0.2, 1.0)
-
-func head_slice() -> IsoSlice:
-	return _slices[0]
-
-func feet_slice() -> IsoSlice:
-	return _slices[_slices.size() - 1]
 
 func face_texture() -> AtlasTexture:
 	var atlas := AtlasTexture.new()
@@ -48,13 +52,11 @@ func face_texture() -> AtlasTexture:
 	atlas.region = LpcFacing.region(0, 2)
 	return atlas
 
-func iso_points() -> PackedVector2Array:
-	return PackedVector2Array([global_position])
-
-func iso_rect() -> Rect2:
-	if _sprite == null:
-		return Rect2(global_position, Vector2.ZERO)
-	return IsoSort.sprite_rect(_sprite)
+func get_iso_volume() -> IsoVolume:
+	var vol := IsoVolume.from_feet(global_position)
+	vol.node = self
+	vol.screen_rect = IsoVolume.sprite_rect(_sprite) if _sprite else Rect2(global_position, Vector2(8, 8))
+	return vol
 
 func _process(delta: float) -> void:
 	if job != null and is_instance_valid(job) and not infected and not leaving:
@@ -158,7 +160,10 @@ func _step_anim(vel: Vector2, delta: float) -> void:
 func _set_frame(row: int, frame: int) -> void:
 	_facing = row
 	_frame = frame
-	IsoBody.paint(_slices, frame, row)
+	if _atlas == null:
+		return
+	_sprite.flip_h = false
+	_atlas.region = LpcFacing.region(frame, row)
 
 func _leave(delta: float) -> void:
 	var game := _game()

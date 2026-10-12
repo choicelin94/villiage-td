@@ -305,7 +305,7 @@ func _paint_map() -> void:
 				source = 2
 			ground.set_cell(cell, source, Vector2i.ZERO)
 	for rock_cell in [Vector2i(4, 8), Vector2i(16, 8), Vector2i(4, 16), Vector2i(16, 16)]:
-		_place_prop(rock_cell, load("res://assets/village/rock.png"))
+		_place_prop(rock_cell, load("res://assets/village/rock.png"), "rock")
 	for y in ROWS:
 		for x in COLS:
 			var cell := Vector2i(x, y)
@@ -318,7 +318,7 @@ func _paint_map() -> void:
 				"res://assets/village/tree_b.png",
 				"res://assets/village/tree_c.png",
 			]
-			_place_prop(cell, load(trees[(x + y) % trees.size()]))
+			_place_prop(cell, load(trees[(x + y) % trees.size()]), "tree")
 
 func _place_starter() -> void:
 	var plan := [
@@ -360,10 +360,12 @@ func _make_villager(cell: Vector2i, sex: String, as_refugee: bool) -> Villager:
 	actors.add_child(v)
 	return v
 
-func _place_prop(cell: Vector2i, tex: Texture2D) -> void:
+func _place_prop(cell: Vector2i, tex: Texture2D, key: String) -> void:
 	var node := Node2D.new()
 	node.position = cell_center(cell)
 	node.set_script(load("res://scripts/iso_prop.gd"))
+	node.cell = cell
+	node.volume_key = key
 	var sprite := Sprite2D.new()
 	sprite.name = "Sprite"
 	sprite.texture = tex
@@ -1176,20 +1178,16 @@ func _open_depth_lab() -> void:
 func _apply_iso_sort() -> void:
 	if actors == null:
 		return
-	var entries: Array = []
+	var vols: Array = []
 	for node in get_tree().get_nodes_in_group("iso"):
 		if not is_instance_valid(node) or not (node is CanvasItem):
 			continue
 		if not (node as CanvasItem).is_visible_in_tree():
 			continue
-		if not node.has_method("iso_points") or not node.has_method("iso_rect"):
+		if not node.has_method("get_iso_volume"):
 			continue
-		entries.append({
-			"node": node,
-			"points": node.iso_points(),
-			"rect": node.iso_rect(),
-		})
-	IsoSort.apply(entries)
+		vols.append(node.get_iso_volume())
+	DepthSolver.apply(vols)
 
 func can_step(from_pos: Vector2, to_pos: Vector2) -> bool:
 	var to_cell := world_to_cell(to_pos)
@@ -1643,20 +1641,19 @@ func _move_shot() -> void:
 	var rock_pos := cell_center(rock_cell)
 	var rock_tex: Texture2D = load("res://assets/village/rock.png")
 	var rock := _actor_near(rock_pos)
-	var tip := _south_tip(rock)
+	var rock_vol: IsoVolume = rock.get_iso_volume()
 	for v in people:
 		v.anchored = true
 		v.visible = false
 	var probe: Villager = people[1]
 	probe.visible = true
-	probe.global_position = Vector2(tip.x, tip.y - 40.0)
+	probe.global_position = IsoVolume.iso_to_world(_feet_iso(rock_vol, Vector2(-1, -1)))
 	camera.position = rock_pos
 	camera.zoom = Vector2(1.45, 1.45)
 	_cam_user = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var behind_z := probe.z_index
-	var behind_head := probe.head_slice().z_index
 	var behind_rock_z := rock.z_index
 	var with_behind := await _grab()
 	await _capture("/opt/cursor/artifacts/depth-behind.png")
@@ -1664,22 +1661,22 @@ func _move_shot() -> void:
 	await get_tree().process_frame
 	var rock_only := await _grab()
 	var behind_ratio := _cover_ratio(rock_pos, rock_tex, with_behind, rock_only)
-	probe.global_position = Vector2(tip.x, tip.y + 16.0)
+	probe.global_position = IsoVolume.iso_to_world(_feet_iso(rock_vol, Vector2(1, 1)))
 	probe.visible = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var front_z := probe.z_index
-	var front_head := probe.head_slice().z_index
 	var front_rock_z := rock.z_index
-	var with_front := await _grab()
 	await _capture("/opt/cursor/artifacts/depth-front.png")
-	var depth_ok := behind_z < behind_rock_z and behind_head < behind_rock_z and front_z > front_rock_z and front_head < front_rock_z and behind_ratio < 0.08
+	var depth_ok := behind_z < behind_rock_z and front_z > front_rock_z and behind_ratio < 0.08
 	var house: Building = buildings[Vector2i(8, 14)]
-	var hpos := house.global_position
-	var near_pt := hpos + Vector2(70, 30)
-	var far_pt := hpos + Vector2(80, -8)
-	var cmp_near := IsoSort.compare_points(PackedVector2Array([near_pt]), house.iso_points())
-	var cmp_far := IsoSort.compare_points(PackedVector2Array([far_pt]), house.iso_points())
+	var house_vol: IsoVolume = house.get_iso_volume()
+	var near_pt := IsoVolume.iso_to_world(_feet_iso(house_vol, Vector2(1, 1)))
+	var far_pt := IsoVolume.iso_to_world(_feet_iso(house_vol, Vector2(-1, -1)))
+	var near_vol := IsoVolume.from_feet(near_pt)
+	var far_vol := IsoVolume.from_feet(far_pt)
+	var cmp_near := DepthSolver.is_behind(house_vol, near_vol) and not DepthSolver.is_behind(near_vol, house_vol)
+	var cmp_far := DepthSolver.is_behind(far_vol, house_vol) and not DepthSolver.is_behind(house_vol, far_vol)
 	probe.global_position = near_pt
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -1688,8 +1685,8 @@ func _move_shot() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var far_behind := probe.z_index < house.z_index
-	var tree_ok := cmp_near > 0 and cmp_far < 0 and near_front and far_behind
-	print("DEPTH behind_z=", behind_z, " behind_head=", behind_head, " behind_rock=", behind_rock_z, " front_z=", front_z, " front_head=", front_head, " front_rock=", front_rock_z, " behind_ratio=", behind_ratio, " depth_ok=", depth_ok)
+	var tree_ok := cmp_near and cmp_far and near_front and far_behind
+	print("DEPTH behind_z=", behind_z, " behind_rock=", behind_rock_z, " front_z=", front_z, " front_rock=", front_rock_z, " behind_ratio=", behind_ratio, " depth_ok=", depth_ok)
 	print("CORNER cmp_near=", cmp_near, " cmp_far=", cmp_far, " near_front=", near_front, " far_behind=", far_behind, " corner_ok=", tree_ok)
 	var person: Villager = people[0]
 	for v in people:
@@ -1735,13 +1732,17 @@ func _actor_near(pos: Vector2) -> Node2D:
 			return child
 	return null
 
-func _south_tip(node: Node2D) -> Vector2:
-	var pts: PackedVector2Array = node.iso_points()
-	var tip := pts[0]
-	for p in pts:
-		if p.y > tip.y:
-			tip = p
-	return tip
+func _feet_iso(vol: IsoVolume, dir: Vector2) -> Vector2:
+	var walker_half := float(IsoVolume.spec_for("walker").w) * 0.5
+	var gap := 0.12
+	var cx := (vol.min_x + vol.max_x) * 0.5
+	var cy := (vol.min_y + vol.max_y) * 0.5
+	var hx := (vol.max_x - vol.min_x) * 0.5
+	var hy := (vol.max_y - vol.min_y) * 0.5
+	return Vector2(
+		cx + dir.x * (hx + walker_half + gap),
+		cy + dir.y * (hy + walker_half + gap)
+	)
 
 func _grab() -> Image:
 	await RenderingServer.frame_post_draw

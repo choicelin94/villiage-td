@@ -30,15 +30,27 @@ func _draw() -> void:
 		_draw_tag()
 
 func _draw_line() -> void:
-	if source == null or not source.has_method("iso_points"):
+	if source == null or not source.has_method("get_iso_volume"):
 		return
-	var pts: PackedVector2Array = source.iso_points()
-	if pts.size() < 2:
+	var vol: IsoVolume = source.get_iso_volume()
+	if vol.ground_poly_iso.size() < 2:
 		return
-	var local := PackedVector2Array()
-	for p in pts:
-		local.append(to_local(p))
-	draw_polyline(local, color, 3.0)
+	var ground := PackedVector2Array()
+	for p in vol.ground_poly_iso:
+		ground.append(to_local(IsoVolume.iso_to_world(p)))
+	var ring := ground.duplicate()
+	ring.append(ground[0])
+	draw_polyline(ring, color, 3.0)
+	var lift := -vol.max_z * 36.0
+	var top := PackedVector2Array()
+	for p in ground:
+		top.append(p + Vector2(0.0, lift))
+	var top_ring := top.duplicate()
+	top_ring.append(top[0])
+	var faint := Color(color.r, color.g, color.b, color.a * 0.65)
+	draw_polyline(top_ring, faint, 2.0)
+	for i in ground.size():
+		draw_line(ground[i], top[i], faint, 1.5)
 
 func _draw_tag() -> void:
 	if _font == null or text_key == "":

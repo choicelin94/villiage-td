@@ -25,7 +25,7 @@ var _stuck_t := 0.0
 var _last_pos := Vector2.ZERO
 var _rewarded := false
 var _anim: Sprite2D
-var _slices: Array[IsoSlice] = []
+var _atlas: AtlasTexture
 var _base_mod := Color.WHITE
 var _facing := 2
 var _frame_i := 0
@@ -48,8 +48,18 @@ func mark_fresh() -> void:
 
 func _ready() -> void:
 	add_to_group("zombies")
-	_slices = IsoBody.attach(self, load("res://assets/enemies/zombie_walk.png"))
-	_anim = _slices[_slices.size() - 1]
+	add_to_group("iso")
+	_atlas = AtlasTexture.new()
+	_atlas.atlas = load("res://assets/enemies/zombie_walk.png")
+	_anim = Sprite2D.new()
+	_anim.texture = _atlas
+	_anim.centered = false
+	_anim.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_anim.position = Vector2(-LpcFacing.FRAME * 0.5, -LpcFacing.FRAME + 6.0)
+	_anim.z_as_relative = true
+	_anim.z_index = 0
+	add_child(_anim)
+	_face(Vector2.DOWN, 0.0, false)
 	var bar := HpBarZ.new()
 	bar.z_as_relative = true
 	bar.z_index = 0
@@ -64,7 +74,10 @@ func _face(vel: Vector2, delta: float, faster: bool) -> void:
 	if _frame_t >= step:
 		_frame_t = 0.0
 		_frame_i = (_frame_i + 1) % LpcFacing.COLS
-	IsoBody.paint(_slices, _frame_i, _facing)
+	if _atlas == null:
+		return
+	_anim.flip_h = false
+	_atlas.region = LpcFacing.region(_frame_i, _facing)
 
 func notify_map_changed() -> void:
 	_repath()
@@ -89,11 +102,11 @@ func _die() -> void:
 		if game:
 			game.on_zombie_killed(self)
 
-func iso_points() -> PackedVector2Array:
-	return PackedVector2Array([global_position])
-
-func iso_rect() -> Rect2:
-	return IsoSort.sprite_rect(_anim)
+func get_iso_volume() -> IsoVolume:
+	var vol := IsoVolume.from_feet(global_position)
+	vol.node = self
+	vol.screen_rect = IsoVolume.sprite_rect(_anim) if _anim else Rect2(global_position, Vector2(8, 8))
+	return vol
 
 func _process(delta: float) -> void:
 	queue_redraw()
@@ -110,8 +123,8 @@ func _process(delta: float) -> void:
 		tint = Color(1, 1, 0.45)
 	elif _flash > 0.0:
 		tint = Color(1, 0.55, 0.5)
-	for slice in _slices:
-		slice.modulate = tint
+	if _anim:
+		_anim.modulate = tint
 	_repath_cd -= delta
 	var moved := global_position.distance_to(_last_pos)
 	if _last_pos != Vector2.ZERO and moved < speed * delta * 0.25:
