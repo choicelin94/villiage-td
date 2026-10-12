@@ -1,21 +1,23 @@
-	
+LPC zombies in this folder
 
-	Topdown (Shooter) Pack
+zombie_stand.png and zombie_hold.png stack two layers from the Universal LPC
+Spritesheet Character Generator:
 
-	by  Kenney Vleugels (Kenney.nl)
+https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator
 
-			------------------------------
+- body/bodies/zombie/walk/zombie.png
+- head/heads/zombie/adult/walk.png
 
-	License (Creative Commons Zero, CC0)
-	http://creativecommons.org/publicdomain/zero/1.0/
+Both layers list CC-BY-SA 3.0 and GPL 3.0 in CREDITS.csv. This game uses
+Creative Commons Attribution-ShareAlike 3.0 Unported (CC-BY-SA 3.0):
 
-	You may use these assets in personal and commercial projects.
-	Credit (Kenney or www.kenney.nl) would be nice but is not mandatory.
+https://creativecommons.org/licenses/by-sa/3.0/legalcode
 
-			------------------------------
+Authors, from CREDITS.csv: Stephen Challener (Redshrike), Johannes Sjölund
+(wulax), Sander Frenken (castelonia), Benjamin K. Smith (BenCreating), and
+bluecarrot16.
 
-	Donate:   http://support.kenney.nl
-	Request:  http://request.kenney.nl
+Source page: https://opengameart.org/content/lpc-zombie
 
-	Follow on Twitter for updates:
-	@KenneyWings
+zombie_stand.png is walk column 1. zombie_hold.png is walk column 4. Both are
+the front row, scaled 2x with nearest-neighbor filtering.

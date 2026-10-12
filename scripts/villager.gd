@@ -29,7 +29,7 @@ func _ready() -> void:
 	_sprite.centered = false
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_sprite.position = Vector2(-_tex.get_width() * 0.5, -_tex.get_height())
-	_sprite.z_index = 2
+	_sprite.z_index = 0
 	add_child(_sprite)
 	_goal = global_position
 	_retarget = randf_range(0.2, 1.0)
@@ -113,4 +113,5 @@ func _draw() -> void:
 		col = Color(1, 1, 1, 1)
 	draw_arc(Vector2(0, -8), 22 if selected else 16, 0, TAU, 24, col, 2.0 if selected else 1.4)
 	if refugee and claim_left > 0.0:
-		draw_line(Vector2(-14, -78), Vector2(-14 + 28.0 * clampf(claim_left / 6.5, 0, 1), -78), Color(1, 0.9, 0.3), 3.0)
+		var bar_y := -float(_tex.get_height()) - 8.0
+		draw_line(Vector2(-14, bar_y), Vector2(-14 + 28.0 * clampf(claim_left / 6.5, 0, 1), bar_y), Color(1, 0.9, 0.3), 3.0)

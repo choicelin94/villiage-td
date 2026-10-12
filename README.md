@@ -6,7 +6,7 @@ An isometric tower defense game on a map about four times the previous area. Zom
 
 **引擎 / Engine:** Godot 4.7 (GDScript)  
 **玩法切片 / Slice:** 20×20 等距地图，村落建筑 + 有上限的木墙 + 两种炮塔，村民派工，难民，10 波。  
-**美术 / Art:** 建筑用 Kenney Fantasy Town Kit 2.0（CC0）。村民（男女）和僵尸用 Kenney Topdown Shooter（CC0）。来源与许可证见 [CREDITS.md](CREDITS.md)。
+**美术 / Art:** 建筑用 Kenney Fantasy Town Kit 2.0（CC0）。村民是穿好衣服的 LPC 男女（身体 + 衣服 + 头发），僵尸是同一套 LPC 体型。许可证是 CC-BY-SA 3.0（T 恤图层是 OGA-BY 3.0）。详见 [CREDITS.md](CREDITS.md)。 Buildings are Kenney Fantasy Town Kit 2.0 (CC0). Villagers are clothed LPC men and women (body, clothes, and hair). Zombies are the matching LPC body and head. The character images are CC-BY-SA 3.0. The t-shirt layer is OGA-BY 3.0. See [CREDITS.md](CREDITS.md).
 
 ## 在线试玩 / Play in the browser
 

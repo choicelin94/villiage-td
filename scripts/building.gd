@@ -72,15 +72,15 @@ func setup(p_kind: Kind, p_cell: Vector2i) -> void:
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	sprite.position = SPRITE_OFF
-	sprite.z_index = 1
+	sprite.z_index = 0
 	add_child(sprite)
 	if kind == Kind.FIRE:
 		var flame := Flame.new()
 		flame.position = Vector2(8, -78)
-		flame.z_index = 2
+		flame.z_index = 0
 		add_child(flame)
 	var bar := HpBar.new()
-	bar.z_index = 3
+	bar.z_index = 0
 	bar.y_off = -148.0
 	add_child(bar)
 

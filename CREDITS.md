@@ -51,45 +51,56 @@ The grass slabs and the farm's soil slab use small original albedo textures made
 
 ## Villagers and zombies
 
-Villagers and zombies are stills from the same pack, so an infected villager reads as the same style of character.
+Villagers and zombies are Liberated Pixel Cup (LPC) sprites at the same 64×64 frame size, so an infected villager reads as the same style of character. Each villager is a stack of a body, pants, shirt, shoes, head, eyes, and hair. The zombie is the LPC zombie body plus the LPC zombie head. They are not nude bases.
 
-- **Pack:** Topdown Shooter
-- **Author:** Kenney Vleugels (Kenney.nl)
-- **Download page:** https://kenney.nl/assets/topdown-shooter
-- **OpenGameArt page:** https://opengameart.org/content/topdown-shooter
-- **File downloaded:** `topdown-shooter.zip`  
-  https://opengameart.org/sites/default/files/topdown-shooter.zip
-- **License:** Creative Commons Zero (CC0) 1.0 Universal  
-  http://creativecommons.org/publicdomain/zero/1.0/
-- **License file shipped with the pack:** copied unchanged to [`assets/people/LICENSE.txt`](assets/people/LICENSE.txt) and [`assets/enemies/LICENSE.txt`](assets/enemies/LICENSE.txt)
+- **Collection:** Universal LPC Spritesheet Character Generator, `spritesheets/` on the `master` branch  
+  https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator
+- **Credits table used:** `CREDITS.csv` in that repository  
+  https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator/blob/master/CREDITS.csv
+- **License used for the PNGs in this game:** Creative Commons Attribution-ShareAlike 3.0 Unported (CC-BY-SA 3.0)  
+  https://creativecommons.org/licenses/by-sa/3.0/legalcode
+- **Attribution copy:** [`assets/people/LICENSE.txt`](assets/people/LICENSE.txt) and [`assets/enemies/LICENSE.txt`](assets/enemies/LICENSE.txt)
 
-The pack's own `License.txt` says:
+Where a source file lists more than one license, this game uses **CC-BY-SA 3.0**. The short-sleeve t-shirt is only **OGA-BY 3.0**. That license's section 8(g) says the work may be distributed under CC-BY 3.0:
 
-> Topdown (Shooter) Pack  
-> by Kenney Vleugels (Kenney.nl)  
-> License (Creative Commons Zero, CC0)  
-> http://creativecommons.org/publicdomain/zero/1.0/  
-> You may use these assets in personal and commercial projects.  
-> Credit (Kenney or www.kenney.nl) would be nice but is not mandatory.
+> You may distribute this work under the terms of the Creative Commons Attribution 3.0 license (CC-BY 3.0), which can be found here: https://creativecommons.org/licenses/by/3.0/legalcode
 
-Each sprite below is the pack PNG scaled 2× with nearest-neighbor filtering.
+The t-shirt is stacked with CC-BY-SA body, pants, hair, and shoes, so the combined villager PNGs are shared under CC-BY-SA 3.0. Game code stays under the MIT license. CC-BY-SA applies to these character images, not to the code.
 
-| In this game | Original file in the zip |
+Frames are the front row of each `walk.png` (64×64 cells, 9 columns). Villagers use column 1. `zombie_stand.png` uses column 1 and `zombie_hold.png` uses column 4. Each frame is cropped above the top opaque pixel, the feet stay on the bottom edge, and the result is scaled 2× with nearest-neighbor filtering.
+
+| In this game | LPC layers, in draw order |
 | --- | --- |
-| `assets/people/man_brown.png` | `PNG/Man Brown/manBrown_stand.png` |
-| `assets/people/man_old.png` | `PNG/Man Old/manOld_stand.png` |
-| `assets/people/man_blue.png` | `PNG/Man Blue/manBlue_stand.png` |
-| `assets/people/woman.png` | `PNG/Woman Green/womanGreen_stand.png` |
-| `assets/enemies/zombie_stand.png` | `PNG/Zombie 1/zoimbie1_stand.png` |
-| `assets/enemies/zombie_hold.png` | `PNG/Zombie 1/zoimbie1_hold.png` |
+| `assets/people/man_brown.png` | `body/bodies/male/walk.png`, `legs/pants/male/walk.png`, `torso/clothes/shortsleeve/tshirt/male/walk.png`, `feet/shoes/basic/male/walk.png`, `head/heads/human/male/walk.png`, `eyes/human/adult/neutral/walk.png`, `hair/bedhead/adult/walk.png` |
+| `assets/people/man_blue.png` | Same stack as `man_brown.png`. The shirt layer's hue is shifted to blue. That recolor is a change made for this game. |
+| `assets/people/man_old.png` | Same body, pants, shoes, head, and eyes. Shirt hue is shifted toward olive. Hair is `hair/messy1/adult/walk.png` with the color pulled to gray. Both edits were made for this game. |
+| `assets/people/woman.png` | `body/bodies/female/walk.png`, `legs/pants/thin/walk.png`, `torso/clothes/shortsleeve/tshirt/female/walk.png`, `feet/shoes/basic/thin/walk.png`, `head/heads/human/female/walk.png`, `eyes/human/adult/neutral/walk.png`, `hair/long/adult/walk.png` |
+| `assets/enemies/zombie_stand.png` | `body/bodies/zombie/walk/zombie.png`, `head/heads/zombie/adult/walk.png` |
+| `assets/enemies/zombie_hold.png` | Same two zombie layers, one walk step later |
 
-The zombie filenames use the pack's spelling `zoimbie`. Only these two zombie frames are shipped. Gun, reload, and machine poses are not used. The two frames alternate for walking and biting.
+Authors and source pages, taken from `CREDITS.csv` (not guessed):
+
+| Layer | Authors | Licenses listed on the source | Page |
+| --- | --- | --- | --- |
+| Male body | bluecarrot16, Benjamin K. Smith (BenCreating), Evert, Eliza Wyatt (ElizaWy), TheraHedwig, MuffinElZangano, Durrani, Johannes Sjölund (wulax), Stephen Challener (Redshrike) | CC-BY-SA 3.0, GPL 3.0 | https://opengameart.org/content/lpc-character-bases |
+| Female body | Benjamin K. Smith (BenCreating), bluecarrot16, TheraHedwig, Evert, MuffinElZangano, Durrani, Pierre Vigier (pvigier), Eliza Wyatt (ElizaWy), Matthew Krohn (makrohn), Johannes Sjölund (wulax), Stephen Challener (Redshrike) | OGA-BY 3.0, CC-BY-SA 3.0, GPL 3.0 | https://opengameart.org/content/lpc-character-bases |
+| Human male and female heads | bluecarrot16, Benjamin K. Smith (BenCreating), Stephen Challener (Redshrike) | OGA-BY 3.0, CC-BY-SA 3.0, GPL 3.0 | https://opengameart.org/content/lpc-character-bases |
+| Eyes | JaidynReiman, Matthew Krohn (makrohn), Stephen Challener (Redshrike) | OGA-BY 3.0, CC-BY-SA 3.0, GPL 3.0 | https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles |
+| Pants, male | bluecarrot16, JaidynReiman, Eliza Wyatt (ElizaWy), Matthew Krohn (makrohn), Johannes Sjölund (wulax) | OGA-BY 3.0, GPL 3.0, CC-BY-SA 3.0 | https://opengameart.org/content/lpc-medieval-fantasy-character-sprites |
+| Pants, thin (woman) | bluecarrot16, JaidynReiman, Eliza Wyatt (ElizaWy), Joe White, Matthew Krohn (makrohn), Johannes Sjölund (wulax) | OGA-BY 3.0, GPL 3.0, CC-BY-SA 3.0 | https://opengameart.org/content/lpc-clothing-updates |
+| Short-sleeve t-shirt | Eliza Wyatt (ElizaWy), JaidynReiman | OGA-BY 3.0 | https://opengameart.org/content/lpc-revised-character-basics |
+| Shoes | bluecarrot16, Johannes Sjölund (wulax) | OGA-BY 3.0, CC-BY-SA 3.0, GPL 3.0 | https://opengameart.org/content/lpc-medieval-fantasy-character-sprites |
+| Hair: bedhead, long, messy1 | Manuel Riecke (MrBeast) | CC-BY-SA 3.0, GPL 3.0 | https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles |
+| Zombie body | Stephen Challener (Redshrike), Johannes Sjölund (wulax), Sander Frenken (castelonia), Benjamin K. Smith (BenCreating), bluecarrot16 | CC-BY-SA 3.0, GPL 3.0 | https://opengameart.org/content/lpc-zombie |
+| Zombie head | bluecarrot16, Benjamin K. Smith (BenCreating), Sander Frenken (castelonia), Stephen Challener (Redshrike) | CC-BY-SA 3.0, GPL 3.0 | https://opengameart.org/content/lpc-zombie |
 
 ### Removed and not shipped
 
-- Riley Gombart's "Animated Top Down Zombie" (OpenGameArt, CC0 on that page) was the previous zombie. Those `move_*.png` and `attack_*.png` frames have been removed from this repository.
-- Engvee, "FREE Animated Isometric Zombies" on itch.io, was not used. That page allows commercial use in the author's own words, but it does not state CC0 or CC-BY.
-- Other CC0 character packs were looked at and not shipped, including a side-view civilian set and separate top-down zombie sheets, so the village uses one Kenney set for people and zombies.
+- Kenney's Topdown Shooter civilians and zombie (`manBrown_stand.png`, `manOld_stand.png`, `manBlue_stand.png`, `womanGreen_stand.png`, `zoimbie1_stand.png`, `zoimbie1_hold.png`) have been removed. That pack is CC0, but it does not match the LPC villagers.
+- Riley Gombart's "Animated Top Down Zombie" (OpenGameArt, CC0 on that page) was an earlier zombie. Those frames are not in this repository.
+- Engvee, "FREE Animated Isometric Zombies" on itch.io, was not used. That page does not state CC0, CC-BY, or CC-BY-SA.
+- Nude Cabbit / AntumDeluge body templates were not shipped. Villagers use the clothed LPC stacks above.
+- Kenney isometric character renders (Mini Characters, Graveyard Kit, Animated Characters 3) were not shipped. Their scale and style do not match this LPC set.
 
 ## Font
 

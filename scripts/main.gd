@@ -345,7 +345,7 @@ func _place_prop(cell: Vector2i, tex: Texture2D) -> void:
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	sprite.position = SPRITE_OFF
-	sprite.z_index = 1
+	sprite.z_index = 0
 	node.add_child(sprite)
 	actors.add_child(node)
 
