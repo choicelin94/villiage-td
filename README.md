@@ -10,17 +10,17 @@ An isometric tower defense game on a map about four times the previous area. Zom
 
 ## 在线试玩 / Play in the browser
 
-单线程网页导出在 [`docs/`](docs/)（关闭了线程，GitHub Pages 不需要 COOP/COEP）。第一次打开大约要下 40 MB 的引擎，请等加载条走完。手机用双指缩放、单指拖动。电脑在开始和离开图标旁边有 `+` / `-`。第一次打开时，镜头对准地图正中的一半（把 20×20 看成 4×4 块，对准中间 2×2 块），手机比电脑更近一些。
+单线程网页导出在 [`docs/`](docs/)（关闭了线程，GitHub Pages 不需要 COOP/COEP）。界面文字用 Noto Sans SC（OFL），网页版不再依赖系统字体。第一次打开大约要下 47 MB（引擎加字体），请等加载条走完。手机用双指缩放、单指拖动。电脑在开始和离开图标旁边有 `+` / `-`。第一次打开时，镜头对准地图正中的一半（把 20×20 看成 4×4 块，对准中间 2×2 块），手机比电脑更近一些。
 
-The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pages does not need COOP/COEP headers). The first visit downloads about 40 MB. Wait for the loading bar. Phones pinch to zoom and drag to pan. A computer also has `+` and `-` next to the start and leave icons. The first view centers the middle half of the map (the center 2×2 of a 4×4 split of the 20×20 grid). A phone starts closer than a computer.
+The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pages does not need COOP/COEP headers). UI text uses Noto Sans SC (OFL), so the web build does not depend on a system font. The first visit downloads about 47 MB (engine plus font). Wait for the loading bar. Phones pinch to zoom and drag to pan. A computer also has `+` and `-` next to the start and leave icons. The first view centers the middle half of the map (the center 2×2 of a 4×4 split of the 20×20 grid). A phone starts closer than a computer.
 
 发布地址 / public URL, after Pages is turned on:
 
 **https://choicelin94.github.io/villiage-td/**
 
-这个地址现在还不能打开。Pages 要等人在 **Settings → Pages → Deploy from a branch** 里打开，Folder 选 **`/docs`**。要先看这一支的网页包，Branch 选 `cursor/facing-hud-camera-4d8f`。合并进 `main` 之后，再把 Branch 改回 `main`。
+线上页面来自 `main` 的 `/docs`。这一支合并之后，线上中文才会换成新字体。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/cjk-ui-font-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
 
-That URL does not load until someone enables Pages. Use **Settings → Pages → Deploy from a branch**, folder **`/docs`**. To serve this branch, pick `cursor/facing-hud-camera-4d8f`. After it merges, switch the branch back to `main`.
+The live site serves `/docs` from `main`. Chinese on that site updates after this branch merges. To preview it first, set **Settings → Pages → Deploy from a branch** to `cursor/cjk-ui-font-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
 
 本地先看网页包 / preview the export locally:
 
@@ -157,6 +157,6 @@ The static files live in `docs/`. Serve that folder over HTTP. Do not open `inde
 
 ## 许可 / License
 
-游戏代码为 MIT，见 [LICENSE](LICENSE)。美术和字体各自的许可证见 [CREDITS.md](CREDITS.md)，请勿把素材的 CC0 / Apache-2.0 和代码许可混为一谈。
+游戏代码为 MIT，见 [LICENSE](LICENSE)。美术和字体各自的许可证见 [CREDITS.md](CREDITS.md)。界面字体是 Noto Sans SC，许可证是 SIL OFL 1.1。
 
-Game code is MIT. Art and the font keep their own licenses, documented in [CREDITS.md](CREDITS.md).
+Game code is MIT. Art and the font keep their own licenses, documented in [CREDITS.md](CREDITS.md). The UI font is Noto Sans SC under the SIL Open Font License 1.1.

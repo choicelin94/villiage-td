@@ -40,11 +40,13 @@ var _ground_open := false
 var _inspected: Building = null
 
 func _ready() -> void:
-	_font = load("res://assets/fonts/DroidSansFallback-subset.ttf")
+	_font = load("res://assets/fonts/NotoSansSC-Regular.otf")
 	layer = 10
 	_theme = Theme.new()
 	_theme.default_font = _font
 	_theme.default_font_size = 18
+	for type_name in ["Label", "Button", "RichTextLabel", "LineEdit", "TooltipLabel"]:
+		_theme.set_font("font", type_name, _font)
 	_build_top()
 	_build_bottom()
 	_build_actions()
