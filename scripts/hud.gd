@@ -34,6 +34,10 @@ var _list: VBoxContainer
 var _end: Control
 var _end_title: Label
 var _end_body: Label
+var _again: Button
+var _lang: Button
+var _top_box: VBoxContainer
+var _won := false
 
 var _ground := Vector2i(-1, -1)
 var _ground_open := false
@@ -52,6 +56,9 @@ func _ready() -> void:
 	_build_actions()
 	_build_panel()
 	_build_end()
+	_build_lang()
+	Locale.changed.connect(_on_language)
+	_on_language()
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 
@@ -127,16 +134,26 @@ func refresh(wood: int, gold: int, people: int, housed: int, beds: int, walls: i
 
 func show_end(win: bool) -> void:
 	close_panel()
+	_won = win
 	_end.visible = true
 	if win:
-		_end_title.text = "村落守住了  /  Village held"
-		_end_body.text = "十波僵尸已被击退。\nAll 10 waves were driven back."
+		_end_title.text = Locale.text("end.win_title")
+		_end_body.text = Locale.text("end.win_body")
 	else:
-		_end_title.text = "村落陷落  /  Village lost"
-		_end_body.text = "村民全部被感染了。\nEvery villager was infected."
+		_end_title.text = Locale.text("end.lose_title")
+		_end_body.text = Locale.text("end.lose_body")
 
 func _idle_hint() -> String:
-	return "点空地，在右侧选择建筑。先点村民，再点建筑来派人。双指缩放，单指拖动地图。  |  Tap empty ground, then pick a building on the right. Tap a villager, then a building, to assign. Pinch to zoom, or use + and - on a computer. Drag to pan."
+	return Locale.text("hint.idle")
+
+func _on_language() -> void:
+	_apply_copy()
+	if _end and _end.visible:
+		show_end(_won)
+	if _ground_open:
+		_fill_ground()
+	elif _inspected != null and is_instance_valid(_inspected):
+		_fill_building(_inspected)
 
 func _layout() -> void:
 	var view := get_viewport().get_visible_rect().size
@@ -150,6 +167,12 @@ func _layout() -> void:
 	_top.offset_bottom = top_h
 	_bottom.offset_top = -bot_h
 	_hint.add_theme_font_size_override("font_size", 15 if _narrow else 16)
+	if _top_box:
+		_top_box.offset_right = -86
+	_lang.offset_right = -10
+	_lang.offset_left = -78
+	_lang.offset_top = 12
+	_lang.offset_bottom = 52
 	var icon := 64.0
 	var gap := 10.0
 	_place_icon(_start, 12.0, bot_h + gap + icon, icon)
@@ -181,8 +204,9 @@ func _build_top() -> void:
 	col.set_anchors_preset(Control.PRESET_FULL_RECT)
 	col.offset_left = 10
 	col.offset_top = 4
-	col.offset_right = -10
+	col.offset_right = -86
 	col.offset_bottom = -4
+	_top_box = col
 	col.add_theme_constant_override("separation", 0)
 	_top.add_child(col)
 	var row_a := HBoxContainer.new()
@@ -191,13 +215,13 @@ func _build_top() -> void:
 	row_b.add_theme_constant_override("separation", 12)
 	col.add_child(row_a)
 	col.add_child(row_b)
-	_wood = _chip("wood", "木材 / Wood", Color(0.86, 0.62, 0.32))
-	_gold = _chip("gold", "金币 / Gold", Color(0.98, 0.82, 0.28))
-	_pop = _chip("people", "村民 / People", Color(0.65, 0.86, 0.98))
-	_beds = _chip("bed", "床 已住/总数 / Beds", Color(0.75, 0.9, 0.7))
-	_walls = _chip("wall", "墙 / Walls", Color(0.9, 0.75, 0.5))
-	_wave = _chip("wave", "波次 / Wave", Color(0.9, 0.92, 0.84))
-	_core = _chip("clock", "难民倒计时 / Refugees", Color(1, 0.86, 0.4))
+	_wood = _chip("wood", Locale.text("tip.wood"), Color(0.86, 0.62, 0.32))
+	_gold = _chip("gold", Locale.text("tip.gold"), Color(0.98, 0.82, 0.28))
+	_pop = _chip("people", Locale.text("tip.people"), Color(0.65, 0.86, 0.98))
+	_beds = _chip("bed", Locale.text("tip.beds"), Color(0.75, 0.9, 0.7))
+	_walls = _chip("wall", Locale.text("tip.walls"), Color(0.9, 0.75, 0.5))
+	_wave = _chip("wave", Locale.text("tip.wave"), Color(0.9, 0.92, 0.84))
+	_core = _chip("clock", Locale.text("tip.refugees"), Color(1, 0.86, 0.4))
 	row_a.add_child(_wood)
 	row_a.add_child(_gold)
 	row_a.add_child(_pop)
@@ -214,6 +238,7 @@ func _build_bottom() -> void:
 	_bottom.add_theme_stylebox_override("panel", _box(Color(0.07, 0.11, 0.08, 0.92), Color(0.35, 0.28, 0.14)))
 	add_child(_bottom)
 	_hint = Label.new()
+	_hint.name = "HintLabel"
 	_hint.theme = _theme
 	_hint.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_hint.offset_left = 12
@@ -229,19 +254,19 @@ func _build_bottom() -> void:
 
 func _build_actions() -> void:
 	_start = _icon_button("StartButton", "start", Color(0.16, 0.34, 0.18), Color(0.55, 0.78, 0.4))
-	_start.tooltip_text = "开始波次 / Start wave"
+	_start.tooltip_text = Locale.text("tip.start")
 	_start.pressed.connect(func() -> void: start_pressed.emit())
 	add_child(_start)
 	_leave = _icon_button("LeaveButton", "leave", Color(0.32, 0.16, 0.14), Color(0.78, 0.42, 0.32))
-	_leave.tooltip_text = "离开并重开 / Leave and restart"
+	_leave.tooltip_text = Locale.text("tip.leave")
 	_leave.pressed.connect(func() -> void: restart_pressed.emit())
 	add_child(_leave)
 	_zoom_out = _icon_button("ZoomOutButton", "minus", Color(0.16, 0.2, 0.18), Color(0.55, 0.62, 0.5))
-	_zoom_out.tooltip_text = "缩小 / Zoom out"
+	_zoom_out.tooltip_text = Locale.text("tip.zoom_out")
 	_zoom_out.pressed.connect(func() -> void: zoom_out_pressed.emit())
 	add_child(_zoom_out)
 	_zoom_in = _icon_button("ZoomInButton", "plus", Color(0.16, 0.2, 0.18), Color(0.55, 0.62, 0.5))
-	_zoom_in.tooltip_text = "放大 / Zoom in"
+	_zoom_in.tooltip_text = Locale.text("tip.zoom_in")
 	_zoom_in.pressed.connect(func() -> void: zoom_in_pressed.emit())
 	add_child(_zoom_in)
 
@@ -302,37 +327,70 @@ func _build_end() -> void:
 	box.add_child(_end_body)
 	var again := _icon_button("AgainButton", "start", Color(0.16, 0.34, 0.18), Color(0.55, 0.78, 0.4))
 	again.custom_minimum_size = Vector2(72, 72)
-	again.tooltip_text = "再来一局 / Play again"
+	again.tooltip_text = Locale.text("tip.again")
+	_again = again
 	again.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	again.pressed.connect(func() -> void: restart_pressed.emit())
 	box.add_child(again)
 
+func _build_lang() -> void:
+	_lang = Button.new()
+	_lang.name = "LangButton"
+	_lang.theme = _theme
+	_lang.focus_mode = Control.FOCUS_NONE
+	_lang.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_lang.add_theme_font_size_override("font_size", 16)
+	_style_button(_lang, Color(0.16, 0.22, 0.18), Color(0.55, 0.62, 0.5))
+	_lang.pressed.connect(func() -> void: Locale.toggle())
+	add_child(_lang)
+
+func _apply_copy() -> void:
+	_wood.tooltip_text = Locale.text("tip.wood")
+	_gold.tooltip_text = Locale.text("tip.gold")
+	_pop.tooltip_text = Locale.text("tip.people")
+	_beds.tooltip_text = Locale.text("tip.beds")
+	_walls.tooltip_text = Locale.text("tip.walls")
+	_wave.tooltip_text = Locale.text("tip.wave")
+	_core.tooltip_text = Locale.text("tip.refugees")
+	_start.tooltip_text = Locale.text("tip.start")
+	_leave.tooltip_text = Locale.text("tip.leave")
+	_zoom_out.tooltip_text = Locale.text("tip.zoom_out")
+	_zoom_in.tooltip_text = Locale.text("tip.zoom_in")
+	_lang.text = Locale.text("lang.switch")
+	_lang.tooltip_text = Locale.text("tip.lang")
+	if _again:
+		_again.tooltip_text = Locale.text("tip.again")
+	if _flash_t <= 0.0:
+		_hint.text = Locale.text("hint.idle")
+
 func _fill_ground() -> void:
 	_clear_list()
-	_list.add_child(_title("建造  /  Build"))
+	_list.add_child(_title(Locale.text("panel.build")))
 	var options := [
-		[Building.Kind.WALL, "木墙", "Wall", "挡路"],
-		[Building.Kind.SPEAR, "矛塔", "Spear", "穿刺"],
-		[Building.Kind.FIRE, "火塔", "Fire", "溅射"],
-		[Building.Kind.HOUSE, "房屋", "House", "床位"],
-		[Building.Kind.FARM, "农场", "Farm", "产木材"],
-		[Building.Kind.WORKSHOP, "工坊", "Workshop", "强化塔"],
+		[Building.Kind.WALL, "build.wall", "role.wall"],
+		[Building.Kind.SPEAR, "build.spear", "role.spear"],
+		[Building.Kind.FIRE, "build.fire", "role.fire"],
+		[Building.Kind.HOUSE, "build.house", "role.house"],
+		[Building.Kind.FARM, "build.farm", "role.farm"],
+		[Building.Kind.WORKSHOP, "build.workshop", "role.workshop"],
 	]
 	for item in options:
 		var kind := int(item[0])
 		var stats: Dictionary = Building.STATS[kind]
 		var cost := ""
 		if int(stats.wood) > 0:
-			cost += "%d木 " % int(stats.wood)
+			cost += Locale.format("cost.wood", [int(stats.wood)])
 		if int(stats.gold) > 0:
-			cost += "%d金" % int(stats.gold)
+			if cost != "":
+				cost += "  "
+			cost += Locale.format("cost.gold", [int(stats.gold)])
 		var btn := Button.new()
 		btn.theme = _theme
 		btn.custom_minimum_size = Vector2(0, 72)
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.add_theme_font_size_override("font_size", 16)
-		btn.text = "%s  %s\n%s  %s" % [item[1], item[2], cost, item[3]]
+		btn.text = "%s\n%s  %s" % [Locale.text(str(item[1])), cost, Locale.text(str(item[2]))]
 		_style_button(btn, Color(0.24, 0.16, 0.09), Color(0.62, 0.46, 0.22))
 		btn.pressed.connect(_emit_place.bind(kind))
 		_list.add_child(btn)
@@ -341,31 +399,30 @@ func _fill_ground() -> void:
 func _fill_building(building: Building) -> void:
 	_clear_list()
 	var names := {
-		Building.Kind.WALL: "木墙  Wall",
-		Building.Kind.SPEAR: "矛塔  Spear",
-		Building.Kind.FIRE: "火塔  Fire",
-		Building.Kind.HOUSE: "房屋  House",
-		Building.Kind.FARM: "农场  Farm",
-		Building.Kind.WORKSHOP: "工坊  Workshop",
+		Building.Kind.WALL: "build.wall",
+		Building.Kind.SPEAR: "build.spear",
+		Building.Kind.FIRE: "build.fire",
+		Building.Kind.HOUSE: "build.house",
+		Building.Kind.FARM: "build.farm",
+		Building.Kind.WORKSHOP: "build.workshop",
 	}
-	_list.add_child(_title(str(names.get(building.kind, "建筑"))))
+	_list.add_child(_title(Locale.text(str(names.get(building.kind, "panel.building")))))
 	var info := Label.new()
 	info.theme = _theme
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.add_theme_font_size_override("font_size", 15)
 	info.add_theme_color_override("font_color", Color(0.9, 0.88, 0.75))
-	var staffed := "有人值守" if building.has_staff() else "没有人"
 	if building.is_functional():
-		info.text = "%s。先点村民，再点这里来派人。\n%s. Tap a villager, then tap here to assign." % [staffed, "Staffed" if building.has_staff() else "Empty"]
+		info.text = Locale.text("panel.staffed" if building.has_staff() else "panel.empty")
 	else:
-		info.text = "木墙不用派人。\nWalls do not take a villager."
+		info.text = Locale.text("panel.wall_info")
 	_list.add_child(info)
 	var sell := Button.new()
 	sell.theme = _theme
 	sell.custom_minimum_size = Vector2(0, 64)
 	sell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sell.add_theme_font_size_override("font_size", 18)
-	sell.text = "出售  /  Sell"
+	sell.text = Locale.text("panel.sell")
 	_style_button(sell, Color(0.34, 0.18, 0.14), Color(0.8, 0.45, 0.32))
 	sell.pressed.connect(func() -> void: sell_pressed.emit())
 	_list.add_child(sell)
@@ -394,7 +451,7 @@ func _close_button() -> Button:
 	btn.custom_minimum_size = Vector2(0, 56)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.add_theme_font_size_override("font_size", 18)
-	btn.text = "关闭  /  Close"
+	btn.text = Locale.text("panel.close")
 	_style_button(btn, Color(0.16, 0.18, 0.16), Color(0.45, 0.48, 0.42))
 	btn.pressed.connect(close_panel)
 	return btn
