@@ -66,6 +66,9 @@ var font: Font
 
 var buildings := {}
 var scenery := {}
+var _prop_cache: Array = []
+var _prop_ready := false
+var _center_block := {}
 var spawn_queue: Array[String] = []
 var spawn_cd := 0.0
 var spawn_gap := 0.8
@@ -162,6 +165,7 @@ func _process(delta: float) -> void:
 	if _selftest and Time.get_ticks_msec() - _selftest_t0 > 180000:
 		print("SELFTEST_TIMEOUT people=", _alive_villagers().size(), " wave=", wave_number)
 		get_tree().quit(1)
+	_separate_walkers()
 	_apply_iso_sort()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -321,6 +325,7 @@ func _paint_map() -> void:
 				"res://assets/village/tree_c.png",
 			]
 			_place_prop(cell, load(trees[(x + y) % trees.size()]), "tree")
+	_invalidate_props()
 
 func _place_starter() -> void:
 	var plan := [
@@ -923,6 +928,7 @@ func _place_free(kind: int, cell: Vector2i) -> void:
 	actors.add_child(building)
 	buildings[cell] = building
 	inspected = building
+	_invalidate_props()
 	_notify_zombies()
 
 func _remove_building(cell: Vector2i, refund: bool) -> void:
@@ -941,6 +947,7 @@ func _remove_building(cell: Vector2i, refund: bool) -> void:
 		gold += rg
 		_popup(building.global_position, Locale.format("popup.sold", [rw, rg]), Color(0.85, 0.95, 0.7))
 	buildings.erase(cell)
+	_invalidate_props()
 	if inspected == building:
 		inspected = null
 	building.queue_free()
@@ -987,6 +994,8 @@ func _infect(v: Villager) -> void:
 	if selected_villager == v:
 		selected_villager = null
 	var at := v.global_position
+	v.visible = false
+	v.remove_from_group("iso")
 	v.queue_free()
 	_popup(at + Vector2(0, -30), Locale.text("popup.infected"), Color(0.65, 1, 0.45))
 	_spawn_zombie("normal", true, at)
@@ -1234,13 +1243,13 @@ func _apply_iso_sort() -> void:
 		vols.append(node.get_iso_volume())
 	DepthSolver.apply(vols)
 
-func can_step(from_pos: Vector2, to_pos: Vector2) -> bool:
+func can_step(from_pos: Vector2, to_pos: Vector2, ignore: Node = null) -> bool:
 	var to_cell := world_to_cell(to_pos)
 	if not in_bounds(to_cell):
 		return false
-	if not _blocked(to_cell):
-		return true
-	return to_cell == world_to_cell(from_pos)
+	if _blocked(to_cell) and to_cell != world_to_cell(from_pos):
+		return false
+	return _oval_clear(to_pos, ignore, null)
 
 func route_cells(start: Vector2i, goal: Vector2i) -> Array[Vector2i]:
 	var found: Dictionary = _astar(start, goal)
@@ -1252,7 +1261,255 @@ func _blocked(cell: Vector2i) -> bool:
 		return true
 	if scenery.has(cell) or buildings.has(cell):
 		return true
+	_ensure_props()
+	return _center_block.has(cell)
+
+func _invalidate_props() -> void:
+	_prop_ready = false
+	_prop_cache = []
+	_center_block = {}
+
+func _ensure_props() -> void:
+	if _prop_ready:
+		return
+	_prop_cache = []
+	_center_block = {}
+	for node in get_tree().get_nodes_in_group("iso"):
+		if node is Villager or node is Zombie:
+			continue
+		if node.has_method("get_iso_volume"):
+			_prop_cache.append(node.get_iso_volume())
+	for y in ROWS:
+		for x in COLS:
+			var cell := Vector2i(x, y)
+			if scenery.has(cell) or buildings.has(cell):
+				continue
+			var mine := IsoVolume.from_feet(cell_center(cell))
+			for prop in _prop_cache:
+				if mine.overlaps(prop):
+					_center_block[cell] = true
+					break
+	_prop_ready = true
+
+func _oval_clear(world: Vector2, ignore: Node, also: Node) -> bool:
+	var mine := IsoVolume.from_feet(world)
+	_ensure_props()
+	for prop in _prop_cache:
+		if mine.overlaps(prop):
+			return false
+	for node in get_tree().get_nodes_in_group("villagers"):
+		if not _walker_counts(node, ignore, also):
+			continue
+		if mine.overlaps((node as Villager).get_iso_volume()):
+			return false
+	for node in get_tree().get_nodes_in_group("zombies"):
+		if not _walker_counts(node, ignore, also):
+			continue
+		var zombie := node as Zombie
+		if mine.overlaps(zombie.get_iso_volume()):
+			return false
+	return true
+
+func _walker_counts(node: Node, ignore: Node, also: Node) -> bool:
+	if node == ignore or node == also:
+		return false
+	if not is_instance_valid(node) or not (node is CanvasItem):
+		return false
+	return (node as CanvasItem).visible
+
+func _separate_walkers() -> void:
+	var bodies: Array[Node2D] = []
+	for node in get_tree().get_nodes_in_group("villagers"):
+		if _walker_counts(node, null, null):
+			bodies.append(node)
+	for node in get_tree().get_nodes_in_group("zombies"):
+		var zombie := node as Zombie
+		if zombie != null and _walker_counts(node, null, null):
+			bodies.append(zombie)
+	_eject_from_props(bodies)
+	if bodies.size() < 2:
+		return
+	var x_lim := 0.33 * IsoVolume.TILE
+	var y_lim := 0.30 * IsoVolume.TILE
+	for _pass in 8:
+		var moved := false
+		for i in bodies.size():
+			if not is_instance_valid(bodies[i]):
+				continue
+			for j in range(i + 1, bodies.size()):
+				if not is_instance_valid(bodies[j]):
+					continue
+				var delta := bodies[i].global_position - bodies[j].global_position
+				if absf(delta.x) >= x_lim or absf(delta.y) >= y_lim:
+					continue
+				var va := IsoVolume.from_feet(bodies[i].global_position)
+				var vb := IsoVolume.from_feet(bodies[j].global_position)
+				if not va.overlaps(vb):
+					continue
+				if _push_apart(bodies[i], bodies[j]):
+					moved = true
+		if not moved:
+			break
+	for i in bodies.size():
+		if not is_instance_valid(bodies[i]):
+			continue
+		for j in range(i + 1, bodies.size()):
+			if not is_instance_valid(bodies[j]):
+				continue
+			var delta := bodies[i].global_position - bodies[j].global_position
+			if absf(delta.x) >= x_lim or absf(delta.y) >= y_lim:
+				continue
+			if not IsoVolume.from_feet(bodies[i].global_position).overlaps(IsoVolume.from_feet(bodies[j].global_position)):
+				continue
+			_shove_free(bodies[j], bodies)
+
+func _push_apart(a: Node2D, b: Node2D) -> bool:
+	var delta := a.global_position - b.global_position
+	if delta.length_squared() < 0.25:
+		delta = Vector2(0, -1)
+	var iso := delta / IsoVolume.TILE
+	var need := IsoVolume.walker_separation(iso) + 0.006
+	var have := iso.length()
+	var pen := need - have
+	if pen < 0.006:
+		pen = 0.006
+	var dir := iso / maxf(have, 0.0001)
+	if _slide_iso(a, dir * pen):
+		return true
+	if _slide_iso(b, -dir * pen):
+		return true
+	var room_a := _room_iso(a, dir, pen)
+	var room_b := _room_iso(b, -dir, pen)
+	if room_a + room_b >= pen - 0.0001:
+		_slide_iso(a, dir * room_a)
+		_slide_iso(b, -dir * (pen - room_a))
+		return true
+	var dx := absf(iso.x)
+	var dy := absf(iso.y)
+	var need_x := 0.326 - dx
+	var need_y := 0.296 - dy
+	if need_x < need_y:
+		if _separate_axis(a, b, Vector2(1, 0), need_x):
+			return true
+		return _separate_axis(a, b, Vector2(0, 1), need_y)
+	if _separate_axis(a, b, Vector2(0, 1), need_y):
+		return true
+	return _separate_axis(a, b, Vector2(1, 0), need_x)
+
+func _separate_axis(a: Node2D, b: Node2D, axis: Vector2, gap: float) -> bool:
+	if gap <= 0.001:
+		return true
+	if _slide_iso(a, axis * gap) or _slide_iso(b, -axis * gap):
+		return true
+	if _slide_iso(a, -axis * gap) or _slide_iso(b, axis * gap):
+		return true
+	var room_a := _room_iso(a, axis, gap)
+	var room_b := _room_iso(b, -axis, gap)
+	if room_a + room_b >= gap - 0.0001:
+		_slide_iso(a, axis * room_a)
+		_slide_iso(b, -axis * (gap - room_a))
+		return true
+	room_a = _room_iso(a, -axis, gap)
+	room_b = _room_iso(b, axis, gap)
+	if room_a + room_b >= gap - 0.0001:
+		_slide_iso(a, -axis * room_a)
+		_slide_iso(b, axis * (gap - room_a))
+		return true
 	return false
+
+func _slide_iso(body: Node2D, iso_delta: Vector2) -> bool:
+	if iso_delta.length_squared() < 0.00000001:
+		return true
+	var world := body.global_position + iso_delta * IsoVolume.TILE
+	if not _feet_clear(world):
+		return false
+	body.global_position = world
+	return true
+
+func _room_iso(body: Node2D, dir: Vector2, max_d: float) -> float:
+	var lo := 0.0
+	var hi := max_d
+	for _k in 6:
+		var mid := (lo + hi) * 0.5
+		if _feet_clear(body.global_position + dir * mid * IsoVolume.TILE):
+			lo = mid
+		else:
+			hi = mid
+	return lo
+
+func _eject_from_props(bodies: Array[Node2D]) -> void:
+	var radii: Array[float] = [0.08, 0.16, 0.28, 0.42, 0.6, 0.85, 1.2, 1.7]
+	var dirs: Array[Vector2] = [
+		Vector2(0, -1), Vector2(0, 1), Vector2(1, 0), Vector2(-1, 0),
+		Vector2(1, -1), Vector2(-1, -1), Vector2(1, 1), Vector2(-1, 1),
+	]
+	for body in bodies:
+		if not is_instance_valid(body) or _prop_clear(body.global_position):
+			continue
+		var origin := body.global_position
+		if _place_clear(body, origin, bodies, radii, dirs, true):
+			continue
+		_place_clear(body, origin, bodies, radii, dirs, false)
+
+func _place_clear(body: Node2D, origin: Vector2, bodies: Array[Node2D], radii: Array[float], dirs: Array[Vector2], check_bodies: bool) -> bool:
+	for radius in radii:
+		for dir in dirs:
+			var world := origin + dir.normalized() * radius * IsoVolume.TILE
+			if not _prop_clear(world):
+				continue
+			if check_bodies and not _clear_of_bodies(body, world, bodies):
+				continue
+			body.global_position = world
+			return true
+	return false
+
+func _prop_clear(world: Vector2) -> bool:
+	var cell := world_to_cell(world)
+	if not in_bounds(cell):
+		return false
+	var mine := IsoVolume.from_feet(world)
+	_ensure_props()
+	for prop in _prop_cache:
+		if mine.overlaps(prop):
+			return false
+	return true
+
+func _feet_clear(world: Vector2) -> bool:
+	var cell := world_to_cell(world)
+	if not in_bounds(cell) or _blocked(cell):
+		return false
+	var mine := IsoVolume.from_feet(world)
+	_ensure_props()
+	for prop in _prop_cache:
+		if mine.overlaps(prop):
+			return false
+	return true
+
+func _shove_free(body: Node2D, bodies: Array[Node2D]) -> void:
+	var origin := body.global_position
+	var radii: Array[float] = [0.36, 0.55, 0.8, 1.15, 1.6, 2.2]
+	var dirs: Array[Vector2] = [
+		Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1),
+		Vector2(1, 1), Vector2(1, -1), Vector2(-1, 1), Vector2(-1, -1),
+	]
+	for radius in radii:
+		for dir in dirs:
+			var world := origin + dir.normalized() * radius * IsoVolume.TILE
+			if not _feet_clear(world):
+				continue
+			if not _clear_of_bodies(body, world, bodies):
+				continue
+			body.global_position = world
+			return
+
+func _clear_of_bodies(body: Node2D, world: Vector2, bodies: Array[Node2D]) -> bool:
+	var mine := IsoVolume.from_feet(world)
+	for other in bodies:
+		if other == body or not is_instance_valid(other):
+			continue
+		if mine.overlaps(IsoVolume.from_feet(other.global_position)):
+			return false
+	return true
 
 func _nearest_open_villager_cell(from: Vector2i) -> Vector2i:
 	var best := Vector2i(-1, -1)
@@ -1636,6 +1893,7 @@ func _move_shot() -> void:
 	var people := _alive_villagers()
 	for v in people:
 		v.anchored = true
+		v.visible = false
 	var house_cell := Vector2i(8, 14)
 	var from_cell := Vector2i(8, 15)
 	var goal_cell := Vector2i(8, 13)
@@ -1662,6 +1920,7 @@ func _move_shot() -> void:
 				print("CLIP ", path[i], "->", path[i + 1], " via ", stepped)
 	print("MOVE_STEP into_house=", into, " out=", out, " tree=", into_tree, " rock=", into_rock, " path=", path, " hits=", path_hits, " clip=", clip)
 	var walker: Villager = people[0]
+	walker.visible = true
 	walker.anchored = false
 	walker.job = null
 	walker.global_position = cell_center(from_cell)

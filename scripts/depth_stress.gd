@@ -12,6 +12,7 @@ var ground: TileMapLayer
 var camera: Camera2D
 var walkers: Array[Villager] = []
 var _bases: Array[Vector2] = []
+var _amps: Array[float] = []
 var _n := 100
 var _only := ""
 var _check := false
@@ -109,6 +110,8 @@ func _run_check() -> void:
 	var bad_order := 0
 	var bad_pairs := 0
 	var bad_short := 0
+	var bad_overlap := 0
+	var bad_cycle := 0
 	var frames := 0
 	for frame in CHECK_MOVE + CHECK_HOLD:
 		var pose := frame if frame < CHECK_MOVE else CHECK_MOVE
@@ -118,7 +121,15 @@ func _run_check() -> void:
 			bad_short += DepthSolver.shortcut_mismatches(vols)
 		var brute := _brute_pairs(vols)
 		var left := DepthSolver.order_reference(vols)
+		if DepthSolver.last_cycle:
+			bad_cycle += 1
 		var right := DepthSolver.order_two_phase(vols)
+		if DepthSolver.last_cycle:
+			bad_cycle += 1
+		if DepthSolver.count_overlaps(vols) > 0:
+			bad_overlap += 1
+			if bad_overlap == 1:
+				print("OVERLAP frame ", frame, " count ", DepthSolver.count_overlaps(vols))
 		if brute != DepthSolver.last_candidates:
 			bad_pairs += 1
 			if bad_pairs == 1:
@@ -128,8 +139,8 @@ func _run_check() -> void:
 			if bad_order == 1:
 				print("ORDER_MISMATCH frame ", frame, " ref ", left.slice(0, 12), " two ", right.slice(0, 12))
 		frames += 1
-	var ok := bad_order == 0 and bad_pairs == 0 and bad_short == 0
-	print("ORDER_OK %s mismatches %d shortcut %d pairs %d frames %d n %d" % [ok, bad_order, bad_short, bad_pairs, frames, _gather().size()])
+	var ok := bad_order == 0 and bad_pairs == 0 and bad_short == 0 and bad_overlap == 0 and bad_cycle == 0
+	print("ORDER_OK %s mismatches %d shortcut %d pairs %d overlap %d cycle %d frames %d n %d" % [ok, bad_order, bad_short, bad_pairs, bad_overlap, bad_cycle, frames, _gather().size()])
 	get_tree().quit(0 if ok else 1)
 
 func _solver_is_ref() -> bool:
@@ -207,8 +218,8 @@ func _pose(frame: int) -> void:
 func _at(i: int, frame: int) -> Vector2:
 	var base: Vector2 = _bases[i]
 	var t := float(frame) * 0.085 + float(i) * 0.37
-	var amp := 36.0 + float(i % 5) * 8.0
-	return base + Vector2(cos(t) * amp, sin(t * 0.73 + float(i)) * amp * 0.85)
+	var amp := _amps[i] if i < _amps.size() else 0.0
+	return base + Vector2(cos(t) * amp, sin(t) * amp * 0.85)
 
 func _gather() -> Array:
 	var vols: Array = []
@@ -314,10 +325,13 @@ func _build_people() -> void:
 		load("res://assets/people/man_blue.png"),
 		load("res://assets/people/man_old.png"),
 	]
+	var props: Array = []
+	for node in get_tree().get_nodes_in_group("iso"):
+		if node.has_method("get_iso_volume"):
+			props.append(node.get_iso_volume())
+	var slots := _legal_slots(props, _n)
 	for i in _n:
-		var col := 1 + (i % (COLS - 2))
-		var row := 1 + int(i / (COLS - 2)) % (ROWS - 2)
-		var base := ground.map_to_local(Vector2i(col, row))
+		var base: Vector2 = slots[i % maxi(slots.size(), 1)]
 		_bases.append(base)
 		var v := Villager.new()
 		v.position = base
@@ -326,6 +340,61 @@ func _build_people() -> void:
 		add_child(v)
 		_quiet(v)
 		walkers.append(v)
+	for i in _n:
+		_amps.append(_fit_amp(i, props))
+
+func _legal_slots(props: Array, n: int) -> Array[Vector2]:
+	var chosen: Array[Vector2] = []
+	for step in [1.05, 0.9, 0.78, 0.66, 0.56, 0.48, 0.42, 0.36]:
+		var found: Array[Vector2] = []
+		var x := 0.3
+		while x < float(COLS) - 0.3:
+			var y := 0.3
+			while y < float(ROWS) - 0.3:
+				var vol := IsoVolume.from_feet(IsoVolume.iso_to_world(Vector2(x, y)))
+				var bad := false
+				for prop in props:
+					if vol.overlaps(prop):
+						bad = true
+						break
+				if not bad:
+					found.append(IsoVolume.iso_to_world(Vector2(x, y)))
+				y += float(step)
+			x += float(step)
+		if found.size() >= n:
+			print("STRESS_GRID step ", step, " slots ", found.size())
+			return found
+		chosen = found
+	print("STRESS_GRID fallback slots ", chosen.size())
+	return chosen
+
+func _fit_amp(i: int, props: Array) -> float:
+	var here := IsoVolume.world_to_iso(_bases[i])
+	var nearest := 4.0
+	for j in _bases.size():
+		if j == i:
+			continue
+		nearest = minf(nearest, here.distance_to(IsoVolume.world_to_iso(_bases[j])))
+	var slack := maxf(nearest - IsoVolume.walker_separation(Vector2.RIGHT), 0.0)
+	var amp := slack * 0.3 * IsoVolume.TILE
+	var guard := amp
+	for _try in 6:
+		var ok := true
+		var reach := guard * 1.15
+		for k in 24:
+			var ang := TAU * float(k) / 24.0
+			var iso := here + Vector2(cos(ang) * reach, sin(ang) * reach * 0.85) / IsoVolume.TILE
+			var vol := IsoVolume.from_feet(IsoVolume.iso_to_world(iso))
+			for prop in props:
+				if vol.overlaps(prop):
+					ok = false
+					break
+			if not ok:
+				break
+		if ok:
+			return guard
+		guard *= 0.55
+	return 0.0
 
 func _quiet(node: Node) -> void:
 	node.set_process(false)
