@@ -8,6 +8,7 @@ signal zoom_out_pressed
 signal place_requested(kind: int)
 signal sell_pressed
 signal staff_selected
+signal lab_pressed
 
 var _font: Font
 var _theme: Theme
@@ -37,6 +38,7 @@ var _end_title: Label
 var _end_body: Label
 var _again: Button
 var _lang: Button
+var _lab: Button
 var _top_box: VBoxContainer
 var _won := false
 
@@ -58,6 +60,7 @@ func _ready() -> void:
 	_build_panel()
 	_build_end()
 	_build_lang()
+	_build_lab()
 	Locale.changed.connect(_on_language)
 	_on_language()
 	get_viewport().size_changed.connect(_layout)
@@ -174,6 +177,11 @@ func _layout() -> void:
 	_lang.offset_left = -78
 	_lang.offset_top = 12
 	_lang.offset_bottom = 52
+	var lab_top := top_h + 8.0
+	_lab.offset_right = -10
+	_lab.offset_left = -118
+	_lab.offset_top = lab_top
+	_lab.offset_bottom = lab_top + 40.0
 	var icon := 64.0
 	var gap := 10.0
 	_place_icon(_start, 12.0, bot_h + gap + icon, icon)
@@ -185,7 +193,7 @@ func _layout() -> void:
 	_place_icon(_zoom_in, zoom_x + icon + gap, bot_h + gap + icon, icon)
 	var panel_w := minf(300.0, maxf(168.0, view.x * (0.46 if _narrow else 0.28)))
 	_panel.offset_left = -panel_w
-	_panel.offset_top = top_h + 8.0
+	_panel.offset_top = lab_top + 48.0
 	_panel.offset_bottom = -(bot_h + 8.0)
 
 func _place_icon(button: Button, left: float, above_bottom: float, icon: float) -> void:
@@ -345,6 +353,17 @@ func _build_lang() -> void:
 	_lang.pressed.connect(func() -> void: Locale.toggle())
 	add_child(_lang)
 
+func _build_lab() -> void:
+	_lab = Button.new()
+	_lab.name = "LabButton"
+	_lab.theme = _theme
+	_lab.focus_mode = Control.FOCUS_NONE
+	_lab.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_lab.add_theme_font_size_override("font_size", 16)
+	_style_button(_lab, Color(0.16, 0.22, 0.18), Color(0.55, 0.62, 0.5))
+	_lab.pressed.connect(func() -> void: lab_pressed.emit())
+	add_child(_lab)
+
 func _apply_copy() -> void:
 	_wood.tooltip_text = Locale.text("tip.wood")
 	_gold.tooltip_text = Locale.text("tip.gold")
@@ -359,6 +378,8 @@ func _apply_copy() -> void:
 	_zoom_in.tooltip_text = Locale.text("tip.zoom_in")
 	_lang.text = Locale.text("lang.switch")
 	_lang.tooltip_text = Locale.text("tip.lang")
+	_lab.text = Locale.text("lab.open")
+	_lab.tooltip_text = Locale.text("tip.lab")
 	if _again:
 		_again.tooltip_text = Locale.text("tip.again")
 	if _flash_t <= 0.0:

@@ -53,20 +53,6 @@ var always_bar := true
 var cooldown := 0.0
 var _stats: Dictionary = {}
 var staff: Node2D = null
-var _sort_bias := 49.0
-
-static func front_bias(tex: Texture2D) -> float:
-	var bias := 49.0
-	if tex == null:
-		return bias
-	var img := tex.get_image()
-	if img == null or img.is_empty():
-		return bias
-	for y in range(img.get_height() - 1, -1, -1):
-		for x in img.get_width():
-			if img.get_pixel(x, y).a > 0.08:
-				return float(y) + SPRITE_OFF.y
-	return bias
 
 func has_staff() -> bool:
 	return staff != null and is_instance_valid(staff) and not bool(staff.get("infected")) and not bool(staff.get("leaving"))
@@ -81,7 +67,6 @@ func setup(p_kind: Kind, p_cell: Vector2i) -> void:
 	max_hp = int(_stats.hp)
 	hp = max_hp
 	var tex: Texture2D = load(_stats.tex)
-	_sort_bias = front_bias(tex)
 	var sprite := Sprite2D.new()
 	sprite.texture = tex
 	sprite.centered = false
@@ -101,14 +86,21 @@ func setup(p_kind: Kind, p_cell: Vector2i) -> void:
 	bar.z_index = 0
 	bar.y_off = -148.0
 	add_child(bar)
+	add_to_group("iso")
+
+func iso_points() -> PackedVector2Array:
+	return IsoSort.footprint(global_position)
+
+func iso_rect() -> Rect2:
+	for child in get_children():
+		if child is Sprite2D:
+			return IsoSort.sprite_rect(child)
+	return Rect2(global_position, Vector2.ZERO)
 
 func is_defense() -> bool:
 	return bool(_stats.defense)
 
 func _process(delta: float) -> void:
-	var game := _game()
-	if game:
-		z_index = game.depth_z(global_position.y + _sort_bias)
 	queue_redraw()
 	if float(_stats.range) <= 0.0 or not has_staff():
 		return

@@ -31,6 +31,7 @@ func setup(p_tex: Texture2D, p_sex: String, p_speed: float) -> void:
 
 func _ready() -> void:
 	add_to_group("villagers")
+	add_to_group("iso")
 	_atlas = AtlasTexture.new()
 	_atlas.atlas = _tex
 	_atlas.region = LpcFacing.region(0, _facing)
@@ -51,10 +52,11 @@ func face_texture() -> AtlasTexture:
 	atlas.region = LpcFacing.region(0, 2)
 	return atlas
 
-func _apply_depth() -> void:
-	var game := _game()
-	if game:
-		z_index = game.depth_z(global_position.y)
+func iso_points() -> PackedVector2Array:
+	return PackedVector2Array([global_position])
+
+func iso_rect() -> Rect2:
+	return IsoSort.sprite_rect(_sprite)
 
 func _process(delta: float) -> void:
 	if job != null and is_instance_valid(job) and not infected and not leaving:
@@ -65,11 +67,9 @@ func _process(delta: float) -> void:
 		_path_i = 0
 		return
 	if anchored:
-		_apply_depth()
 		queue_redraw()
 		return
 	if infected or leaving:
-		_apply_depth()
 		queue_redraw()
 		if leaving:
 			_leave(delta)
@@ -100,7 +100,6 @@ func _process(delta: float) -> void:
 	if _retarget <= 0.0:
 		_pick_goal(game)
 	_walk(delta, game)
-	_apply_depth()
 	queue_redraw()
 
 func _pick_goal(game: Node) -> void:

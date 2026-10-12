@@ -48,6 +48,7 @@ func mark_fresh() -> void:
 
 func _ready() -> void:
 	add_to_group("zombies")
+	add_to_group("iso")
 	_atlas = AtlasTexture.new()
 	_atlas.atlas = load("res://assets/enemies/zombie_walk.png")
 	_atlas.region = LpcFacing.region(0, _facing)
@@ -100,13 +101,13 @@ func _die() -> void:
 		if game:
 			game.on_zombie_killed(self)
 
-func _apply_depth() -> void:
-	var game := _game()
-	if game:
-		z_index = game.depth_z(global_position.y)
+func iso_points() -> PackedVector2Array:
+	return PackedVector2Array([global_position])
+
+func iso_rect() -> Rect2:
+	return IsoSort.sprite_rect(_anim)
 
 func _process(delta: float) -> void:
-	_apply_depth()
 	queue_redraw()
 	fresh = maxf(fresh - delta, 0.0)
 	if dying:
