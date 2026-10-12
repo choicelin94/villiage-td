@@ -10,17 +10,17 @@ An isometric tower defense game on a map about four times the previous area. Zom
 
 ## 在线试玩 / Play in the browser
 
-单线程网页导出在 [`docs/`](docs/)（关闭了线程，GitHub Pages 不需要 COOP/COEP）。界面文字用 Noto Sans SC（OFL），网页版不再依赖系统字体。第一次打开大约要下 47 MB（引擎加字体），请等加载条走完。手机用双指缩放、单指拖动。电脑在开始和离开图标旁边有 `+` / `-`。第一次打开时，镜头对准地图正中的一半（把 20×20 看成 4×4 块，对准中间 2×2 块），手机比电脑更近一些。
+单线程网页导出在 [`docs/`](docs/)（关闭了线程，GitHub Pages 不需要 COOP/COEP）。界面默认是简体中文，右上角的「中文」按钮可以改成英文，游戏里同一处不会同时显示两种语言。文字用 Noto Sans SC（OFL）。第一次打开大约要下 47 MB（引擎加字体），请等加载条走完。手机用双指缩放、单指拖动。电脑在开始和离开图标旁边有 `+` / `-`。第一次打开时，镜头对准地图正中的一半（把 20×20 看成 4×4 块，对准中间 2×2 块），手机比电脑更近一些。
 
-The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pages does not need COOP/COEP headers). UI text uses Noto Sans SC (OFL), so the web build does not depend on a system font. The first visit downloads about 47 MB (engine plus font). Wait for the loading bar. Phones pinch to zoom and drag to pan. A computer also has `+` and `-` next to the start and leave icons. The first view centers the middle half of the map (the center 2×2 of a 4×4 split of the 20×20 grid). A phone starts closer than a computer.
+The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pages does not need COOP/COEP headers). The game starts in Simplified Chinese. The button at the top right switches the whole interface to English, and each label shows one language at a time. Text uses Noto Sans SC (OFL). The first visit downloads about 47 MB (engine plus font). Wait for the loading bar. Phones pinch to zoom and drag to pan. A computer also has `+` and `-` next to the start and leave icons. The first view centers the middle half of the map (the center 2×2 of a 4×4 split of the 20×20 grid). A phone starts closer than a computer.
 
 发布地址 / public URL, after Pages is turned on:
 
 **https://choicelin94.github.io/villiage-td/**
 
-线上页面来自 `main` 的 `/docs`。这一支合并之后，线上中文才会换成新字体。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/cjk-ui-font-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
+线上页面来自 `main` 的 `/docs`。这一支合并之后，语言切换才会出现在线上。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/ui-language-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
 
-The live site serves `/docs` from `main`. Chinese on that site updates after this branch merges. To preview it first, set **Settings → Pages → Deploy from a branch** to `cursor/cjk-ui-font-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
+The live site serves `/docs` from `main`. The language switch appears there after this branch merges. To preview it first, set **Settings → Pages → Deploy from a branch** to `cursor/ui-language-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
 
 本地先看网页包 / preview the export locally:
 
@@ -65,11 +65,12 @@ Drag with one finger to pan. Pinch or use the mouse wheel to zoom. On a computer
 | 单指拖动，或鼠标拖动 | 平移地图 |
 | 双指张开捏合，或滚轮 | 缩放地图 |
 | 电脑左下角 `+` / `-` | 以画面中心放大或缩小。手机上没有这两个按钮 |
+| 右上角「中文」或 `EN` | 只切换界面语言。选择会记住 |
 | 左下三角图标，或 `Space` / `Enter` | 开始下一波 |
 | 左下出门图标，或 `R`，或结束画面的图标 | 离开这一局并重开 |
 | `Esc` | 关掉侧栏并取消选中的村民 |
 
-Tap a villager, then tap a functional building to assign them. One building keeps one villager. Tap empty ground to open the build list. Tap an existing building, with nobody selected, to inspect or sell it. Drag to pan and pinch to zoom. On a computer, `+` and `-` zoom toward the middle of the screen. The triangle starts the next wave. The door icon leaves and restarts. `Esc` closes the panel.
+Tap a villager, then tap a functional building to assign them. One building keeps one villager. Tap empty ground to open the build list. Tap an existing building, with nobody selected, to inspect or sell it. Drag to pan and pinch to zoom. On a computer, `+` and `-` zoom toward the middle of the screen. The triangle starts the next wave. The door icon leaves and restarts. `Esc` closes the panel. The top-right button shows the current language, 中文 or EN, and switches the whole interface. The choice is saved.
 
 ### 村民 / Villagers
 

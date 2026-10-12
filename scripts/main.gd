@@ -137,6 +137,8 @@ func _ready() -> void:
 		_ui_shot()
 	elif OS.get_environment("TD_FACE") == "1":
 		_face_check()
+	elif OS.get_environment("TD_LANG") == "1":
+		_lang_shot()
 	elif OS.get_environment("TD_SHOT") == "1":
 		_opening_shot()
 
@@ -669,7 +671,7 @@ func on_zombie_killed(z: Zombie) -> void:
 		return
 	wood += z.reward_wood
 	gold += z.reward_gold
-	_popup(z.global_position, "+%d金" % z.reward_gold, Color(1, 0.86, 0.3))
+	_popup(z.global_position, Locale.format("popup.gold", [z.reward_gold]), Color(1, 0.86, 0.3))
 	_refresh_hud()
 
 func tower_bonus() -> float:
@@ -690,7 +692,7 @@ func _try_start_wave() -> void:
 	spawn_gap = float(spec.gap)
 	spawn_cd = 0.35
 	spawn_queue = _compose_wave(spec)
-	hud.flash("第 %d 波来袭  /  Wave %d" % [wave_number, wave_number])
+	hud.flash(Locale.format("flash.wave_in", [wave_number]))
 	_refresh_hud()
 
 func _compose_wave(spec: Dictionary) -> Array[String]:
@@ -743,7 +745,7 @@ func _on_wave_cleared() -> void:
 		return
 	phase = "prep"
 	_spawn_refugees()
-	hud.flash("第 %d 波已清除。难民到来，请在 %.0f 秒内收留或派工。  /  Wave %d cleared. Refugees are waiting." % [wave_number, CLAIM_TIME, wave_number])
+	hud.flash(Locale.format("flash.wave_clear", [wave_number, CLAIM_TIME]))
 	_refresh_hud()
 	if _selftest:
 		_try_start_wave()
@@ -788,7 +790,7 @@ func _left_click(world: Vector2) -> void:
 		selected_villager = person
 		person.selected = true
 		inspected = null
-		hud.flash("再点房屋、农场、工坊或塔来派人。  /  Now tap a house, farm, workshop, or tower.")
+		hud.flash(Locale.text("flash.assign_next"))
 		return
 	if building != null:
 		_clear_villager_selection()
@@ -800,7 +802,7 @@ func _left_click(world: Vector2) -> void:
 	inspected = null
 	if not in_bounds(cell) or scenery.has(cell) or _is_spawn(cell):
 		hud.close_panel()
-		hud.flash("这里不能建造  /  Can't build here")
+		hud.flash(Locale.text("flash.cant_build"))
 		return
 	hud.open_ground(cell)
 
@@ -816,7 +818,7 @@ func _right_click(world: Vector2) -> void:
 
 func _place_from_shortcut(kind: int) -> void:
 	if not hud.has_ground():
-		hud.flash("先点一块空地。  /  Tap an empty tile first.")
+		hud.flash(Locale.text("flash.need_tile"))
 		return
 	_clear_villager_selection()
 	if _try_place(kind, hud.ground_cell()):
@@ -837,7 +839,7 @@ func _assign(v: Villager, building: Building) -> void:
 	if v.infected or v.leaving:
 		return
 	if not building.is_functional():
-		hud.flash("木墙不用派人。  /  Walls do not need a villager.")
+		hud.flash(Locale.text("flash.wall_no_staff"))
 		return
 	if building.staff != null and is_instance_valid(building.staff) and building.staff != v:
 		var old := building.staff as Villager
@@ -853,7 +855,7 @@ func _assign(v: Villager, building: Building) -> void:
 	v.refugee = false
 	v.claim_left = -1.0
 	_clear_villager_selection()
-	_popup(building.global_position + Vector2(0, -80), "已派人", Color(0.7, 0.95, 1))
+	_popup(building.global_position + Vector2(0, -80), Locale.text("popup.assigned"), Color(0.7, 0.95, 1))
 	_refresh_beds()
 	_refresh_hud()
 
@@ -864,10 +866,10 @@ func _try_place(kind: int, cell: Vector2i) -> bool:
 		return false
 	var stats: Dictionary = Building.STATS[kind]
 	if kind == Building.Kind.WALL and _count_kind(Building.Kind.WALL) >= WALL_CAP:
-		hud.flash("木墙已达上限 %d。  /  Wall cap reached (%d)." % [WALL_CAP, WALL_CAP])
+		hud.flash(Locale.format("flash.wall_cap", [WALL_CAP]))
 		return false
 	if wood < int(stats.wood) or gold < int(stats.gold):
-		hud.flash("资源不足  /  Not enough wood or gold")
+		hud.flash(Locale.text("flash.need_res"))
 		return false
 	wood -= int(stats.wood)
 	gold -= int(stats.gold)
@@ -900,7 +902,7 @@ func _remove_building(cell: Vector2i, refund: bool) -> void:
 		var rg := int(stats.gold) / 2
 		wood += rw
 		gold += rg
-		_popup(building.global_position, "出售 +%d木 +%d金" % [rw, rg], Color(0.85, 0.95, 0.7))
+		_popup(building.global_position, Locale.format("popup.sold", [rw, rg]), Color(0.85, 0.95, 0.7))
 	buildings.erase(cell)
 	if inspected == building:
 		inspected = null
@@ -912,14 +914,14 @@ func _remove_building(cell: Vector2i, refund: bool) -> void:
 
 func _block_reason(cell: Vector2i) -> String:
 	if not in_bounds(cell):
-		return "超出地图  /  Outside the map"
+		return Locale.text("reason.outside")
 	if scenery.has(cell) or _is_spawn(cell):
-		return "这里不能建造  /  Can't build here"
+		return Locale.text("reason.cant")
 	if buildings.has(cell):
-		return "格子已占用  /  Tile occupied"
+		return Locale.text("reason.occupied")
 	for z in _living_zombies():
 		if world_to_cell(z.global_position) == cell:
-			return "僵尸占着格子  /  A zombie is standing here"
+			return Locale.text("reason.zombie")
 	return ""
 
 func _notify_zombies() -> void:
@@ -949,7 +951,7 @@ func _infect(v: Villager) -> void:
 		selected_villager = null
 	var at := v.global_position
 	v.queue_free()
-	_popup(at + Vector2(0, -30), "感染!", Color(0.65, 1, 0.45))
+	_popup(at + Vector2(0, -30), Locale.text("popup.infected"), Color(0.65, 1, 0.45))
 	_spawn_zombie("normal", true, at)
 	if _alive_villagers().is_empty():
 		_finish(false)
@@ -1463,6 +1465,74 @@ func _push_drag(index: int, pos: Vector2, rel: Vector2) -> void:
 	ev.position = pos
 	ev.relative = rel
 	get_viewport().push_input(ev, false)
+
+func _lang_shot() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var persisted := FileAccess.file_exists("/tmp/td_lang_switched")
+	var hint := _hint_text()
+	print("LANG ", Locale.code, " persist=", persisted, " hint=", hint)
+	var mono := not hint.contains(" / ")
+	if persisted:
+		var ok := Locale.code == "en" and hint.contains("Tap empty") and not _has_cjk(hint) and mono
+		await _capture("/opt/cursor/artifacts/lang-en.png")
+		hud.open_ground(Vector2i(3, 3))
+		await get_tree().process_frame
+		var panel := _ui_texts()
+		print("LANG_PANEL ", panel)
+		var panel_ok := not panel.contains(" / ") and not _has_cjk(panel.replace("中文", ""))
+		print("LANG_PERSIST ", ok and panel_ok)
+		await _capture("/opt/cursor/artifacts/lang-en-panel.png")
+		get_tree().quit(0 if ok and panel_ok else 1)
+		return
+	var zh_ok := Locale.code == "zh" and hint.contains("点空地") and not hint.contains("Tap empty") and mono
+	await _capture("/opt/cursor/artifacts/lang-zh.png")
+	var lang_btn := hud.get_node_or_null("LangButton") as Button
+	if lang_btn:
+		_click_screen(lang_btn.get_global_rect().get_center())
+	await get_tree().process_frame
+	await get_tree().process_frame
+	hint = _hint_text()
+	print("LANG_SWITCH ", Locale.code, " hint=", hint)
+	var en_ok := Locale.code == "en" and hint.contains("Tap empty") and not _has_cjk(hint)
+	hud.open_ground(Vector2i(3, 3))
+	await get_tree().process_frame
+	var panel_now := _ui_texts()
+	print("LANG_PANEL_NOW ", panel_now)
+	var panel_en := panel_now.contains("Wall") and not panel_now.contains("木墙") and not panel_now.contains(" / ")
+	var marker := FileAccess.open("/tmp/td_lang_switched", FileAccess.WRITE)
+	if marker:
+		marker.store_line("1")
+		marker.close()
+	get_tree().quit(0 if zh_ok and en_ok and panel_en else 1)
+
+func _hint_text() -> String:
+	var label := hud.find_child("HintLabel", true, false) as Label
+	return label.text if label else ""
+
+func _ui_texts() -> String:
+	var parts: PackedStringArray = []
+	_collect_ui_text(hud, parts)
+	return " || ".join(parts)
+
+func _collect_ui_text(node: Node, parts: PackedStringArray) -> void:
+	if node.name != "LangButton" and node is Control:
+		var control := node as Control
+		if control.tooltip_text != "":
+			parts.append(control.tooltip_text)
+	if node.name != "LangButton" and node is Button and (node as Button).text != "":
+		parts.append((node as Button).text)
+	elif node is Label and (node as Label).text != "":
+		parts.append((node as Label).text)
+	for child in node.get_children():
+		_collect_ui_text(child, parts)
+
+func _has_cjk(value: String) -> bool:
+	for i in value.length():
+		var code := value.unicode_at(i)
+		if code >= 0x4E00 and code <= 0x9FFF:
+			return true
+	return false
 
 func _opening_shot() -> void:
 	await get_tree().create_timer(0.6).timeout
