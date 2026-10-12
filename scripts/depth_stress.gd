@@ -13,11 +13,13 @@ var camera: Camera2D
 var walkers: Array[Villager] = []
 var _bases: Array[Vector2] = []
 var _n := 100
+var _only := ""
 var _check := false
 var _web := false
 var _phase := 0
 var _phase_frame := 0
 var _sum_us := 0
+var _samples: Array[int] = []
 var _sum_narrow := 0
 var _sum_cand := 0
 var _sum_hits := 0
@@ -43,6 +45,7 @@ func _ready() -> void:
 	_web = OS.has_feature("web")
 	_check = not _web
 	_n = int(Engine.get_meta("stress_n", 100))
+	_only = str(Engine.get_meta("stress_only", ""))
 	if _n < 1:
 		_n = 100
 	_build_ground()
@@ -60,22 +63,27 @@ func _process(_delta: float) -> void:
 		return
 	_pose(_phase_frame)
 	var vols := _gather()
-	var sample := _phase >= 2
+	var sample := _is_sample()
 	if sample and _phase_frame == 0:
 		_sum_us = 0
 		_sum_narrow = 0
 		_sum_cand = 0
 		_sum_hits = 0
 		_sum_broad = 0
+		_samples.clear()
 		_wall0 = Time.get_ticks_usec()
-	if _phase == 0 or _phase == 2:
+	if _solver_is_ref():
 		DepthSolver.apply_reference(vols)
 		if sample:
-			_sum_us += DepthSolver.last_reference_usec
+			var spent := DepthSolver.last_reference_usec
+			_sum_us += spent
+			_samples.append(spent)
 	else:
 		DepthSolver.apply(vols)
 		if sample:
-			_sum_us += DepthSolver.last_sort_usec
+			var spent_new := DepthSolver.last_sort_usec
+			_sum_us += spent_new
+			_samples.append(spent_new)
 			_sum_narrow += DepthSolver.last_narrow
 			_sum_cand += DepthSolver.last_candidates
 			_sum_hits += DepthSolver.last_hits
@@ -87,7 +95,7 @@ func _process(_delta: float) -> void:
 			_close_sample()
 		_phase += 1
 		_phase_frame = 0
-		if _phase > 3:
+		if _bench_done():
 			_done = true
 			_publish()
 	_refresh_copy()
@@ -124,13 +132,40 @@ func _run_check() -> void:
 	print("ORDER_OK %s mismatches %d shortcut %d pairs %d frames %d n %d" % [ok, bad_order, bad_short, bad_pairs, frames, _gather().size()])
 	get_tree().quit(0 if ok else 1)
 
+func _solver_is_ref() -> bool:
+	if _only == "ref":
+		return true
+	if _only == "new":
+		return false
+	return _phase == 0 or _phase == 2
+
+func _is_sample() -> bool:
+	if _only == "":
+		return _phase >= 2
+	return _phase >= 1
+
+func _bench_done() -> bool:
+	if _only == "":
+		return _phase > 3
+	return _phase > 1
+
+func _median_us() -> int:
+	if _samples.is_empty():
+		return 0
+	var ordered := _samples.duplicate()
+	ordered.sort()
+	return int(ordered[ordered.size() / 2])
+
 func _close_sample() -> void:
 	var wall := Time.get_ticks_usec() - _wall0
 	var fps := float(SAMPLE) * 1000000.0 / float(maxi(wall, 1))
 	var ms := float(_sum_us) / float(SAMPLE) / 1000.0
-	if _phase == 2:
+	var med := float(_median_us()) / 1000.0
+	var ref_side := _only == "ref" or (_only == "" and _phase == 2)
+	if ref_side:
 		ref_ms = ms
 		ref_fps = fps
+		Engine.set_meta("stress_ref_median_ms", med)
 	else:
 		new_ms = ms
 		new_fps = fps
@@ -138,6 +173,7 @@ func _close_sample() -> void:
 		new_cand = float(_sum_cand) / float(SAMPLE)
 		new_hits = float(_sum_hits) / float(SAMPLE)
 		new_broad = float(_sum_broad) / float(SAMPLE)
+		Engine.set_meta("stress_new_median_ms", med)
 
 func _publish() -> void:
 	var payload := {
@@ -151,6 +187,9 @@ func _publish() -> void:
 		"narrow": new_narrow,
 		"broad": new_broad,
 		"hits": new_hits,
+		"only": _only,
+		"ref_median_ms": float(Engine.get_meta("stress_ref_median_ms", 0.0)),
+		"new_median_ms": float(Engine.get_meta("stress_new_median_ms", 0.0)),
 	}
 	print("STRESS_DONE ", JSON.stringify(payload))
 	if _web:

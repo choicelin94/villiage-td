@@ -1171,6 +1171,7 @@ func _open_stress_now() -> bool:
 	if n <= 0:
 		return false
 	Engine.set_meta("stress_n", n)
+	Engine.set_meta("stress_only", _stress_only())
 	return true
 
 func _stress_count() -> int:
@@ -1181,6 +1182,18 @@ func _stress_count() -> int:
 		var query := str(JavaScriptBridge.eval("window.location.search", true))
 		return _stress_in_query(query)
 	return 0
+
+func _stress_only() -> String:
+	var env := OS.get_environment("TD_STRESS_ONLY")
+	if env == "ref" or env == "new":
+		return env
+	if OS.has_feature("web"):
+		var query := str(JavaScriptBridge.eval("window.location.search", true))
+		if query.contains("only=ref"):
+			return "ref"
+		if query.contains("only=new"):
+			return "new"
+	return ""
 
 func _stress_in_query(query: String) -> int:
 	var at := query.find("stress=")

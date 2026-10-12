@@ -70,11 +70,10 @@ body {
 	display: none;
 }
 
-#depth-lab-link {
+#depth-lab-link, #stress-link {
 	position: fixed;
 	z-index: 50;
 	top: 8px;
-	left: 8px;
 	color: #ffe7a8;
 	background: rgba(12, 22, 16, 0.88);
 	border: 1px solid #8a7040;
@@ -83,6 +82,14 @@ body {
 	font: 14px/1.2 Arial, sans-serif;
 	text-decoration: none;
 	pointer-events: auto;
+}
+
+#depth-lab-link {
+	left: 8px;
+}
+
+#stress-link {
+	left: 108px;
 }
 
 #status-progress {
@@ -114,6 +121,7 @@ body {
 			Your browser does not support the canvas tag.
 		</canvas>
 		<a id="depth-lab-link" href="depth-lab/">Depth lab</a>
+		<a id="stress-link" href="stress/">Stress</a>
 
 		<noscript>
 			Your browser does not support JavaScript.
@@ -127,7 +135,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8715492,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8742992,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
