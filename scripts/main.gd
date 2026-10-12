@@ -92,7 +92,7 @@ var _syncing := false
 func _ready() -> void:
 	Engine.max_fps = 60
 	add_to_group("game")
-	font = load("res://assets/fonts/DroidSansFallback-subset.ttf")
+	font = load("res://assets/fonts/NotoSansSC-Regular.otf")
 	_selftest = OS.get_environment("TD_SELFTEST") == "1"
 	if OS.get_environment("TD_UI") == "1":
 		get_window().size = Vector2i(390, 844)

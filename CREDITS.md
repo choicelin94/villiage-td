@@ -103,15 +103,16 @@ Authors and source pages, taken from `CREDITS.csv` (not guessed):
 
 ## Font
 
-- **Font:** Droid Sans Fallback
-- **Copyright:** 2006, 2007, 2008, 2009, 2010 Google Corp. Droid is a trademark of Google Corp.
-- **License:** Apache License 2.0  
-  http://www.apache.org/licenses/LICENSE-2.0
-- **Source used:** Debian package `fonts-droid-fallback`, file `DroidSansFallbackFull.ttf`  
-  Upstream noted in that package: https://android.googlesource.com/platform/frameworks/base/
-- **Bundled file:** `assets/fonts/DroidSansFallback-subset.ttf`  
-  A subset of the original font, containing the Latin and Chinese glyphs used by the in-game UI.
-- The full Apache License 2.0 text is in [`assets/fonts/APACHE-2.0.txt`](assets/fonts/APACHE-2.0.txt).
+- **Font:** Noto Sans SC Regular (the Simplified Chinese face of Noto Sans CJK / Source Han Sans)
+- **Copyright, from the font name table:** © 2014-2021 Adobe (http://www.adobe.com/). Noto is a trademark of Google Inc.
+- **Designers, from the font name table:** Ryoko NISHIZUKA 西塚涼子 (kana, bopomofo and ideographs); Paul D. Hunt (Latin, Greek and Cyrillic); Sandoll Communications 산돌커뮤니케이션, Soo-young JANG 장수영 and Joo-yeon KANG 강주연 (hangul elements, letters and syllables). Project architect: Dr. Ken Lunde. Production and ideograph elements: Masataka HATTORI 服部正貴.
+- **License:** SIL Open Font License 1.1  
+  http://scripts.sil.org/OFL
+- **Source:** https://github.com/notofonts/noto-cjk (`Sans/SubsetOTF/SC/NotoSansSC-Regular.otf`)  
+  https://fonts.google.com/noto/specimen/Noto+Sans+SC
+- **Bundled file:** [`assets/fonts/NotoSansSC-Regular.otf`](assets/fonts/NotoSansSC-Regular.otf)  
+  The full Regular face, not a character subset. The earlier Droid Sans Fallback subset missed glyphs such as 倒、大、小、总、数、时、计, which the web build drew as boxes because HTML5 has no system-font fallback.
+- The license text shipped with that Noto CJK file is in [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt).
 
 ## Code and effects drawn in the game
 
