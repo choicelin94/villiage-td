@@ -133,14 +133,14 @@ func _walk(delta: float, game: Node) -> void:
 	var step_speed := speed * (1.15 if panic else 0.72)
 	var step := minf(step_speed * delta, vel.length())
 	var nxt: Vector2 = global_position + dir * step
-	if game.can_step(global_position, nxt):
+	if game.can_step(global_position, nxt, self):
 		global_position = nxt
 		_step_anim(dir, delta)
 		return
 	var slide := Vector2(dir.x, 0) if absf(dir.x) > absf(dir.y) else Vector2(0, dir.y)
 	if slide.length_squared() > 0.001:
 		var alt: Vector2 = global_position + slide.normalized() * step
-		if game.can_step(global_position, alt):
+		if game.can_step(global_position, alt, self):
 			global_position = alt
 			_step_anim(slide, delta)
 			return
@@ -191,7 +191,7 @@ func _leave(delta: float) -> void:
 		return
 	var dir := vel.normalized()
 	var nxt: Vector2 = global_position + dir * minf(speed * delta, vel.length())
-	if game.can_step(global_position, nxt):
+	if game.can_step(global_position, nxt, self):
 		global_position = nxt
 		_step_anim(dir, delta)
 	else:

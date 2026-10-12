@@ -2,20 +2,22 @@ class_name DepthSolver
 extends RefCounted
 
 # One compare for every footprint. On a top-down map the camera sits to the
-# south, so depth is the south rim of the real ground shape (ellipse or
-# polygon) plus height. Where the east-west spans miss, the shapes are side
-# by side and only a fully northern footprint is behind. A point has no south
-# rim of its own; callers that still need that old test use point_behind.
-# Screen rects only reject pairs that cannot overlap. Marks inherit the parent rank.
+# south. A volume is strictly behind another only when it is entirely north
+# of it (or entirely below it in height). Side-by-side pairs have no geometric
+# edge; depth_key then the input index orders them. Convex footprints that do
+# not overlap make that relation a strict partial order, so the graph cannot
+# cycle. A point has no south rim of its own; callers that still need that
+# old test use point_behind. Screen rects only reject pairs that cannot
+# overlap. Marks inherit the parent rank.
 #
 # apply() is a two-phase sort. The broad phase copies each volume's tight
-# iso AABB (already derived from the ellipse or polygon plus height) into
-# reused buffers, then sweep-and-prune on screen rects drops pairs the old
-# solver would skip. Pairs whose boxes separate in x, y, or z get the same
-# answer is_behind would, without walking the outline. Only a real overlap
-# runs that south-rim test. Static props keep the pair result until one of
-# them moves. apply_reference() is the previous all-pairs sort, used to time
-# the old path on the stress page.
+# iso AABB into reused buffers, then sweep-and-prune on screen rects drops
+# pairs the old solver would skip. Pairs whose boxes already separate in x,
+# y, or z get the same answer is_behind would. Only a real box overlap runs
+# that compare. Static props keep the pair result until one of them moves.
+# apply_reference() is the previous all-pairs sort, used to time the old path
+# on the stress page. Debug builds assert that no ground pair overlaps and
+# that the order has no cycle.
 
 const PAD := 8.0
 const MISS := 2
@@ -26,6 +28,9 @@ static var last_candidates := 0
 static var last_narrow := 0
 static var last_broad := 0
 static var last_hits := 0
+static var last_overlaps := 0
+static var last_cycle := false
+static var audit := true
 
 static var _batch: Array = []
 static var _empty: Array = []
@@ -59,11 +64,7 @@ const _SIG := 10
 static func is_behind(a: IsoVolume, b: IsoVolume) -> bool:
 	if a.max_z <= b.min_z:
 		return true
-	var x0 := maxf(a.min_x, b.min_x)
-	var x1 := minf(a.max_x, b.max_x)
-	if x1 < x0:
-		return a.max_y <= b.min_y
-	return a.south_rim_on(x0, x1) < b.south_rim_on(x0, x1) - 0.0001
+	return a.max_y <= b.min_y
 
 # The old feet-as-a-point test: behind whenever that one sample is north of
 # the other's northernmost ground point. An oval can still reach farther south.
@@ -75,12 +76,43 @@ static func apply(volumes: Array) -> void:
 	var ordered := _order_two(volumes)
 	_commit(volumes, ordered)
 	last_sort_usec = Time.get_ticks_usec() - t0
+	_enforce(volumes)
 
 static func apply_reference(volumes: Array) -> void:
 	var t0 := Time.get_ticks_usec()
 	var ordered := _order_reference(volumes)
 	_commit(volumes, ordered)
 	last_reference_usec = Time.get_ticks_usec() - t0
+	_enforce(volumes)
+
+static var _overlap_reported := false
+
+static func count_overlaps(volumes: Array) -> int:
+	var n := volumes.size()
+	var found := 0
+	for i in n:
+		var a: IsoVolume = volumes[i]
+		for j in range(i + 1, n):
+			var b: IsoVolume = volumes[j]
+			if a.overlaps(b):
+				found += 1
+				if found == 1 and OS.is_debug_build() and not _overlap_reported:
+					var an := ""
+					var bn := ""
+					if is_instance_valid(a.node):
+						an = str(a.node.name)
+					if is_instance_valid(b.node):
+						bn = str(b.node.name)
+					_overlap_reported = true
+					print("OVERLAP_PAIR ", an, " ", a.center, " ", bn, " ", b.center, " y ", a.min_y, a.max_y, " / ", b.min_y, b.max_y)
+	return found
+
+static func _enforce(volumes: Array) -> void:
+	if not audit or not OS.is_debug_build():
+		return
+	last_overlaps = count_overlaps(volumes)
+	assert(last_overlaps == 0, "Ground volumes overlap")
+	assert(not last_cycle, "Depth order has a cycle")
 
 static func order_two_phase(volumes: Array) -> Array:
 	return _order_two(volumes)
@@ -109,6 +141,7 @@ static func shortcut_mismatches(volumes: Array) -> int:
 
 static func _order_reference(volumes: Array) -> Array:
 	var n := volumes.size()
+	last_cycle = false
 	if n == 0:
 		return []
 	var next: Array = []
@@ -134,19 +167,6 @@ static func _order_reference(volumes: Array) -> Array:
 				behind.append(i)
 				next[j] = behind
 				indeg[i] += 1
-			else:
-				var ka := a.depth_key()
-				var kb := b.depth_key()
-				if ka < kb - 0.0001:
-					var tie_a: Array = next[i]
-					tie_a.append(j)
-					next[i] = tie_a
-					indeg[j] += 1
-				elif kb < ka - 0.0001:
-					var tie_b: Array = next[j]
-					tie_b.append(i)
-					next[j] = tie_b
-					indeg[i] += 1
 	var ready: Array = []
 	for i in n:
 		if indeg[i] == 0:
@@ -181,6 +201,7 @@ static func _order_reference(volumes: Array) -> Array:
 		)
 		for item in rest:
 			ordered.append(int(item))
+		last_cycle = true
 	return ordered
 
 static func _order_two(volumes: Array) -> Array:
@@ -189,6 +210,7 @@ static func _order_two(volumes: Array) -> Array:
 	last_narrow = 0
 	last_broad = 0
 	last_hits = 0
+	last_cycle = false
 	if n == 0:
 		return []
 	_load_geom(volumes)
@@ -315,54 +337,33 @@ static func _relation(i: int, j: int) -> int:
 		return rel
 	return _resolve(i, j)
 
-static func _resolve(i: int, j: int) -> int:
-	var az: bool = float(_max_z[i]) <= float(_min_z[j])
-	var bz: bool = float(_max_z[j]) <= float(_min_z[i])
-	if az or bz:
-		last_broad += 1
-		if az and not bz:
-			return -1
-		if bz and not az:
-			return 1
-		return _tie(i, j)
-	var x_lo := maxf(float(_min_x[i]), float(_min_x[j]))
-	var x_hi := minf(float(_max_x[i]), float(_max_x[j]))
-	if x_hi < x_lo:
-		last_broad += 1
-		var a_north: bool = float(_max_y[i]) <= float(_min_y[j])
-		var b_north: bool = float(_max_y[j]) <= float(_min_y[i])
-		if a_north and not b_north:
-			return -1
-		if b_north and not a_north:
-			return 1
-		return _tie(i, j)
-	if float(_max_y[i]) < float(_min_y[j]) - 0.0001:
-		last_broad += 1
-		return -1
-	if float(_max_y[j]) < float(_min_y[i]) - 0.0001:
-		last_broad += 1
-		return 1
-	last_narrow += 1
-	var a: IsoVolume = _batch[i]
-	var b: IsoVolume = _batch[j]
-	var a_behind := is_behind(a, b)
-	var b_behind := is_behind(b, a)
+static func _box_behind(i: int, j: int) -> bool:
+	if float(_max_z[i]) <= float(_min_z[j]):
+		return true
+	return float(_max_y[i]) <= float(_min_y[j])
+
+static func _rel_flags(a_behind: bool, b_behind: bool, _i: int, _j: int) -> int:
+	# Tie-break is not an edge. A depth_key edge can cycle with "entirely
+	# north" even when the shapes do not overlap. The ready queue orders
+	# incomparable pairs by depth_key, which stays acyclic.
 	if a_behind and not b_behind:
 		return -1
 	if b_behind and not a_behind:
 		return 1
-	return _tie(i, j)
+	return 0
 
-static func _tie(i: int, j: int) -> int:
+static func _resolve(i: int, j: int) -> int:
+	var x_lo := maxf(float(_min_x[i]), float(_min_x[j]))
+	var x_hi := minf(float(_max_x[i]), float(_max_x[j]))
+	var a_box := _box_behind(i, j)
+	var b_box := _box_behind(j, i)
+	if x_hi < x_lo or a_box or b_box:
+		last_broad += 1
+		return _rel_flags(a_box, b_box, i, j)
+	last_narrow += 1
 	var a: IsoVolume = _batch[i]
 	var b: IsoVolume = _batch[j]
-	var ka := a.depth_key()
-	var kb := b.depth_key()
-	if ka < kb - 0.0001:
-		return -1
-	if kb < ka - 0.0001:
-		return 1
-	return 0
+	return _rel_flags(is_behind(a, b), is_behind(b, a), i, j)
 
 static func _reference_rel(a: IsoVolume, b: IsoVolume) -> int:
 	var a_behind := is_behind(a, b)
@@ -370,12 +371,6 @@ static func _reference_rel(a: IsoVolume, b: IsoVolume) -> int:
 	if a_behind and not b_behind:
 		return -1
 	if b_behind and not a_behind:
-		return 1
-	var ka := a.depth_key()
-	var kb := b.depth_key()
-	if ka < kb - 0.0001:
-		return -1
-	if kb < ka - 0.0001:
 		return 1
 	return 0
 
@@ -414,6 +409,7 @@ static func _topo(volumes: Array, n: int) -> Array:
 		)
 		for item in rest:
 			ordered.append(int(item))
+		last_cycle = true
 	return ordered
 
 static func _commit(volumes: Array, ordered: Array) -> void:

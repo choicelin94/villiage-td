@@ -8,13 +8,16 @@ const TREE_CELL := Vector2i(2, 3)
 const TREE2_CELL := Vector2i(2, 4)
 const ROCK_CELL := Vector2i(6, 3)
 const WALL_CELL := Vector2i(6, 5)
+const FARM_CELL := Vector2i(7, 6)
 
 var ground: TileMapLayer
 var house: Building
 var wall: Building
+var farm: Building
 var tree: Node2D
 var tree2: Node2D
 var rock: Node2D
+var _crowd: Array[Villager] = []
 var player: Villager
 var near_one: Villager
 var far_one: Villager
@@ -117,6 +120,7 @@ func _build_ground() -> void:
 	_blocked[TREE2_CELL] = true
 	_blocked[ROCK_CELL] = true
 	_blocked[WALL_CELL] = true
+	_blocked[FARM_CELL] = true
 
 func _build_props() -> void:
 	house = Building.new()
@@ -129,6 +133,11 @@ func _build_props() -> void:
 	wall.setup(Building.Kind.WALL, WALL_CELL)
 	wall.name = "Wall"
 	add_child(wall)
+	farm = Building.new()
+	farm.position = _cell_center(FARM_CELL)
+	farm.setup(Building.Kind.FARM, FARM_CELL)
+	farm.name = "Farm"
+	add_child(farm)
 	tree = _prop(TREE_CELL, "res://assets/village/tree.png", "tree")
 	tree.name = "Tree"
 	tree2 = _prop(TREE2_CELL, "res://assets/village/tree_b.png", "tree")
@@ -179,6 +188,7 @@ func _build_camera() -> void:
 func _build_guides() -> void:
 	_mark_line(house, Color(1, 0.86, 0.25, 0.95))
 	_mark_line(wall, Color(0.95, 0.75, 0.35, 0.9))
+	_mark_line(farm, Color(0.95, 0.72, 0.35, 0.95))
 	_mark_line(tree, Color(0.45, 0.9, 0.45, 0.9))
 	_mark_line(tree2, Color(0.35, 0.75, 0.4, 0.9))
 	_mark_line(rock, Color(0.75, 0.8, 0.85, 0.9))
@@ -248,7 +258,7 @@ func _build_ui() -> void:
 	flow.add_theme_constant_override("h_separation", 6)
 	flow.add_theme_constant_override("v_separation", 6)
 	box.add_child(flow)
-	for i in 8:
+	for i in 12:
 		var btn := Button.new()
 		btn.theme = theme
 		btn.focus_mode = Control.FOCUS_NONE
@@ -300,6 +310,10 @@ func _build_scenarios() -> void:
 	var north_wall := _world_feet(wall_vol, Vector2(0, -1))
 	var pair_far := IsoVolume.iso_to_world(Vector2(4.2, 6.2))
 	var pair_near := IsoVolume.iso_to_world(Vector2(4.5, 7.1))
+	var farm_vol: IsoVolume = farm.get_iso_volume()
+	var south_farm := _world_feet(farm_vol, Vector2(0, 1))
+	var trunk_east := _press_feet(tree_vol, Vector2(1, 0))
+	var wall_corner := _corner_feet(wall_vol)
 	_scenarios = [
 		{"btn": "lab.btn_l1", "title": "lab.l1", "expect": "lab.expect_l1", "pos": north_tree, "focus": tree.global_position, "crowd": false},
 		{"btn": "lab.btn_l2", "title": "lab.l2", "expect": "lab.expect_l2", "pos": east_tree, "focus": tree.global_position, "crowd": false},
@@ -309,6 +323,10 @@ func _build_scenarios() -> void:
 		{"btn": "lab.btn_l6", "title": "lab.l6", "expect": "lab.expect_l6", "pos": south_house, "focus": house.global_position, "crowd": false},
 		{"btn": "lab.btn_l7", "title": "lab.l7", "expect": "lab.expect_l7", "pos": north_wall, "focus": wall.global_position, "crowd": false},
 		{"btn": "lab.btn_l8", "title": "lab.l8", "expect": "lab.expect_l8", "pos": pair_near, "focus": (pair_near + pair_far) * 0.5, "crowd": true, "near": pair_far},
+		{"btn": "lab.btn_l9", "title": "lab.l9", "expect": "lab.expect_l9", "pos": south_farm, "focus": farm.global_position, "crowd": false},
+		{"btn": "lab.btn_l10", "title": "lab.l10", "expect": "lab.expect_l10", "pos": trunk_east, "focus": tree.global_position, "crowd": false},
+		{"btn": "lab.btn_l11", "title": "lab.l11", "expect": "lab.expect_l11", "pos": wall_corner, "focus": wall.global_position, "crowd": false},
+		{"btn": "lab.btn_l12", "title": "lab.l12", "expect": "lab.expect_l12", "pos": player.global_position, "focus": IsoVolume.iso_to_world(Vector2(1.2, 1.1)), "crowd": false, "pack": true},
 	]
 	_refresh_copy()
 
@@ -321,6 +339,11 @@ func _show_scenario(index: int) -> void:
 	player._set_frame(2, 0)
 	near_one.visible = crowd
 	far_one.visible = crowd
+	if row.get("pack", false):
+		player.visible = false
+		_place_crowd()
+	else:
+		_hide_crowd()
 	if crowd:
 		near_one.global_position = row.near
 		near_one._set_frame(2, 0)
@@ -334,7 +357,7 @@ func _refresh_copy() -> void:
 	if _scenarios.is_empty():
 		return
 	var row: Dictionary = _scenarios[_index]
-	_title.text = "%d/8  %s" % [_index + 1, Locale.text(str(row.title))]
+	_title.text = "%d/%d  %s" % [_index + 1, _scenarios.size(), Locale.text(str(row.title))]
 	_hint.text = "%s\n%s" % [Locale.text(str(row.expect)), Locale.text("lab.help")]
 	for i in _buttons.size():
 		_buttons[i].text = Locale.text(str(_scenarios[i].btn))
@@ -357,24 +380,47 @@ func _can_step(from_pos: Vector2, to_pos: Vector2) -> bool:
 	var to_cell := ground.local_to_map(to_pos)
 	if to_cell.x < 0 or to_cell.y < 0 or to_cell.x >= COLS or to_cell.y >= ROWS:
 		return false
-	if not _blocked.has(to_cell):
-		return true
-	return to_cell == ground.local_to_map(from_pos)
+	if _blocked.has(to_cell) and to_cell != ground.local_to_map(from_pos):
+		return false
+	var mine := IsoVolume.from_feet(to_pos)
+	for node in _prop_nodes():
+		if mine.overlaps(node.get_iso_volume()):
+			return false
+	if near_one.visible and mine.overlaps(near_one.get_iso_volume()):
+		return false
+	if far_one.visible and mine.overlaps(far_one.get_iso_volume()):
+		return false
+	for person in _crowd:
+		if person.visible and mine.overlaps(person.get_iso_volume()):
+			return false
+	return true
 
 func _world_feet(vol: IsoVolume, dir: Vector2) -> Vector2:
 	return IsoVolume.iso_to_world(_feet_iso(vol, dir))
 
 func _feet_iso(vol: IsoVolume, dir: Vector2) -> Vector2:
+	return _feet_gap(vol, dir, 0.12)
+
+func _press_feet(vol: IsoVolume, dir: Vector2) -> Vector2:
+	return IsoVolume.iso_to_world(_feet_gap(vol, dir, 0.004))
+
+func _corner_feet(vol: IsoVolume) -> Vector2:
+	var corner := Vector2(vol.max_x, vol.max_y)
+	return _press_feet(vol, corner - vol.bounds_center())
+
+func _feet_gap(vol: IsoVolume, dir: Vector2, gap: float) -> Vector2:
 	var d := dir.normalized()
-	var gap := 0.12
 	return vol.bounds_center() + d * (vol.reach(d) + IsoVolume.walker_support(d) + gap)
 
+func _prop_nodes() -> Array:
+	return [house, wall, farm, tree, tree2, rock]
+
 func _isolate(subject: Node) -> void:
-	for node in [house, wall, tree, tree2, rock]:
+	for node in _prop_nodes():
 		(node as CanvasItem).visible = node == subject
 
 func _show_props() -> void:
-	for node in [house, wall, tree, tree2, rock]:
+	for node in _prop_nodes():
 		(node as CanvasItem).visible = true
 
 func _auto_check() -> void:
@@ -390,8 +436,13 @@ func _auto_check() -> void:
 	var l7 := await _axis_case(wall, "L7", "/opt/cursor/artifacts/lab-wall-north.png", "/opt/cursor/artifacts/lab-wall-south.png")
 	var l7_side := await _beside_case(wall, "L7E", "")
 	var l8 := await _walker_pair()
-	var ok := l1 and l2 and l2_point and l3 and l4 and l5 and l6 and l7 and l7_side and l8
-	print("LAB_L ", l1, l2, l2_point, l3, l4, l5, l6, l7, l7_side, l8)
+	var l9 := await _frame_case()
+	var l10 := await _trunk_press()
+	var l11 := await _wall_corner()
+	var l12 := await _crowd_case()
+	var convex_ok := _convex_ok()
+	var ok := l1 and l2 and l2_point and l3 and l4 and l5 and l6 and l7 and l7_side and l8 and l9 and l10 and l11 and l12 and convex_ok
+	print("LAB_L ", l1, l2, l2_point, l3, l4, l5, l6, l7, l7_side, l8, l9, l10, l11, l12, convex_ok)
 	print("LAB_OK ", ok)
 	get_tree().quit(0 if ok else 1)
 
@@ -464,8 +515,10 @@ func _beside_case(prop: Node2D, label: String, path: String) -> bool:
 
 func _point_vs_ellipse() -> bool:
 	# Center the oval on the trunk's north rim. A point there is already
-	# "behind" the trunk. The oval still reaches farther south than the trunk,
-	# so the person stays in front.
+	# "behind" the trunk. The oval still reaches farther south, so it is not
+	# entirely north of the trunk and the person stays in front. This pose
+	# overlaps on purpose; the game never allows it.
+	DepthSolver.audit = false
 	var vol: IsoVolume = tree.get_iso_volume()
 	var feet := Vector2(vol.center.x, vol.min_y - 0.005)
 	var oval := IsoVolume.from_feet(IsoVolume.iso_to_world(feet))
@@ -489,8 +542,10 @@ func _point_vs_ellipse() -> bool:
 	await _capture("/opt/cursor/artifacts/lab-tree-oval.png")
 	_show_props()
 	var visible: bool = int(shown.opaque) < 12 or float(shown.ratio) > 0.2
-	var passed := as_point and not as_oval and trunk_behind and front_z and visible
-	print("L2P point_behind=", as_point, " oval_behind=", as_oval, " trunk_behind=", trunk_behind, " z=", front_z, " px=", shown, " ok=", passed)
+	var front_key := oval.depth_key() > vol.depth_key()
+	var passed := as_point and not as_oval and not trunk_behind and front_key and front_z and visible
+	print("L2P point_behind=", as_point, " oval_behind=", as_oval, " trunk_behind=", trunk_behind, " key=", front_key, " z=", front_z, " px=", shown, " ok=", passed)
+	DepthSolver.audit = true
 	return passed
 
 func _pair_props() -> bool:
@@ -577,6 +632,197 @@ func _walker_pair() -> bool:
 	var passed := near_front and stable and swapped
 	print("L8 near_front=", near_front, " stable=", stable, " swapped=", swapped, " ok=", passed)
 	return passed
+
+func _convex_ok() -> bool:
+	var ok := true
+	for key in IsoVolume.TABLE:
+		if not IsoVolume.spec_convex(IsoVolume.spec_for(str(key))):
+			ok = false
+			print("CONCAVE ", key)
+	print("CONVEX_OK ", ok)
+	return ok
+
+func _frame_case() -> bool:
+	var vol: IsoVolume = farm.get_iso_volume()
+	var south := _press_feet(vol, Vector2(0, 1))
+	var north := _press_feet(vol, Vector2(0, -1))
+	var south_vol := IsoVolume.from_feet(south)
+	var north_vol := IsoVolume.from_feet(north)
+	var inside := IsoVolume.from_feet(IsoVolume.iso_to_world(vol.bounds_center()))
+	var inside_hit := inside.overlaps(vol)
+	var south_free := not south_vol.overlaps(vol)
+	var north_free := not north_vol.overlaps(vol)
+	var math_south := DepthSolver.is_behind(vol, south_vol) and not DepthSolver.is_behind(south_vol, vol)
+	var math_north := DepthSolver.is_behind(north_vol, vol) and not DepthSolver.is_behind(vol, north_vol)
+	_isolate(farm)
+	near_one.visible = false
+	far_one.visible = false
+	_hide_crowd()
+	camera.zoom = Vector2(2.2, 2.2)
+	camera.position = farm.global_position
+	player.visible = true
+	player.global_position = south
+	player._set_frame(2, 0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var front_z := player.z_index > farm.z_index
+	var south_clean := DepthSolver.last_overlaps == 0 and not DepthSolver.last_cycle
+	await _capture("/opt/cursor/artifacts/frame-farm-fixed.png")
+	player.global_position = north
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var back_z := player.z_index < farm.z_index
+	var north_clean := DepthSolver.last_overlaps == 0 and not DepthSolver.last_cycle
+	var ordered := _orders_match()
+	await _capture("/opt/cursor/artifacts/frame-farm-north.png")
+	camera.zoom = Vector2(1.55, 1.55)
+	_show_props()
+	var passed := inside_hit and south_free and north_free and math_south and math_north and front_z and back_z and south_clean and north_clean and ordered
+	print("L9 inside=", inside_hit, " free=", south_free, north_free, " math=", math_south, math_north, " z=", front_z, back_z, " clean=", south_clean, north_clean, " order=", ordered, " ok=", passed)
+	return passed
+
+func _trunk_press() -> bool:
+	var vol: IsoVolume = tree.get_iso_volume()
+	var east := _press_feet(vol, Vector2(1, 0))
+	var north := _press_feet(vol, Vector2(0, -1))
+	var east_vol := IsoVolume.from_feet(east)
+	var north_vol := IsoVolume.from_feet(north)
+	var east_free := not east_vol.overlaps(vol)
+	var north_free := not north_vol.overlaps(vol)
+	var sunk := IsoVolume.from_feet(IsoVolume.iso_to_world(_feet_gap(vol, Vector2(1, 0), -0.02)))
+	var sunk_hit := sunk.overlaps(vol)
+	var math_north := DepthSolver.is_behind(north_vol, vol) and not DepthSolver.is_behind(vol, north_vol)
+	var math_east := not DepthSolver.is_behind(east_vol, vol) and east_vol.depth_key() > vol.depth_key()
+	_isolate(tree)
+	near_one.visible = false
+	far_one.visible = false
+	_hide_crowd()
+	camera.position = tree.global_position
+	player.visible = true
+	player.global_position = east
+	player._set_frame(2, 0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var front_z := player.z_index > tree.z_index
+	var east_clean := DepthSolver.last_overlaps == 0 and not DepthSolver.last_cycle
+	await _capture("/opt/cursor/artifacts/lab-trunk-press.png")
+	player.global_position = north
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var back_z := player.z_index < tree.z_index
+	var north_clean := DepthSolver.last_overlaps == 0 and not DepthSolver.last_cycle
+	var ordered := _orders_match()
+	_show_props()
+	var passed := east_free and north_free and sunk_hit and math_north and math_east and front_z and back_z and east_clean and north_clean and ordered
+	print("L10 free=", east_free, north_free, " sunk=", sunk_hit, " math=", math_north, math_east, " z=", front_z, back_z, " clean=", east_clean, north_clean, " order=", ordered, " ok=", passed)
+	return passed
+
+func _wall_corner() -> bool:
+	var vol: IsoVolume = wall.get_iso_volume()
+	var at := _corner_feet(vol)
+	var oval := IsoVolume.from_feet(at)
+	var free := not oval.overlaps(vol)
+	var sunk := IsoVolume.from_feet(IsoVolume.iso_to_world(_feet_gap(vol, Vector2(vol.max_x, vol.max_y) - vol.bounds_center(), -0.02)))
+	var sunk_hit := sunk.overlaps(vol)
+	var neither := not DepthSolver.is_behind(oval, vol) and not DepthSolver.is_behind(vol, oval)
+	var front_key := oval.depth_key() > vol.depth_key()
+	_isolate(wall)
+	near_one.visible = false
+	far_one.visible = false
+	_hide_crowd()
+	camera.position = wall.global_position + Vector2(40, 30)
+	player.visible = true
+	player.global_position = at
+	player._set_frame(2, 0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var front_z := player.z_index > wall.z_index
+	var clean := DepthSolver.last_overlaps == 0 and not DepthSolver.last_cycle
+	var ordered := _orders_match()
+	await _capture("/opt/cursor/artifacts/lab-wall-corner.png")
+	_show_props()
+	var passed := free and sunk_hit and neither and front_key and front_z and clean and ordered
+	print("L11 free=", free, " sunk=", sunk_hit, " neither=", neither, " key=", front_key, " z=", front_z, " clean=", clean, " order=", ordered, " ok=", passed)
+	return passed
+
+func _crowd_case() -> bool:
+	_show_props()
+	player.visible = false
+	near_one.visible = false
+	far_one.visible = false
+	_place_crowd()
+	camera.zoom = Vector2(1.15, 1.15)
+	camera.position = IsoVolume.iso_to_world(Vector2(1.6, 1.2))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var clean := DepthSolver.last_overlaps == 0 and not DepthSolver.last_cycle
+	var ordered := _orders_match()
+	var slots := _crowd_slots()
+	await _capture("/opt/cursor/artifacts/lab-crowd.png")
+	camera.zoom = Vector2(1.55, 1.55)
+	_hide_crowd()
+	var passed := slots.size() >= 16 and clean and ordered
+	print("L12 slots=", slots.size(), " clean=", clean, " overlaps=", DepthSolver.last_overlaps, " cycle=", DepthSolver.last_cycle, " order=", ordered, " ok=", passed)
+	return passed
+
+func _orders_match() -> bool:
+	var vols: Array = []
+	for node in get_tree().get_nodes_in_group("iso"):
+		if not is_instance_valid(node) or not (node is CanvasItem):
+			continue
+		if not (node as CanvasItem).is_visible_in_tree():
+			continue
+		if not node.has_method("get_iso_volume"):
+			continue
+		vols.append(node.get_iso_volume())
+	var left := DepthSolver.order_reference(vols)
+	var right := DepthSolver.order_two_phase(vols)
+	if left.size() != right.size():
+		return false
+	for i in left.size():
+		if int(left[i]) != int(right[i]):
+			return false
+	return not DepthSolver.last_cycle
+
+func _crowd_slots() -> Array[Vector2]:
+	var props: Array = []
+	for node in _prop_nodes():
+		props.append(node.get_iso_volume())
+	var slots: Array[Vector2] = []
+	var x := 0.45
+	while x < 3.2:
+		var y := 0.45
+		while y < 2.4:
+			var feet := IsoVolume.from_feet(IsoVolume.iso_to_world(Vector2(x, y)))
+			var bad := false
+			for prop in props:
+				if feet.overlaps(prop):
+					bad = true
+					break
+			if not bad:
+				slots.append(IsoVolume.iso_to_world(Vector2(x, y)))
+			y += 0.40
+		x += 0.42
+	return slots
+
+func _place_crowd() -> void:
+	var slots := _crowd_slots()
+	var tex: Texture2D = load("res://assets/people/woman.png")
+	var want := mini(16, slots.size())
+	while _crowd.size() < want:
+		var person := _person(tex, Vector2.ZERO)
+		person.visible = false
+		_crowd.append(person)
+	for i in _crowd.size():
+		var on := i < want
+		_crowd[i].visible = on
+		if on:
+			_crowd[i].global_position = slots[i]
+			_crowd[i]._set_frame(2, 0)
+
+func _hide_crowd() -> void:
+	for person in _crowd:
+		person.visible = false
 
 func _overlap_change(prop: Node2D, person: Villager, bare: Image, covered: Image) -> Dictionary:
 	var sprite := _art_of(prop)

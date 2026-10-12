@@ -164,7 +164,7 @@ func _process(delta: float) -> void:
 	var dir: Vector2 = diff / dist
 	var step := minf(speed * delta, dist)
 	var nxt: Vector2 = global_position + dir * step
-	if game.can_step(global_position, nxt):
+	if game.can_step(global_position, nxt, self):
 		global_position = nxt
 		step_hint = dir * speed
 		_face(diff, delta, false)
@@ -195,8 +195,9 @@ func _separate(delta: float, forward: Vector2) -> void:
 			continue
 		var d := global_position - other.global_position
 		var len := d.length()
-		if len > 0.1 and len < 28.0 * IsoVolume.WORLD_SCALE:
-			push += d / len * (28.0 - len)
+		var need := IsoVolume.walker_separation(d) * IsoVolume.TILE
+		if len > 0.1 and len < need:
+			push += d / len * (need - len)
 	if push == Vector2.ZERO:
 		return
 	var along := push.dot(forward)
@@ -204,7 +205,7 @@ func _separate(delta: float, forward: Vector2) -> void:
 		push -= forward * along
 	var game := _game()
 	var nxt: Vector2 = global_position + push * minf(delta * 3.0, 0.35)
-	if game == null or game.can_step(global_position, nxt):
+	if game == null or game.can_step(global_position, nxt, self):
 		global_position = nxt
 
 func _repath() -> void:

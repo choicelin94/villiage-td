@@ -10,6 +10,8 @@ extends RefCounted
 #   shape "poly" — poly is a list of [x, y] offsets around that same origin.
 #   z — height of the prism. The solver compares these shapes; it does not
 #   assume one shared rectangle. Walkers are an ellipse with area, never a point.
+# Every polygon is convex. A hollow prop (farm frame, wall gap) is authored as
+# one solid convex cover, so walkers lose the interior instead of standing in it.
 # Draw the ground contact (trunk, wall base, stance), not the roof or canopy.
 
 const TILE := 128.0
@@ -29,7 +31,7 @@ const TABLE := {
 	},
 	"farm": {
 		"shape": "poly", "z": 0.85,
-		"poly": [[-0.46, 0.48], [0.46, 0.48], [0.46, 0.18], [-0.46, 0.18]],
+		"poly": [[-0.49, -0.43], [0.49, -0.43], [0.49, 0.50], [-0.49, 0.50]],
 	},
 	"workshop": {
 		"shape": "poly", "z": 1.8,
@@ -37,7 +39,7 @@ const TABLE := {
 	},
 	"wall": {
 		"shape": "poly", "z": 1.15,
-		"poly": [[-0.46, 0.48], [0.46, 0.48], [0.46, 0.22], [-0.46, 0.22]],
+		"poly": [[-0.49, -0.36], [0.49, -0.36], [0.49, 0.50], [-0.49, 0.50]],
 	},
 	"spear": {
 		"shape": "poly", "z": 1.65,
@@ -128,6 +130,8 @@ static func _from_spec(origin: Vector2, spec: Dictionary) -> IsoVolume:
 				vol.center + Vector2(-hw, hh),
 			])
 		vol.ground_poly_iso = pts
+		if not poly_convex(pts):
+			push_error("Footprint is concave: %s" % str(spec.get("poly", [])))
 	vol._apply_bounds()
 	return vol
 
@@ -143,6 +147,115 @@ static func _ellipse_support(rad: Vector2, dir: Vector2) -> float:
 		return 0.0
 	var d := dir.normalized()
 	return sqrt(rad.x * rad.x * d.x * d.x + rad.y * rad.y * d.y * d.y)
+
+static func poly_convex(poly: PackedVector2Array) -> bool:
+	var n := poly.size()
+	if n < 3:
+		return false
+	var sign := 0
+	for i in n:
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % n]
+		var c: Vector2 = poly[(i + 2) % n]
+		var cross := (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x)
+		if absf(cross) <= 0.0000001:
+			continue
+		var s := 1 if cross > 0.0 else -1
+		if sign == 0:
+			sign = s
+		elif s != sign:
+			return false
+	return sign != 0
+
+static func spec_convex(spec: Dictionary) -> bool:
+	if str(spec.get("shape", "poly")) == "ellipse":
+		return float(spec.get("rx", 0.0)) > 0.0 and float(spec.get("ry", 0.0)) > 0.0
+	if not spec.has("poly"):
+		return false
+	var pts := PackedVector2Array()
+	for item in spec.poly:
+		pts.append(Vector2(float(item[0]), float(item[1])))
+	return poly_convex(pts)
+
+# Center distance, in iso units, at which two walker ovals just touch along dir.
+static func walker_separation(dir: Vector2) -> float:
+	return walker_support(dir) * 2.0
+
+static func support_point(vol: IsoVolume, dir: Vector2) -> Vector2:
+	if vol.shape == Shape.ELLIPSE:
+		var denom := sqrt(vol.radius.x * vol.radius.x * dir.x * dir.x + vol.radius.y * vol.radius.y * dir.y * dir.y)
+		if denom < 0.000000000001:
+			return vol.center
+		return vol.center + Vector2(vol.radius.x * vol.radius.x * dir.x / denom, vol.radius.y * vol.radius.y * dir.y / denom)
+	if vol.ground_poly_iso.is_empty():
+		return vol.center
+	var best: Vector2 = vol.ground_poly_iso[0]
+	var best_d := best.dot(dir)
+	for p in vol.ground_poly_iso:
+		var dd := p.dot(dir)
+		if dd > best_d:
+			best = p
+			best_d = dd
+	return best
+
+# True only when the ground shapes penetrate. A shared boundary is not an overlap.
+func overlaps(other: IsoVolume) -> bool:
+	if other == null:
+		return false
+	if max_x < other.min_x or other.max_x < min_x or max_y < other.min_y or other.max_y < min_y:
+		return false
+	return _gjk_hit(self, other)
+
+static func _gjk_hit(a: IsoVolume, b: IsoVolume) -> bool:
+	var dir := a.center - b.center
+	if dir.length_squared() < 0.00000000000001:
+		dir = Vector2.RIGHT
+	var pts: Array[Vector2] = [_mink(a, b, dir)]
+	dir = -pts[0]
+	for _step in 16:
+		var newest := _mink(a, b, dir)
+		if newest.dot(dir) <= 0.0000001:
+			return false
+		pts.append(newest)
+		if pts.size() == 2:
+			var ao2 := -pts[1]
+			var ab2 := pts[0] - pts[1]
+			if ab2.dot(ao2) > 0.0:
+				var perp := Vector2(-ab2.y, ab2.x)
+				if perp.dot(ao2) < 0.0:
+					perp = -perp
+				dir = perp
+			else:
+				pts.remove_at(0)
+				dir = ao2
+			continue
+		var a0: Vector2 = pts[2]
+		var b0: Vector2 = pts[1]
+		var c0: Vector2 = pts[0]
+		var ao := -a0
+		var ab := b0 - a0
+		var ac := c0 - a0
+		var ab_perp := Vector2(-ab.y, ab.x)
+		if ab_perp.dot(ac) > 0.0:
+			ab_perp = -ab_perp
+		var ac_perp := Vector2(-ac.y, ac.x)
+		if ac_perp.dot(ab) > 0.0:
+			ac_perp = -ac_perp
+		if ab_perp.dot(ao) > 0.0:
+			pts.remove_at(0)
+			dir = ab_perp
+		elif ac_perp.dot(ao) > 0.0:
+			pts.remove_at(1)
+			dir = ac_perp
+		else:
+			# The origin is inside this simplex, so it is inside the Minkowski
+			# difference. A true touch never gets here: the support test stops
+			# when the origin is only on the boundary of the shapes.
+			return true
+	return true
+
+static func _mink(a: IsoVolume, b: IsoVolume, dir: Vector2) -> Vector2:
+	return support_point(a, dir) - support_point(b, -dir)
 
 static func sprite_rect(sprite: CanvasItem) -> Rect2:
 	if sprite == null:
