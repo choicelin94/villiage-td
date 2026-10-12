@@ -13,9 +13,13 @@ var selected := false
 
 var _tex: Texture2D
 var _sprite: Sprite2D
+var _atlas: AtlasTexture
 var _goal := Vector2.ZERO
 var _retarget := 0.0
 var _bob := 0.0
+var _facing := 2
+var _frame := 0
+var _frame_t := 0.0
 
 func setup(p_tex: Texture2D, p_sex: String, p_speed: float) -> void:
 	sex = p_sex
@@ -24,11 +28,14 @@ func setup(p_tex: Texture2D, p_sex: String, p_speed: float) -> void:
 
 func _ready() -> void:
 	add_to_group("villagers")
+	_atlas = AtlasTexture.new()
+	_atlas.atlas = _tex
+	_atlas.region = LpcFacing.region(0, _facing)
 	_sprite = Sprite2D.new()
-	_sprite.texture = _tex
+	_sprite.texture = _atlas
 	_sprite.centered = false
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_sprite.position = Vector2(-_tex.get_width() * 0.5, -_tex.get_height())
+	_sprite.position = Vector2(-LpcFacing.FRAME * 0.5, -LpcFacing.FRAME + 6.0)
 	_sprite.z_index = 0
 	add_child(_sprite)
 	_goal = global_position
@@ -46,7 +53,7 @@ func _process(delta: float) -> void:
 		return
 	if job != null and is_instance_valid(job):
 		global_position = job.global_position + Vector2(0, 8 + sin(_bob * 3.0) * 2.0)
-		_sprite.flip_h = false
+		_set_frame(2, 0)
 		queue_redraw()
 		return
 	if refugee and claim_left > 0.0:
@@ -94,10 +101,28 @@ func _walk(delta: float, game: Node) -> void:
 			global_position = alt
 		else:
 			_retarget = 0.0
-	_sprite.flip_h = dir.x < 0.0
+	_step_anim(dir, delta)
+
+func _step_anim(vel: Vector2, delta: float) -> void:
+	if vel.length_squared() > 1.0:
+		_facing = LpcFacing.row_for(vel)
+	_frame_t += delta
+	if _frame_t >= 0.09:
+		_frame_t = 0.0
+		_frame = (_frame + 1) % LpcFacing.COLS
+	_set_frame(_facing, _frame)
+
+func _set_frame(row: int, frame: int) -> void:
+	_facing = row
+	_frame = frame
+	_sprite.flip_h = false
+	if _atlas:
+		_atlas.region = LpcFacing.region(frame, row)
 
 func _leave(delta: float) -> void:
-	global_position += Vector2(0, -speed * delta)
+	var vel := Vector2(0, -speed)
+	global_position += vel * delta
+	_step_anim(vel, delta)
 	var game := _game()
 	if game and global_position.y < game.cell_center(Vector2i(0, 0)).y - 80.0:
 		queue_free()
@@ -113,5 +138,5 @@ func _draw() -> void:
 		col = Color(1, 1, 1, 1)
 	draw_arc(Vector2(0, -8), 22 if selected else 16, 0, TAU, 24, col, 2.0 if selected else 1.4)
 	if refugee and claim_left > 0.0:
-		var bar_y := -float(_tex.get_height()) - 8.0
+		var bar_y := -float(LpcFacing.FRAME) - 8.0
 		draw_line(Vector2(-14, bar_y), Vector2(-14 + 28.0 * clampf(claim_left / 6.5, 0, 1), bar_y), Color(1, 0.9, 0.3), 3.0)

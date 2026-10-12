@@ -24,11 +24,12 @@ var _repath_cd := 0.0
 var _stuck_t := 0.0
 var _last_pos := Vector2.ZERO
 var _rewarded := false
-var _anim: AnimatedSprite2D
+var _anim: Sprite2D
+var _atlas: AtlasTexture
 var _base_mod := Color.WHITE
-var _frame := 0.0
-
-static var _frames: SpriteFrames
+var _facing := 2
+var _frame_i := 0
+var _frame_t := 0.0
 
 func setup(p_hp: int, p_speed: float, p_scale: float, p_dmg: int, p_wood: int, p_gold: int, p_kind: String, p_mod: Color) -> void:
 	max_hp = p_hp
@@ -47,40 +48,32 @@ func mark_fresh() -> void:
 
 func _ready() -> void:
 	add_to_group("zombies")
-	_anim = AnimatedSprite2D.new()
-	_anim.sprite_frames = _get_frames()
+	_atlas = AtlasTexture.new()
+	_atlas.atlas = load("res://assets/enemies/zombie_walk.png")
+	_atlas.region = LpcFacing.region(0, _facing)
+	_anim = Sprite2D.new()
+	_anim.texture = _atlas
 	_anim.centered = false
 	_anim.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_anim.z_index = 0
+	_anim.position = Vector2(-LpcFacing.FRAME * 0.5, -LpcFacing.FRAME + 6.0)
 	add_child(_anim)
-	_anim.play("move")
-	_anchor()
 	var bar := HpBarZ.new()
 	bar.z_index = 0
 	add_child(bar)
 	_repath()
 
-func _get_frames() -> SpriteFrames:
-	if _frames != null:
-		return _frames
-	_frames = SpriteFrames.new()
-	_frames.add_animation("move")
-	_frames.set_animation_loop("move", true)
-	_frames.set_animation_speed("move", 6.0)
-	_frames.add_frame("move", load("res://assets/enemies/zombie_stand.png"))
-	_frames.add_frame("move", load("res://assets/enemies/zombie_hold.png"))
-	_frames.add_animation("attack")
-	_frames.set_animation_loop("attack", true)
-	_frames.set_animation_speed("attack", 8.0)
-	_frames.add_frame("attack", load("res://assets/enemies/zombie_hold.png"))
-	_frames.add_frame("attack", load("res://assets/enemies/zombie_stand.png"))
-	return _frames
-
-func _anchor() -> void:
-	var tex := _anim.sprite_frames.get_frame_texture("move", 0)
-	if tex == null:
-		return
-	_anim.position = Vector2(-tex.get_width() * 0.5, -tex.get_height() + 4.0)
+func _face(vel: Vector2, delta: float, faster: bool) -> void:
+	if vel.length_squared() > 1.0:
+		_facing = LpcFacing.row_for(vel)
+	_frame_t += delta
+	var step := 0.07 if faster else 0.1
+	if _frame_t >= step:
+		_frame_t = 0.0
+		_frame_i = (_frame_i + 1) % LpcFacing.COLS
+	_anim.flip_h = false
+	if _atlas:
+		_atlas.region = LpcFacing.region(_frame_i, _facing)
 
 func notify_map_changed() -> void:
 	_repath()
@@ -154,16 +147,13 @@ func _process(delta: float) -> void:
 		_path_i += 1
 		if _path_i >= _path.size() and _attack.x >= 0:
 			_attacking = true
-			_anim.play("attack")
 		return
 	var dir: Vector2 = diff / dist
 	var step := minf(speed * delta, dist)
 	global_position += dir * step
 	step_hint = dir * speed
-	_anim.flip_h = dir.x < 0.0
+	_face(dir, delta, false)
 	_separate(delta, dir)
-	if _anim.animation != "move":
-		_anim.play("move")
 
 func _do_attack(delta: float) -> void:
 	var game := _game()
@@ -174,13 +164,11 @@ func _do_attack(delta: float) -> void:
 		_repath()
 		return
 	var target_pos: Vector2 = game.cell_center(_attack)
-	if target_pos.x != global_position.x:
-		_anim.flip_h = target_pos.x < global_position.x
+	_face(target_pos - global_position, delta, true)
 	_cooldown -= delta
 	if _cooldown <= 0.0:
 		_cooldown = 0.9
 		game.damage_cell(_attack, bite)
-		_anim.play("attack")
 
 func _separate(delta: float, forward: Vector2) -> void:
 	var push := Vector2.ZERO
@@ -225,8 +213,6 @@ func _repath() -> void:
 	_attacking = false
 	if _path_i >= _path.size() and _attack.x >= 0:
 		_attacking = true
-		if _anim:
-			_anim.play("attack")
 
 func _game() -> Node:
 	return get_tree().get_first_node_in_group("game")

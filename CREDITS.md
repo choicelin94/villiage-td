@@ -67,7 +67,7 @@ Where a source file lists more than one license, this game uses **CC-BY-SA 3.0**
 
 The t-shirt is stacked with CC-BY-SA body, pants, hair, and shoes, so the combined villager PNGs are shared under CC-BY-SA 3.0. Game code stays under the MIT license. CC-BY-SA applies to these character images, not to the code.
 
-Frames are the front row of each `walk.png` (64×64 cells, 9 columns). Villagers use column 1. `zombie_stand.png` uses column 1 and `zombie_hold.png` uses column 4. Each frame is cropped above the top opaque pixel, the feet stay on the bottom edge, and the result is scaled 2× with nearest-neighbor filtering.
+Each PNG is a full LPC walk cycle: 9 columns by 4 rows of 64×64, scaled 2× with nearest-neighbor filtering to 128×128 frames (sheet 1152×512). Row 0 is up, the back of the character. Row 1 is left. Row 2 is down, the face toward the camera. Row 3 is right. That row order was checked on the eye layer: row 0 has no eyes, row 2 has both eyes, and the eyes sit left of center on row 1 and right of center on row 3. The game chooses the row from screen-space velocity and plays the columns while the character moves. Feet stay on the bottom of each frame. `zombie_walk.png` uses the same layout. The earlier stills `zombie_stand.png` and `zombie_hold.png` are not shipped.
 
 | In this game | LPC layers, in draw order |
 | --- | --- |
@@ -75,8 +75,7 @@ Frames are the front row of each `walk.png` (64×64 cells, 9 columns). Villagers
 | `assets/people/man_blue.png` | Same stack as `man_brown.png`. The shirt layer's hue is shifted to blue. That recolor is a change made for this game. |
 | `assets/people/man_old.png` | Same body, pants, shoes, head, and eyes. Shirt hue is shifted toward olive. Hair is `hair/messy1/adult/walk.png` with the color pulled to gray. Both edits were made for this game. |
 | `assets/people/woman.png` | `body/bodies/female/walk.png`, `legs/pants/thin/walk.png`, `torso/clothes/shortsleeve/tshirt/female/walk.png`, `feet/shoes/basic/thin/walk.png`, `head/heads/human/female/walk.png`, `eyes/human/adult/neutral/walk.png`, `hair/long/adult/walk.png` |
-| `assets/enemies/zombie_stand.png` | `body/bodies/zombie/walk/zombie.png`, `head/heads/zombie/adult/walk.png` |
-| `assets/enemies/zombie_hold.png` | Same two zombie layers, one walk step later |
+| `assets/enemies/zombie_walk.png` | `body/bodies/zombie/walk/zombie.png`, `head/heads/zombie/adult/walk.png` |
 
 Authors and source pages, taken from `CREDITS.csv` (not guessed):
 

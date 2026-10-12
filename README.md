@@ -6,21 +6,21 @@ An isometric tower defense game on a map about four times the previous area. Zom
 
 **引擎 / Engine:** Godot 4.7 (GDScript)  
 **玩法切片 / Slice:** 20×20 等距地图，村落建筑 + 有上限的木墙 + 两种炮塔，村民派工，难民，10 波。  
-**美术 / Art:** 建筑用 Kenney Fantasy Town Kit 2.0（CC0）。村民是穿好衣服的 LPC 男女（身体 + 衣服 + 头发），僵尸是同一套 LPC 体型。许可证是 CC-BY-SA 3.0（T 恤图层是 OGA-BY 3.0）。详见 [CREDITS.md](CREDITS.md)。 Buildings are Kenney Fantasy Town Kit 2.0 (CC0). Villagers are clothed LPC men and women (body, clothes, and hair). Zombies are the matching LPC body and head. The character images are CC-BY-SA 3.0. The t-shirt layer is OGA-BY 3.0. See [CREDITS.md](CREDITS.md).
+**美术 / Art:** 建筑用 Kenney Fantasy Town Kit 2.0（CC0）。村民是穿好衣服的 LPC 男女（身体 + 衣服 + 头发），僵尸是同一套 LPC 体型。行走时按屏幕上的速度选择朝向，脸会跟着移动方向转，不会一直背对镜头。许可证是 CC-BY-SA 3.0（T 恤图层是 OGA-BY 3.0）。详见 [CREDITS.md](CREDITS.md)。 Buildings are Kenney Fantasy Town Kit 2.0 (CC0). Villagers are clothed LPC men and women (body, clothes, and hair). Zombies are the matching LPC body and head. Walk frames follow screen-space velocity, so a character faces the way they move. The character images are CC-BY-SA 3.0. The t-shirt layer is OGA-BY 3.0. See [CREDITS.md](CREDITS.md).
 
 ## 在线试玩 / Play in the browser
 
-单线程网页导出在 [`docs/`](docs/)（关闭了线程，GitHub Pages 不需要 COOP/COEP）。第一次打开大约要下 40 MB 的引擎，请等加载条走完。手机浏览器可以双指缩放、单指拖动地图。窄屏会把村子拉近，方便点选。
+单线程网页导出在 [`docs/`](docs/)（关闭了线程，GitHub Pages 不需要 COOP/COEP）。第一次打开大约要下 40 MB 的引擎，请等加载条走完。手机用双指缩放、单指拖动。电脑在开始和离开图标旁边有 `+` / `-`。第一次打开时，镜头对准地图正中的一半（把 20×20 看成 4×4 块，对准中间 2×2 块），手机比电脑更近一些。
 
-The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pages does not need COOP/COEP headers). The first visit downloads about 40 MB. Wait for the loading bar. Phone browsers can pinch to zoom and drag to pan. A narrow screen starts closer to the village so taps can land.
+The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pages does not need COOP/COEP headers). The first visit downloads about 40 MB. Wait for the loading bar. Phones pinch to zoom and drag to pan. A computer also has `+` and `-` next to the start and leave icons. The first view centers the middle half of the map (the center 2×2 of a 4×4 split of the 20×20 grid). A phone starts closer than a computer.
 
 发布地址 / public URL, after Pages is turned on:
 
 **https://choicelin94.github.io/villiage-td/**
 
-这个仓库的 Pages 需要从 `main` 的 `/docs` 发布。本分支的网页包会在合并进 `main` 之后成为线上版本。在那之前，如果 Pages 还没打开，地址打不开。设置路径是 **Settings → Pages → Deploy from a branch**，Branch 选 `main`，Folder 选 **`/docs`**。
+这个地址现在还不能打开。Pages 要等人在 **Settings → Pages → Deploy from a branch** 里打开，Folder 选 **`/docs`**。要先看这一支的网页包，Branch 选 `cursor/facing-hud-camera-4d8f`。合并进 `main` 之后，再把 Branch 改回 `main`。
 
-Pages serves `/docs` from `main`. This branch's web export becomes the live build after it merges. Until Pages is enabled, the URL does not load. Use **Settings → Pages → Deploy from a branch**, branch `main`, folder **`/docs`**.
+That URL does not load until someone enables Pages. Use **Settings → Pages → Deploy from a branch**, folder **`/docs`**. To serve this branch, pick `cursor/facing-hud-camera-4d8f`. After it merges, switch the branch back to `main`.
 
 本地先看网页包 / preview the export locally:
 
@@ -46,13 +46,13 @@ You lose only when every villager is infected and turns into a zombie. Refugees 
 
 建造从空地开始：点一块能造的草地，右侧列出木墙、矛塔、火塔、房屋、农场、工坊。点其中一项就盖在那一格上。侧栏打开时，按 `1` 到 `6` 也会盖对应的建筑。
 
-地图可以单指拖动，双指或滚轮缩放。手机上开局会靠近村子，方便点选；缩小就能看到整张地图。左下角两个图标是开始波次（三角）和离开并重开（出门箭头），没有文字按钮，点一下就生效，不用确认。
+地图可以单指拖动，双指或滚轮缩放。电脑还可以点左下角的 `+` 和 `-`，这两个按钮在开始和离开图标的右边，手机上不显示。第一次打开时镜头对准地图正中那一半，手机默认比电脑更近。之后如果自己拖过或缩放过，改变窗口大小不会把镜头拉回去。再缩小可以看到整张地图。顶栏是图标加数字：木材、金币、村民、床位、木墙、波次。有难民在等待时才多出一个计时图标。左下角两个图标是开始波次（三角）和离开并重开（出门箭头），没有文字按钮，点一下就生效，不用确认。
 
 Staffing has one primary path: tap a villager, then tap a house, farm, workshop, or tower. Tapping a building first opens the side panel, where you can sell it. That tap does not assign anyone.
 
 Building starts from the ground: tap an empty tile and the right-hand panel lists the wall, spear tower, fire tower, house, farm, and workshop. Tap one to place it on that tile. With the panel open, keys `1` through `6` place the same way.
 
-Drag with one finger to pan. Pinch or use the mouse wheel to zoom. On a phone the view starts close to the village so taps land; zoom out to see the whole map. Two icons at the lower left start the wave (triangle) and leave for a fresh game (door arrow). They are not text buttons. One tap, no confirmation.
+Drag with one finger to pan. Pinch or use the mouse wheel to zoom. On a computer, `+` and `-` sit to the right of the start and leave icons; those buttons stay hidden on a phone. The first view frames the center half of the map, closer on a phone than on a computer. After you pan or zoom, resizing the window does not snap the camera back. Zoom out to see the whole map. The top bar is an icon plus a number for wood, gold, people, beds, walls, and the wave. A timer icon appears only while refugees are waiting. Two icons at the lower left start the wave (triangle) and leave for a fresh game (door arrow). They are not text buttons. One tap, no confirmation.
 
 | 操作 Action | 作用 Effect |
 | --- | --- |
@@ -64,11 +64,12 @@ Drag with one finger to pan. Pinch or use the mouse wheel to zoom. On a phone th
 | 右键建筑，或侧栏里的出售 | 出售，返还一半资源。取消派工，不感染 |
 | 单指拖动，或鼠标拖动 | 平移地图 |
 | 双指张开捏合，或滚轮 | 缩放地图 |
+| 电脑左下角 `+` / `-` | 以画面中心放大或缩小。手机上没有这两个按钮 |
 | 左下三角图标，或 `Space` / `Enter` | 开始下一波 |
 | 左下出门图标，或 `R`，或结束画面的图标 | 离开这一局并重开 |
 | `Esc` | 关掉侧栏并取消选中的村民 |
 
-Tap a villager, then tap a functional building to assign them. One building keeps one villager. Tap empty ground to open the build list. Tap an existing building, with nobody selected, to inspect or sell it. Drag to pan and pinch to zoom. The triangle starts the next wave. The door icon leaves and restarts. `Esc` closes the panel.
+Tap a villager, then tap a functional building to assign them. One building keeps one villager. Tap empty ground to open the build list. Tap an existing building, with nobody selected, to inspect or sell it. Drag to pan and pinch to zoom. On a computer, `+` and `-` zoom toward the middle of the screen. The triangle starts the next wave. The door icon leaves and restarts. `Esc` closes the panel.
 
 ### 村民 / Villagers
 
