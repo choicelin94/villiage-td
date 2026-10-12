@@ -90,6 +90,10 @@ var _cam_user := false
 var _syncing := false
 
 func _ready() -> void:
+	if _open_lab_now():
+		get_tree().call_deferred("change_scene_to_file", "res://scenes/depth_lab.tscn")
+		return
+	process_priority = 50
 	Engine.max_fps = 60
 	add_to_group("game")
 	font = load("res://assets/fonts/NotoSansSC-Regular.otf")
@@ -112,6 +116,7 @@ func _ready() -> void:
 	hud.place_requested.connect(_on_place_requested)
 	hud.sell_pressed.connect(_on_sell_requested)
 	hud.staff_selected.connect(_on_staff_selected)
+	hud.lab_pressed.connect(_open_depth_lab)
 	get_viewport().size_changed.connect(_on_viewport_resized)
 	_sync_pixels()
 	_apply_fit_zoom(true)
@@ -154,6 +159,7 @@ func _process(delta: float) -> void:
 	if _selftest and Time.get_ticks_msec() - _selftest_t0 > 180000:
 		print("SELFTEST_TIMEOUT people=", _alive_villagers().size(), " wave=", wave_number)
 		get_tree().quit(1)
+	_apply_iso_sort()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if hud != null and hud.is_blocking():
@@ -349,7 +355,9 @@ func _make_villager(cell: Vector2i, sex: String, as_refugee: bool) -> Villager:
 func _place_prop(cell: Vector2i, tex: Texture2D) -> void:
 	var node := Node2D.new()
 	node.position = cell_center(cell)
+	node.set_script(load("res://scripts/iso_prop.gd"))
 	var sprite := Sprite2D.new()
+	sprite.name = "Sprite"
 	sprite.texture = tex
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -358,7 +366,6 @@ func _place_prop(cell: Vector2i, tex: Texture2D) -> void:
 	sprite.z_index = 0
 	node.add_child(sprite)
 	actors.add_child(node)
-	node.z_index = depth_z(node.position.y + Building.front_bias(tex))
 
 func _build_camera() -> void:
 	camera = Camera2D.new()
@@ -1143,8 +1150,36 @@ func _is_border(cell: Vector2i) -> bool:
 func _is_spawn(cell: Vector2i) -> bool:
 	return cell in SPAWNS
 
-func depth_z(world_y: float) -> int:
-	return clampi(int(round(world_y)), -4000, 4000)
+func _open_lab_now() -> bool:
+	if Engine.get_meta("skip_lab", false):
+		return false
+	if OS.get_environment("TD_LAB") == "1":
+		return true
+	if OS.has_feature("web"):
+		var query := str(JavaScriptBridge.eval("window.location.search", true))
+		return query.contains("lab=1")
+	return false
+
+func _open_depth_lab() -> void:
+	get_tree().change_scene_to_file("res://scenes/depth_lab.tscn")
+
+func _apply_iso_sort() -> void:
+	if actors == null:
+		return
+	var entries: Array = []
+	for node in get_tree().get_nodes_in_group("iso"):
+		if not is_instance_valid(node) or not (node is CanvasItem):
+			continue
+		if not (node as CanvasItem).is_visible_in_tree():
+			continue
+		if not node.has_method("iso_points") or not node.has_method("iso_rect"):
+			continue
+		entries.append({
+			"node": node,
+			"points": node.iso_points(),
+			"rect": node.iso_rect(),
+		})
+	IsoSort.apply(entries)
 
 func can_step(from_pos: Vector2, to_pos: Vector2) -> bool:
 	var to_cell := world_to_cell(to_pos)
@@ -1597,11 +1632,6 @@ func _move_shot() -> void:
 	var rock_cell := Vector2i(4, 8)
 	var rock_pos := cell_center(rock_cell)
 	var rock_tex: Texture2D = load("res://assets/village/rock.png")
-	var bias := Building.front_bias(rock_tex)
-	var rock_z := 0
-	for child in actors.get_children():
-		if child is Node2D and (child as Node2D).global_position.distance_to(rock_pos) < 2.0:
-			rock_z = (child as Node2D).z_index
 	for v in people:
 		v.anchored = true
 		v.visible = false
@@ -1614,29 +1644,40 @@ func _move_shot() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var behind_z := probe.z_index
+	var behind_rock_z := _z_near(rock_pos)
 	var with_behind := await _grab()
 	await _capture("/opt/cursor/artifacts/depth-behind.png")
 	probe.visible = false
 	await get_tree().process_frame
 	var rock_only := await _grab()
 	var behind_ratio := _cover_ratio(rock_pos, rock_tex, with_behind, rock_only)
-	probe.global_position = rock_pos + Vector2(-36, bias + 12.0)
+	probe.global_position = rock_pos + Vector2(-36, 74.0)
 	probe.visible = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var front_z := probe.z_index
+	var front_rock_z := _z_near(rock_pos)
 	var with_front := await _grab()
 	await _capture("/opt/cursor/artifacts/depth-front.png")
 	var front_ratio := _cover_ratio(rock_pos, rock_tex, with_front, rock_only)
-	var tree_pos := cell_center(tree_cell)
-	var tree_bias := Building.front_bias(load("res://assets/village/tree.png"))
-	var tree_z := 0
-	for child in actors.get_children():
-		if child is Node2D and (child as Node2D).global_position.distance_to(tree_pos) < 2.0:
-			tree_z = (child as Node2D).z_index
-	var depth_ok := behind_z < rock_z and front_z > rock_z and behind_ratio < 0.08 and front_ratio > behind_ratio + 0.03
-	var tree_ok := depth_z(tree_pos.y - 24.0) < tree_z and tree_z < depth_z(tree_pos.y + tree_bias + 16.0)
-	print("DEPTH rock_z=", rock_z, " behind_z=", behind_z, " front_z=", front_z, " behind_ratio=", behind_ratio, " front_ratio=", front_ratio, " bias=", bias, " tree_z=", tree_z, " tree_bias=", tree_bias, " depth_ok=", depth_ok, " tree_ok=", tree_ok)
+	var depth_ok := behind_z < behind_rock_z and front_z > front_rock_z and behind_ratio < 0.08 and front_ratio > behind_ratio + 0.03
+	var house: Building = buildings[Vector2i(8, 14)]
+	var hpos := house.global_position
+	var near_pt := hpos + Vector2(70, 30)
+	var far_pt := hpos + Vector2(80, -8)
+	var cmp_near := IsoSort.compare_points(PackedVector2Array([near_pt]), house.iso_points())
+	var cmp_far := IsoSort.compare_points(PackedVector2Array([far_pt]), house.iso_points())
+	probe.global_position = near_pt
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var near_front := probe.z_index > house.z_index
+	probe.global_position = far_pt
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var far_behind := probe.z_index < house.z_index
+	var tree_ok := cmp_near > 0 and cmp_far < 0 and near_front and far_behind
+	print("DEPTH behind_z=", behind_z, " behind_rock=", behind_rock_z, " front_z=", front_z, " front_rock=", front_rock_z, " behind_ratio=", behind_ratio, " front_ratio=", front_ratio, " depth_ok=", depth_ok)
+	print("CORNER cmp_near=", cmp_near, " cmp_far=", cmp_far, " near_front=", near_front, " far_behind=", far_behind, " corner_ok=", tree_ok)
 	var person: Villager = people[0]
 	for v in people:
 		v.anchored = false
@@ -1674,6 +1715,12 @@ func _move_shot() -> void:
 	var ok := (not into) and out and (not into_tree) and (not into_rock) and (not path_hits) and (not clip) and (not entered) and reached and depth_ok and tree_ok and hidden and panel_ok and selected
 	print("MOVE_OK ", ok)
 	get_tree().quit(0 if ok else 1)
+
+func _z_near(pos: Vector2) -> int:
+	for child in actors.get_children():
+		if child is Node2D and (child as Node2D).global_position.distance_to(pos) < 2.0:
+			return (child as Node2D).z_index
+	return 0
 
 func _grab() -> Image:
 	await RenderingServer.frame_post_draw

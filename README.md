@@ -18,9 +18,17 @@ The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pa
 
 **https://choicelin94.github.io/villiage-td/**
 
-线上页面来自 `main` 的 `/docs`。这一支合并之后，驻岗会显示在建筑详情里，人物也会按前后遮挡并绕开障碍。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/staff-depth-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
+线上页面来自 `main` 的 `/docs`。这一支合并之后，人物会沿着地砖靠近镜头的斜边切换前后，东角和西角不再整栋房子突然盖住或被盖住。景深试验页：
 
-The live site serves `/docs` from `main`. After this branch merges, stationed villagers show in the building panel, and people pass behind or in front of scenery instead of walking through it. To preview first, set **Settings → Pages → Deploy from a branch** to `cursor/staff-depth-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
+**https://choicelin94.github.io/villiage-td/depth-lab/**
+
+游戏里右上角的「景深」也会打开同一页。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/iso-depth-lab-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
+
+The live site serves `/docs` from `main`. After this branch merges, people flip in front of or behind a building along the tile's near diagonal, so the east and west corners no longer pop on one horizontal cut. The depth lab is at:
+
+**https://choicelin94.github.io/villiage-td/depth-lab/**
+
+The in-game **Depth** button opens the same page. To preview first, set **Settings → Pages → Deploy from a branch** to `cursor/iso-depth-lab-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
 
 本地先看网页包 / preview the export locally:
 
@@ -138,9 +146,9 @@ Leaving everyone unassigned loses on wave 1, because they are still outside. Sta
 1. 用 Godot 打开本目录的 `project.godot`。
 2. 按 `F5` 运行主场景 `scenes/main.tscn`。
 
-渲染器是 **GL Compatibility**，方便网页导出。地图是 Godot 的等距 `TileMapLayer`（diamond，约 45° 俯视），角色和建筑在开启 Y-sort 的节点下，按脚下位置排序。
+渲染器是 **GL Compatibility**，方便网页导出。地图是 Godot 的等距 `TileMapLayer`（diamond，约 45° 俯视）。房屋、木墙、树和岩石用靠近镜头的两条边（西角 → 南角 → 东角）参加排序，走动的人用脚点。画面重叠的物件连成依赖图，再做拓扑排序。因此东角和西角沿着斜边切换前后。整张精灵仍然一起翻转，不会只挡住半个身体。建筑、树和岩石仍然挡住走路。驻岗只出现在建筑详情里。
 
-Open `project.godot` in Godot 4.7.x and press `F5`. The project uses the GL Compatibility renderer. The ground is an isometric `TileMapLayer` (diamond, about 45° top-down). Characters and buildings Y-sort by their feet.
+Open `project.godot` in Godot 4.7.x and press `F5`. The project uses the GL Compatibility renderer. The ground is an isometric `TileMapLayer` (diamond, about 45° top-down). Houses, walls, trees, and rocks sort on the two near tile edges (west corner → south corner → east corner). Walkers sort as a foot point. Overlapping sprites become a dependency graph, then a topological order, so the east and west corners flip along the diagonal. The whole sprite still flips together. It does not hide half a body. Buildings, trees, and rocks still block walking. Staffing still appears only in the building panel.
 
 ### 导出网页 / Export web
 
