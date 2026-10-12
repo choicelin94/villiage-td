@@ -7,6 +7,7 @@ signal zoom_in_pressed
 signal zoom_out_pressed
 signal place_requested(kind: int)
 signal sell_pressed
+signal staff_selected
 
 var _font: Font
 var _theme: Theme
@@ -407,16 +408,16 @@ func _fill_building(building: Building) -> void:
 		Building.Kind.WORKSHOP: "build.workshop",
 	}
 	_list.add_child(_title(Locale.text(str(names.get(building.kind, "panel.building")))))
-	var info := Label.new()
-	info.theme = _theme
-	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info.add_theme_font_size_override("font_size", 15)
-	info.add_theme_color_override("font_color", Color(0.9, 0.88, 0.75))
 	if building.is_functional():
-		info.text = Locale.text("panel.staffed" if building.has_staff() else "panel.empty")
+		var stationed := 1 if building.has_staff() else 0
+		_list.add_child(_body(Locale.format("panel.station_count", [stationed])))
+		if building.has_staff():
+			_list.add_child(_staff_button(building.staff as Villager))
+			_list.add_child(_body(Locale.text("panel.reassign")))
+		else:
+			_list.add_child(_body(Locale.text("panel.empty")))
 	else:
-		info.text = Locale.text("panel.wall_info")
-	_list.add_child(info)
+		_list.add_child(_body(Locale.text("panel.wall_info")))
 	var sell := Button.new()
 	sell.theme = _theme
 	sell.custom_minimum_size = Vector2(0, 64)
@@ -435,6 +436,55 @@ func _clear_list() -> void:
 	for child in _list.get_children():
 		_list.remove_child(child)
 		child.free()
+
+func _body(text: String) -> Label:
+	var label := Label.new()
+	label.theme = _theme
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", 15)
+	label.add_theme_color_override("font_color", Color(0.9, 0.88, 0.75))
+	return label
+
+func _staff_button(person: Villager) -> Button:
+	var btn := Button.new()
+	btn.name = "StaffButton"
+	btn.theme = _theme
+	btn.text = ""
+	btn.custom_minimum_size = Vector2(0, 96)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.focus_mode = Control.FOCUS_NONE
+	_style_button(btn, Color(0.14, 0.22, 0.16), Color(0.45, 0.62, 0.42))
+	var row := HBoxContainer.new()
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 8
+	row.offset_top = 6
+	row.offset_right = -8
+	row.offset_bottom = -6
+	row.add_theme_constant_override("separation", 8)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn.add_child(row)
+	var frame := TextureRect.new()
+	frame.texture = person.face_texture()
+	frame.custom_minimum_size = Vector2(84, 84)
+	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	frame.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	frame.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(frame)
+	var name := Label.new()
+	name.theme = _theme
+	name.text = Locale.text("villager.female" if person.sex == "f" else "villager.male")
+	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name.add_theme_font_size_override("font_size", 16)
+	name.add_theme_color_override("font_color", Color(0.96, 0.94, 0.86))
+	row.add_child(name)
+	btn.pressed.connect(func() -> void: staff_selected.emit())
+	return btn
 
 func _title(text: String) -> Label:
 	var label := Label.new()

@@ -53,6 +53,20 @@ var always_bar := true
 var cooldown := 0.0
 var _stats: Dictionary = {}
 var staff: Node2D = null
+var _sort_bias := 49.0
+
+static func front_bias(tex: Texture2D) -> float:
+	var bias := 49.0
+	if tex == null:
+		return bias
+	var img := tex.get_image()
+	if img == null or img.is_empty():
+		return bias
+	for y in range(img.get_height() - 1, -1, -1):
+		for x in img.get_width():
+			if img.get_pixel(x, y).a > 0.08:
+				return float(y) + SPRITE_OFF.y
+	return bias
 
 func has_staff() -> bool:
 	return staff != null and is_instance_valid(staff) and not bool(staff.get("infected")) and not bool(staff.get("leaving"))
@@ -67,19 +81,23 @@ func setup(p_kind: Kind, p_cell: Vector2i) -> void:
 	max_hp = int(_stats.hp)
 	hp = max_hp
 	var tex: Texture2D = load(_stats.tex)
+	_sort_bias = front_bias(tex)
 	var sprite := Sprite2D.new()
 	sprite.texture = tex
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	sprite.position = SPRITE_OFF
+	sprite.z_as_relative = true
 	sprite.z_index = 0
 	add_child(sprite)
 	if kind == Kind.FIRE:
 		var flame := Flame.new()
 		flame.position = Vector2(8, -78)
+		flame.z_as_relative = true
 		flame.z_index = 0
 		add_child(flame)
 	var bar := HpBar.new()
+	bar.z_as_relative = true
 	bar.z_index = 0
 	bar.y_off = -148.0
 	add_child(bar)
@@ -88,6 +106,9 @@ func is_defense() -> bool:
 	return bool(_stats.defense)
 
 func _process(delta: float) -> void:
+	var game := _game()
+	if game:
+		z_index = game.depth_z(global_position.y + _sort_bias)
 	queue_redraw()
 	if float(_stats.range) <= 0.0 or not has_staff():
 		return

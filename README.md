@@ -18,9 +18,9 @@ The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pa
 
 **https://choicelin94.github.io/villiage-td/**
 
-线上页面来自 `main` 的 `/docs`。这一支合并之后，语言切换才会出现在线上。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/ui-language-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
+线上页面来自 `main` 的 `/docs`。这一支合并之后，驻岗会显示在建筑详情里，人物也会按前后遮挡并绕开障碍。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/staff-depth-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
 
-The live site serves `/docs` from `main`. The language switch appears there after this branch merges. To preview it first, set **Settings → Pages → Deploy from a branch** to `cursor/ui-language-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
+The live site serves `/docs` from `main`. After this branch merges, stationed villagers show in the building panel, and people pass behind or in front of scenery instead of walking through it. To preview first, set **Settings → Pages → Deploy from a branch** to `cursor/staff-depth-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
 
 本地先看网页包 / preview the export locally:
 
@@ -60,7 +60,7 @@ Drag with one finger to pan. Pinch or use the mouse wheel to zoom. On a computer
 | 点已选中的人要去的建筑 | 派人。一座建筑同时只留一个人 |
 | 点空地 | 右侧打开建造列表 |
 | 点右侧的一项，或侧栏打开时按 `1` 到 `6` | 把该建筑盖在选中的格子上 |
-| 点已有建筑（没有选中村民时） | 右侧显示说明和出售 |
+| 点已有建筑（没有选中村民时） | 右侧显示驻岗的头像和称呼，以及出售。地图上不再把人叠在建筑上 |
 | 右键建筑，或侧栏里的出售 | 出售，返还一半资源。取消派工，不感染 |
 | 单指拖动，或鼠标拖动 | 平移地图 |
 | 双指张开捏合，或滚轮 | 缩放地图 |
@@ -70,19 +70,19 @@ Drag with one finger to pan. Pinch or use the mouse wheel to zoom. On a computer
 | 左下出门图标，或 `R`，或结束画面的图标 | 离开这一局并重开 |
 | `Esc` | 关掉侧栏并取消选中的村民 |
 
-Tap a villager, then tap a functional building to assign them. One building keeps one villager. Tap empty ground to open the build list. Tap an existing building, with nobody selected, to inspect or sell it. Drag to pan and pinch to zoom. On a computer, `+` and `-` zoom toward the middle of the screen. The triangle starts the next wave. The door icon leaves and restarts. `Esc` closes the panel. The top-right button shows the current language, 中文 or EN, and switches the whole interface. The choice is saved.
+Tap a villager, then tap a functional building to assign them. One building keeps one villager. After that, the villager leaves the map and shows up as a portrait and name in that building's panel. Tap the portrait to select them again. Tap empty ground to open the build list. Tap an existing building, with nobody selected, to inspect or sell it. Drag to pan and pinch to zoom. On a computer, `+` and `-` zoom toward the middle of the screen. The triangle starts the next wave. The door icon leaves and restarts. `Esc` closes the panel. The top-right button shows the current language, 中文 or EN, and switches the whole interface. The choice is saved.
 
 ### 村民 / Villagers
 
 开局有一批房屋、农场、工坊、塔和木墙，以及 **5** 名村民（男女都有）。人数少于功能建筑的岗位，也少于两座房屋都派人之后的床位。开局 **100 木材 / 70 金币**。
 
-村民移动速度是僵尸的 1.5 倍（108 对 72）。波次开始前，他们在村子里闲逛。波次开始后，没有床位、也没有被派到功能建筑的人会惊慌跑动，并往有人值守的房屋（否则往村子中心）靠。
+村民移动速度是僵尸的 1.5 倍（108 对 72）。波次开始前，他们在村子里闲逛。波次开始后，没有床位、也没有被派到功能建筑的人会惊慌跑动，并往有人值守的房屋（否则往村子中心）靠。闲逛、惊慌和撤离都会沿着格子绕开房屋、木墙、树木和岩石，不会穿进去。人的脚底和景物的前沿决定谁画在前面，经过建筑、树木和岩石时会走到后面或前面。
 
 碰到僵尸会感染，立刻变成一只新僵尸，并短暂高亮。有人值守的功能建筑如果被拆掉（不是出售），里面的人也会立刻感染。
 
 The village starts with houses, a farm, a workshop, towers, walls, and **5** villagers, men and women. That is fewer people than there are jobs, and fewer than the beds both houses would offer once staffed. You start with **100 wood and 70 gold**.
 
-Villagers move at 1.5× zombie speed (108 vs 72). Before the first wave they wander. After the start, anyone without a bed and without a job panics and drifts toward a staffed house, or toward the village center.
+Villagers move at 1.5× zombie speed (108 vs 72). Before the first wave they wander. After the start, anyone without a bed and without a job panics and drifts toward a staffed house, or toward the village center. Wandering, panic, and leaving follow the grid around houses, walls, trees, and rocks. Feet and the front edge of each sprite decide draw order, so a walker passes behind or in front of a building, tree, or rock.
 
 Contact with a zombie infects them. They become a zombie on the spot, with a short highlight. If a staffed functional building is destroyed, and it was not sold, its assigned villager is infected immediately.
 
