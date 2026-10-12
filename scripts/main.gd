@@ -90,6 +90,9 @@ var _cam_user := false
 var _syncing := false
 
 func _ready() -> void:
+	if _open_stress_now():
+		get_tree().call_deferred("change_scene_to_file", "res://scenes/depth_stress.tscn")
+		return
 	if _open_lab_now():
 		get_tree().call_deferred("change_scene_to_file", "res://scenes/depth_lab.tscn")
 		return
@@ -1160,6 +1163,36 @@ func _is_border(cell: Vector2i) -> bool:
 
 func _is_spawn(cell: Vector2i) -> bool:
 	return cell in SPAWNS
+
+func _open_stress_now() -> bool:
+	if Engine.get_meta("skip_stress", false):
+		return false
+	var n := _stress_count()
+	if n <= 0:
+		return false
+	Engine.set_meta("stress_n", n)
+	return true
+
+func _stress_count() -> int:
+	var env := OS.get_environment("TD_STRESS")
+	if env.is_valid_int():
+		return clampi(int(env), 0, 800)
+	if OS.has_feature("web"):
+		var query := str(JavaScriptBridge.eval("window.location.search", true))
+		return _stress_in_query(query)
+	return 0
+
+func _stress_in_query(query: String) -> int:
+	var at := query.find("stress=")
+	if at < 0:
+		return 0
+	var rest := query.substr(at + 7)
+	var amp := rest.find("&")
+	if amp >= 0:
+		rest = rest.substr(0, amp)
+	if not rest.is_valid_int():
+		return 0
+	return clampi(int(rest), 0, 800)
 
 func _open_lab_now() -> bool:
 	if Engine.get_meta("skip_lab", false):

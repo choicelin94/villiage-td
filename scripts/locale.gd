@@ -108,6 +108,18 @@ const TEXT := {
 	"lab.tag_you": {"zh": "你", "en": "You"},
 	"lab.tag_near": {"zh": "近", "en": "Near"},
 	"lab.tag_far": {"zh": "远", "en": "Far"},
+	"stress.title": {"zh": "景深压力", "en": "Depth stress"},
+	"stress.warm": {"zh": "预热中。先跑旧排序，再跑两段排序。", "en": "Warming up. The old sort runs first, then the two-phase sort."},
+	"stress.phase_ref": {"zh": "正在测量旧排序。", "en": "Measuring the old sort."},
+	"stress.phase_new": {"zh": "正在测量两段排序。", "en": "Measuring the two-phase sort."},
+	"stress.done": {
+		"zh": "%d 个走动的人。旧排序平均 %.3f ms，%.1f FPS。两段排序平均 %.3f ms，%.1f FPS。",
+		"en": "%d moving people. Old sort averages %.3f ms at %.1f FPS. Two-phase sort averages %.3f ms at %.1f FPS.",
+	},
+	"stress.help": {
+		"zh": "房屋、木墙、树和岩石的比较结果会留下。只有挪动过的人会重新比较。叠在一起的才走原来的南缘判断。",
+		"en": "Houses, walls, trees, and rocks keep their pair results. Only people who moved are compared again. Overlapping boxes still use the south-rim test.",
+	},
 }
 
 func _ready() -> void:

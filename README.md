@@ -18,17 +18,29 @@ The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pa
 
 **https://choicelin94.github.io/villiage-td/**
 
-线上页面来自 `main` 的 `/docs`。这一支把地图改成正面俯视的正方形格子。房屋和木墙是同一套 CC0 模型从南边俯视重新渲染的，树和岩石仍用原来的图。前后仍由体积决定：人的落点是一块椭圆，树干、岩石和房子各用自己的多边形或椭圆。整块椭圆到了占地北侧，人才被挡住。选中线跟着物件的深度。景深试验页：
+线上页面来自 `main` 的 `/docs`。地图是正面俯视的正方形格子。房屋和木墙是同一套 CC0 模型从南边俯视渲染的，树和岩石仍用原来的图。前后仍由体积决定：人的落点是一块椭圆，树干、岩石和房子各用自己的多边形或椭圆。整块椭圆到了占地北侧，人才被挡住。选中线跟着物件的深度。
+
+这一支把排序分成两段。每件东西先按椭圆或多边形算出紧的包围盒。屏幕上的盒子先扫一遍，对不上的对子直接丢掉。盒子分开的对子用包围盒就能定前后。只有盒子真的叠在一起，才走原来的南缘比较。房屋、木墙、树和岩石的结果会留着，人挪动了才重算涉及到的对子。景深试验页：
 
 **https://choicelin94.github.io/villiage-td/depth-lab/**
 
-游戏里右上角的「景深」也会打开同一页。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/topdown-village-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
+压力页会放出很多走动的人，并在同一页里量旧排序和两段排序的耗时（`?stress=100`、`300`、`500`）：
 
-The live site serves `/docs` from `main`. On this branch the map is a square top-down grid. Houses and walls are the same CC0 models rendered from the south, looking down. Trees and rocks keep their previous pictures. Depth still comes from volumes: a person stands on an oval, and each tree, rock, and building has its own polygon or ellipse. The whole oval has to sit north of a footprint before that object covers the person. Selection lines use that depth. The depth lab is at:
+**https://choicelin94.github.io/villiage-td/stress/**
+
+游戏里右上角的「景深」打开试验页。若要先预览这一支，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/depth-broadphase-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
+
+The live site serves `/docs` from `main`. The map is a square top-down grid. Houses and walls are CC0 models rendered from the south. Trees and rocks keep their previous pictures. Depth still comes from volumes: a person stands on an oval, and each tree, rock, and building has its own polygon or ellipse. The whole oval has to sit north of a footprint before that object covers the person. Selection lines use that depth.
+
+This branch splits the sort into two phases. Each footprint first becomes a tight box around its ellipse or polygon. A sweep drops pairs whose screen boxes miss. Pairs whose boxes are apart take their order from the box. Only a real overlap runs the existing south-rim test. Houses, walls, trees, and rocks keep that result; a pair is redone when someone in it moves. The depth lab is at:
 
 **https://choicelin94.github.io/villiage-td/depth-lab/**
 
-The in-game **Depth** button opens the same page. To preview first, set **Settings → Pages → Deploy from a branch** to `cursor/topdown-village-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
+The stress page spawns many moving people and times the old sort against the two-phase sort in one session (`?stress=100`, `300`, or `500`):
+
+**https://choicelin94.github.io/villiage-td/stress/**
+
+The in-game **Depth** button opens the lab. To preview this branch, set **Settings → Pages → Deploy from a branch** to `cursor/depth-broadphase-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
 
 本地先看网页包 / preview the export locally:
 
@@ -146,9 +158,9 @@ Leaving everyone unassigned loses on wave 1, because they are still outside. Sta
 1. 用 Godot 打开本目录的 `project.godot`。
 2. 按 `F5` 运行主场景 `scenes/main.tscn`。
 
-渲染器是 **GL Compatibility**，方便网页导出。地图是 Godot 的正方形 `TileMapLayer`（正面俯视，不是 45° 菱形）。房屋、木墙、树、岩石和走动的人仍走同一段排序。每人的占地写在 `data/iso_volumes.json`：`ellipse` 用 `rx`/`ry`（可加 `ox`/`oy`），`poly` 用相对格子中心的顶点，`z` 是高度。人必须是椭圆，不能收成一个点。比较时看共享东西范围里谁的南缘更靠南；东西方向错开时，只有整块都在北侧才算在后面。树只算树干接触地面的那一小块椭圆。调试彩线和建造高亮挂在被描述的物件上。体积只负责画面前后，走路阻挡仍是原来的格子。驻岗只出现在建筑详情里。
+渲染器是 **GL Compatibility**，方便网页导出。地图是 Godot 的正方形 `TileMapLayer`（正面俯视，不是 45° 菱形）。房屋、木墙、树、岩石和走动的人仍走同一段排序。每人的占地写在 `data/iso_volumes.json`：`ellipse` 用 `rx`/`ry`（可加 `ox`/`oy`），`poly` 用相对格子中心的顶点，`z` 是高度。人必须是椭圆，不能收成一个点。比较时看共享东西范围里谁的南缘更靠南；东西方向错开时，只有整块都在北侧才算在后面。屏幕上的包围盒先筛掉碰不到的对子，盒子真正重叠才做南缘比较。没挪动的景物会留下比较结果。树只算树干接触地面的那一小块椭圆。网页地址加上 `?stress=300` 可以给排序计时。调试彩线和建造高亮挂在被描述的物件上。体积只负责画面前后，走路阻挡仍是原来的格子。驻岗只出现在建筑详情里。
 
-Open `project.godot` in Godot 4.7.x and press `F5`. The project uses the GL Compatibility renderer. The ground is a square `TileMapLayer` (top-down, not a 45° diamond). Houses, walls, trees, rocks, and walkers still share one sort. Each footprint is authored in `data/iso_volumes.json`: `ellipse` uses `rx`/`ry` (optional `ox`/`oy`), `poly` is vertices around the cell center, and `z` is the height. Walkers are an ellipse with area, not a point. The compare looks at who has the farther south rim inside the shared east-west span; when those spans miss, only a footprint that sits entirely to the north is behind. A tree uses the small ellipse where the trunk meets the ground. Debug lines and the build-tile highlight are drawn with the object they describe. Volumes are for drawing order only. Buildings, trees, and rocks still block walking on the same grid. Staffing still appears only in the building panel.
+Open `project.godot` in Godot 4.7.x and press `F5`. The project uses the GL Compatibility renderer. The ground is a square `TileMapLayer` (top-down, not a 45° diamond). Houses, walls, trees, rocks, and walkers still share one sort. Each footprint is authored in `data/iso_volumes.json`: `ellipse` uses `rx`/`ry` (optional `ox`/`oy`), `poly` is vertices around the cell center, and `z` is the height. Walkers are an ellipse with area, not a point. The compare looks at who has the farther south rim inside the shared east-west span; when those spans miss, only a footprint that sits entirely to the north is behind. A sweep on screen boxes rejects pairs that cannot overlap, and the outline test runs only when the tight boxes overlap. Unmoved props keep their pair result. A tree uses the small ellipse where the trunk meets the ground. Debug lines and the build-tile highlight are drawn with the object they describe. Volumes are for drawing order only. Buildings, trees, and rocks still block walking on the same grid. Staffing still appears only in the building panel. Add `?stress=300` to the web build to time the sort.
 
 ### 导出网页 / Export web
 
