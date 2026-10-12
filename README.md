@@ -1,11 +1,11 @@
 # 部落村落塔防 / Tribal Village TD
 
-等距俯视角的部落村落塔防。地图大约是原先的四倍大。僵尸从北边入口进来，追赶没躲进建筑的村民，也会啃有人值守的房屋和塔。先点村民，再点建筑，才能让房屋、农场、工坊和塔生效。守住 **10** 波即胜利。只有村民全部被感染才会失败。
+正面俯视的部落村落塔防。地图大约是原先的四倍大。僵尸从北边入口进来，追赶没躲进建筑的村民，也会啃有人值守的房屋和塔。先点村民，再点建筑，才能让房屋、农场、工坊和塔生效。守住 **10** 波即胜利。只有村民全部被感染才会失败。
 
-An isometric tower defense game on a map about four times the previous area. Zombies enter from the north, chase villagers who are still outside, and chew staffed houses and towers. Click a villager first, then a building, to make houses, farms, the workshop, and towers do anything. Hold for **10** waves to win. The only loss is every villager becoming infected.
+A top-down tower defense game on a map about four times the previous area. Zombies enter from the north, chase villagers who are still outside, and chew staffed houses and towers. Click a villager first, then a building, to make houses, farms, the workshop, and towers do anything. Hold for **10** waves to win. The only loss is every villager becoming infected.
 
 **引擎 / Engine:** Godot 4.7 (GDScript)  
-**玩法切片 / Slice:** 20×20 等距地图，村落建筑 + 有上限的木墙 + 两种炮塔，村民派工，难民，10 波。  
+**玩法切片 / Slice:** 20×20 正方形俯视地图，村落建筑 + 有上限的木墙 + 两种炮塔，村民派工，难民，10 波。  
 **美术 / Art:** 建筑用 Kenney Fantasy Town Kit 2.0（CC0）。村民是穿好衣服的 LPC 男女（身体 + 衣服 + 头发），僵尸是同一套 LPC 体型。行走时按屏幕上的速度选择朝向，脸会跟着移动方向转，不会一直背对镜头。许可证是 CC-BY-SA 3.0（T 恤图层是 OGA-BY 3.0）。详见 [CREDITS.md](CREDITS.md)。 Buildings are Kenney Fantasy Town Kit 2.0 (CC0). Villagers are clothed LPC men and women (body, clothes, and hair). Zombies are the matching LPC body and head. Walk frames follow screen-space velocity, so a character faces the way they move. The character images are CC-BY-SA 3.0. The t-shirt layer is OGA-BY 3.0. See [CREDITS.md](CREDITS.md).
 
 ## 在线试玩 / Play in the browser
@@ -18,17 +18,17 @@ The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pa
 
 **https://choicelin94.github.io/villiage-td/**
 
-线上页面来自 `main` 的 `/docs`。这一支里，房屋、木墙、树、岩石和走动的人用同一套地面体积：等距格子上的占地加上高度。树的占地只有树干，不算树冠。脚到了占地北侧，整个人被挡住；脚在南侧，整个人在前面。选中线跟着物件的深度，站在前面的人会盖住它。景深试验页：
+线上页面来自 `main` 的 `/docs`。这一支把地图改成正面俯视的正方形格子。房屋和木墙是同一套 CC0 模型从南边俯视重新渲染的，树和岩石仍用原来的图。前后仍由体积决定：人的落点是一块椭圆，树干、岩石和房子各用自己的多边形或椭圆。整块椭圆到了占地北侧，人才被挡住。选中线跟着物件的深度。景深试验页：
 
 **https://choicelin94.github.io/villiage-td/depth-lab/**
 
-游戏里右上角的「景深」也会打开同一页。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/iso-volume-depth-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
+游戏里右上角的「景深」也会打开同一页。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/topdown-village-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
 
-The live site serves `/docs` from `main`. On this branch, houses, walls, trees, rocks, and walkers share one ground volume: an isometric footprint plus a height. A tree's footprint is the trunk, not the canopy. Feet north of that footprint put the whole person behind it; feet south put the whole person in front. Selection lines use the object's depth, and someone standing in front covers them. The depth lab is at:
+The live site serves `/docs` from `main`. On this branch the map is a square top-down grid. Houses and walls are the same CC0 models rendered from the south, looking down. Trees and rocks keep their previous pictures. Depth still comes from volumes: a person stands on an oval, and each tree, rock, and building has its own polygon or ellipse. The whole oval has to sit north of a footprint before that object covers the person. Selection lines use that depth. The depth lab is at:
 
 **https://choicelin94.github.io/villiage-td/depth-lab/**
 
-The in-game **Depth** button opens the same page. To preview first, set **Settings → Pages → Deploy from a branch** to `cursor/iso-volume-depth-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
+The in-game **Depth** button opens the same page. To preview first, set **Settings → Pages → Deploy from a branch** to `cursor/topdown-village-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
 
 本地先看网页包 / preview the export locally:
 
@@ -146,9 +146,9 @@ Leaving everyone unassigned loses on wave 1, because they are still outside. Sta
 1. 用 Godot 打开本目录的 `project.godot`。
 2. 按 `F5` 运行主场景 `scenes/main.tscn`。
 
-渲染器是 **GL Compatibility**，方便网页导出。地图是 Godot 的等距 `TileMapLayer`（diamond，约 45° 俯视）。房屋、木墙、树、岩石和走动的人用同一段代码：在等距格子里放一个占地盒子和高度，再用谁在谁后面做拓扑排序。树只算树干占地。脚在占地北侧时整个人在后面，南侧时整个人在前面。调试用的彩线和建造时的地砖高亮挂在被描述的物件上，站在前面的人会盖住它们。体积只负责画面前后，走路阻挡仍是原来的格子。驻岗只出现在建筑详情里。
+渲染器是 **GL Compatibility**，方便网页导出。地图是 Godot 的正方形 `TileMapLayer`（正面俯视，不是 45° 菱形）。房屋、木墙、树、岩石和走动的人仍走同一段排序。每人的占地写在 `data/iso_volumes.json`：`ellipse` 用 `rx`/`ry`（可加 `ox`/`oy`），`poly` 用相对格子中心的顶点，`z` 是高度。人必须是椭圆，不能收成一个点。比较时看共享东西范围里谁的南缘更靠南；东西方向错开时，只有整块都在北侧才算在后面。树只算树干接触地面的那一小块椭圆。调试彩线和建造高亮挂在被描述的物件上。体积只负责画面前后，走路阻挡仍是原来的格子。驻岗只出现在建筑详情里。
 
-Open `project.godot` in Godot 4.7.x and press `F5`. The project uses the GL Compatibility renderer. The ground is an isometric `TileMapLayer` (diamond, about 45° top-down). Houses, walls, trees, rocks, and walkers share one code path: each has a footprint box and a height in isometric tile space, then a topological order decides who draws first. A tree uses the trunk footprint only. Feet north of a footprint put the whole person behind it; feet south put the whole person in front. Debug lines and the build-tile highlight are drawn with the object they describe, and a person standing in front covers them. Volumes are for drawing order only. Buildings, trees, and rocks still block walking on the old grid. Staffing still appears only in the building panel.
+Open `project.godot` in Godot 4.7.x and press `F5`. The project uses the GL Compatibility renderer. The ground is a square `TileMapLayer` (top-down, not a 45° diamond). Houses, walls, trees, rocks, and walkers still share one sort. Each footprint is authored in `data/iso_volumes.json`: `ellipse` uses `rx`/`ry` (optional `ox`/`oy`), `poly` is vertices around the cell center, and `z` is the height. Walkers are an ellipse with area, not a point. The compare looks at who has the farther south rim inside the shared east-west span; when those spans miss, only a footprint that sits entirely to the north is behind. A tree uses the small ellipse where the trunk meets the ground. Debug lines and the build-tile highlight are drawn with the object they describe. Volumes are for drawing order only. Buildings, trees, and rocks still block walking on the same grid. Staffing still appears only in the building panel.
 
 ### 导出网页 / Export web
 

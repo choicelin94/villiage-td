@@ -1,14 +1,28 @@
 class_name DepthSolver
 extends RefCounted
 
-# Mazebert-style iso AABB: A is behind B when A's box is entirely on the
-# far side of B along at least one iso axis. Screen rects only reject pairs
-# that cannot overlap. Marks are not volumes; they inherit the parent rank.
+# One compare for every footprint. On a top-down map the camera sits to the
+# south, so depth is the south rim of the real ground shape (ellipse or
+# polygon) plus height. Where the east-west spans miss, the shapes are side
+# by side and only a fully northern footprint is behind. A point has no south
+# rim of its own; callers that still need that old test use point_behind.
+# Screen rects only reject pairs that cannot overlap. Marks inherit the parent rank.
 
 const PAD := 8.0
 
 static func is_behind(a: IsoVolume, b: IsoVolume) -> bool:
-	return a.max_x <= b.min_x or a.max_y <= b.min_y or a.max_z <= b.min_z
+	if a.max_z <= b.min_z:
+		return true
+	var x0 := maxf(a.min_x, b.min_x)
+	var x1 := minf(a.max_x, b.max_x)
+	if x1 < x0:
+		return a.max_y <= b.min_y
+	return a.south_rim_on(x0, x1) < b.south_rim_on(x0, x1) - 0.0001
+
+# The old feet-as-a-point test: behind whenever that one sample is north of
+# the other's northernmost ground point. An oval can still reach farther south.
+static func point_behind(feet_iso: Vector2, other: IsoVolume) -> bool:
+	return feet_iso.y <= other.min_y
 
 static func apply(volumes: Array) -> void:
 	var n := volumes.size()

@@ -2,8 +2,7 @@ extends Node2D
 
 const COLS := 20
 const ROWS := 20
-const TILE := Vector2i(176, 98)
-const SPRITE_OFF := Vector2(-127.5, -134.0)
+const TILE := Vector2i(128, 128)
 const HEART := Vector2i(10, 14)
 const SPAWNS: Array[Vector2i] = [
 	Vector2i(8, 0), Vector2i(9, 0), Vector2i(10, 0), Vector2i(11, 0), Vector2i(12, 0)
@@ -16,11 +15,11 @@ const START_GOLD := 70
 const WALL_CAP := 28
 const HOUSE_BEDS := 4
 const TOTAL_WAVES := 10
-const ZOMBIE_SPEED := 72.0
-const VILLAGER_SPEED := 108.0
+const ZOMBIE_SPEED := 72.0 * IsoVolume.WORLD_SCALE
+const VILLAGER_SPEED := 108.0 * IsoVolume.WORLD_SCALE
 const CLAIM_TIME := 6.5
 const REFUGEES_PER_WAVE := 2
-const INFECT_RADIUS := 38.0
+const INFECT_RADIUS := 38.0 * IsoVolume.WORLD_SCALE
 
 const WAVES: Array[Dictionary] = [
 	{"n": 5, "hp": 34, "speed": 72.0, "gap": 0.9, "fast": 0, "brute": 0, "boss": 0},
@@ -250,8 +249,8 @@ func _build_world() -> void:
 	ground.z_index = -4096
 	ground.y_sort_enabled = true
 	var tileset := TileSet.new()
-	tileset.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
-	tileset.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
+	tileset.tile_shape = TileSet.TILE_SHAPE_SQUARE
+	tileset.tile_layout = TileSet.TILE_LAYOUT_STACKED
 	tileset.tile_size = TILE
 	var files := [
 		"res://assets/village/grass_a.png",
@@ -265,7 +264,7 @@ func _build_world() -> void:
 		atlas.texture_region_size = Vector2i(tex.get_width(), tex.get_height())
 		atlas.create_tile(Vector2i.ZERO)
 		var data := atlas.get_tile_data(Vector2i.ZERO, 0)
-		data.texture_origin = Vector2i(0, -6)
+		data.texture_origin = Vector2i.ZERO
 		tileset.add_source(atlas, i)
 	ground.tile_set = tileset
 	add_child(ground)
@@ -371,7 +370,7 @@ func _place_prop(cell: Vector2i, tex: Texture2D, key: String) -> void:
 	sprite.texture = tex
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	sprite.position = SPRITE_OFF
+	sprite.position = IsoVolume.ROCK_ANCHOR if key == "rock" else IsoVolume.TREE_ANCHOR
 	sprite.z_as_relative = true
 	sprite.z_index = 0
 	node.add_child(sprite)
@@ -753,7 +752,7 @@ func _spawn_zombie(kind: String, turned: bool, at: Vector2) -> void:
 	var hp := maxi(int(round(float(spec.hp) * float(mod.hp))), 1)
 	if turned:
 		hp = maxi(int(hp * 0.65), 12)
-	z.setup(hp, float(spec.speed) * float(mod.speed), float(mod.scale), int(mod.dmg), int(mod.wood), int(mod.gold), kind, mod.mod)
+	z.setup(hp, float(spec.speed) * float(mod.speed) * IsoVolume.WORLD_SCALE, float(mod.scale), int(mod.dmg), int(mod.wood), int(mod.gold), kind, mod.mod)
 	actors.add_child(z)
 
 func _on_wave_cleared() -> void:
@@ -1647,7 +1646,7 @@ func _move_shot() -> void:
 		v.visible = false
 	var probe: Villager = people[1]
 	probe.visible = true
-	probe.global_position = IsoVolume.iso_to_world(_feet_iso(rock_vol, Vector2(-1, -1)))
+	probe.global_position = IsoVolume.iso_to_world(_feet_iso(rock_vol, Vector2(0, -1)))
 	camera.position = rock_pos
 	camera.zoom = Vector2(1.45, 1.45)
 	_cam_user = true
@@ -1661,7 +1660,7 @@ func _move_shot() -> void:
 	await get_tree().process_frame
 	var rock_only := await _grab()
 	var behind_ratio := _cover_ratio(rock_pos, rock_tex, with_behind, rock_only)
-	probe.global_position = IsoVolume.iso_to_world(_feet_iso(rock_vol, Vector2(1, 1)))
+	probe.global_position = IsoVolume.iso_to_world(_feet_iso(rock_vol, Vector2(0, 1)))
 	probe.visible = true
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -1671,8 +1670,8 @@ func _move_shot() -> void:
 	var depth_ok := behind_z < behind_rock_z and front_z > front_rock_z and behind_ratio < 0.08
 	var house: Building = buildings[Vector2i(8, 14)]
 	var house_vol: IsoVolume = house.get_iso_volume()
-	var near_pt := IsoVolume.iso_to_world(_feet_iso(house_vol, Vector2(1, 1)))
-	var far_pt := IsoVolume.iso_to_world(_feet_iso(house_vol, Vector2(-1, -1)))
+	var near_pt := IsoVolume.iso_to_world(_feet_iso(house_vol, Vector2(0, 1)))
+	var far_pt := IsoVolume.iso_to_world(_feet_iso(house_vol, Vector2(0, -1)))
 	var near_vol := IsoVolume.from_feet(near_pt)
 	var far_vol := IsoVolume.from_feet(far_pt)
 	var cmp_near := DepthSolver.is_behind(house_vol, near_vol) and not DepthSolver.is_behind(near_vol, house_vol)
@@ -1733,16 +1732,9 @@ func _actor_near(pos: Vector2) -> Node2D:
 	return null
 
 func _feet_iso(vol: IsoVolume, dir: Vector2) -> Vector2:
-	var walker_half := float(IsoVolume.spec_for("walker").w) * 0.5
+	var d := dir.normalized()
 	var gap := 0.12
-	var cx := (vol.min_x + vol.max_x) * 0.5
-	var cy := (vol.min_y + vol.max_y) * 0.5
-	var hx := (vol.max_x - vol.min_x) * 0.5
-	var hy := (vol.max_y - vol.min_y) * 0.5
-	return Vector2(
-		cx + dir.x * (hx + walker_half + gap),
-		cy + dir.y * (hy + walker_half + gap)
-	)
+	return vol.bounds_center() + d * (vol.reach(d) + IsoVolume.walker_support(d) + gap)
 
 func _grab() -> Image:
 	await RenderingServer.frame_post_draw
@@ -1754,11 +1746,11 @@ func _cover_ratio(origin: Vector2, tex: Texture2D, covered: Image, bare: Image) 
 		return 1.0
 	var changed := 0
 	var opaque := 0
-	var sprite_origin := origin + SPRITE_OFF
+	var sprite_origin := origin + IsoVolume.ROCK_ANCHOR
 	var xform := get_viewport().get_canvas_transform()
 	for y in range(0, img.get_height(), 3):
 		for x in range(0, img.get_width(), 3):
-			if img.get_pixel(x, y).a < 0.45:
+			if img.get_pixel(x, y).a < 0.92:
 				continue
 			var screen: Vector2 = xform * (sprite_origin + Vector2(x, y))
 			var sx := int(screen.x)

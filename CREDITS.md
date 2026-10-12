@@ -22,11 +22,13 @@ The pack's own `License.txt` says:
 > You can use this content for personal, educational, and commercial purposes.  
 > Support by crediting 'Kenney' or 'www.kenney.nl' (this is not a requirement)
 
-The download is a **3D** kit (FBX, GLB, OBJ). Those model files are not in this repository. The PNGs in `assets/village/` are isometric renders made for this game in Godot 4.7: orthographic camera, view direction along (1, 1, 1), GL Compatibility renderer. Several renders stack more than one model on the same 1×1 cell.
+The download is a **3D** kit (FBX, GLB, OBJ). Those model files are not in this repository. Trees and rocks in `assets/village/` are the earlier isometric renders (orthographic camera, view direction along (1, 1, 1)). Houses, walls, the farm, the workshop, and both towers were rendered again for the top-down map: orthographic camera south of the model, looking down, so the ground reads as a square and the front of the building stays visible. Grass and the dirt path are original square textures made for this game, not Kenney images. Several building renders stack more than one model on the same 1×1 cell.
+
+OpenGameArt “Primitive Village” (CC0, https://opengameart.org/content/primitive-village) was checked and not used. Its tiles are isometric diamonds, which is the projection this map left behind. Kenney Tiny Town (CC0) is a 16×16 3/4 pixel set and was not mixed in with these renders.
 
 | In this game | Kenney models in the render |
 | --- | --- |
-| `assets/village/road.png` | `road.glb` |
+| `assets/village/road.png` | original dirt path, not a Kenney texture |
 | `assets/village/tree.png` | `tree.glb` |
 | `assets/village/tree_b.png` | `tree-crooked.glb` |
 | `assets/village/tree_c.png` | `tree-high.glb` |
@@ -41,7 +43,7 @@ The download is a **3D** kit (FBX, GLB, OBJ). Those model files are not in this 
 
 `icon.png` is a scaled crop of `house.png`.
 
-The grass slabs and the farm's soil slab use small original albedo textures made for this game, rendered with the same camera and lights as the Kenney models. Those albedo textures are not from the Fantasy Town kit.
+Grass tiles and the dirt path are original square textures painted for this game. The farm render still uses an original dirt-colored ground slab under the Kenney hedges. Those textures are not from the Fantasy Town kit.
 
 ### Packs that were checked and not shipped
 

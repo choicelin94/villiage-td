@@ -3,9 +3,6 @@ extends Node2D
 
 enum Kind { WALL, SPEAR, FIRE, HOUSE, FARM, WORKSHOP }
 
-# Sprites are 256px renders. The ground diamond center sits at (127.5, 134).
-const SPRITE_OFF := Vector2(-127.5, -134.0)
-
 const STATS := {
 	Kind.WALL: {
 		"hp": 170, "wood": 18, "gold": 0,
@@ -15,13 +12,13 @@ const STATS := {
 	},
 	Kind.SPEAR: {
 		"hp": 200, "wood": 24, "gold": 40,
-		"range": 460.0, "dmg": 24, "cd": 0.64, "splash": 0.0, "shot_speed": 700.0,
+		"range": 460.0 * IsoVolume.WORLD_SCALE, "dmg": 24, "cd": 0.64, "splash": 0.0, "shot_speed": 700.0 * IsoVolume.WORLD_SCALE,
 		"defense": true, "cap": 0,
 		"tex": "res://assets/village/spear.png",
 	},
 	Kind.FIRE: {
 		"hp": 160, "wood": 16, "gold": 64,
-		"range": 420.0, "dmg": 18, "cd": 1.05, "splash": 120.0, "shot_speed": 380.0,
+		"range": 420.0 * IsoVolume.WORLD_SCALE, "dmg": 18, "cd": 1.05, "splash": 120.0 * IsoVolume.WORLD_SCALE, "shot_speed": 380.0 * IsoVolume.WORLD_SCALE,
 		"defense": true, "cap": 0,
 		"tex": "res://assets/village/fire.png",
 	},
@@ -53,6 +50,7 @@ var always_bar := true
 var cooldown := 0.0
 var _stats: Dictionary = {}
 var staff: Node2D = null
+var _muzzle := Vector2(0, -40)
 
 func has_staff() -> bool:
 	return staff != null and is_instance_valid(staff) and not bool(staff.get("infected")) and not bool(staff.get("leaving"))
@@ -71,20 +69,22 @@ func setup(p_kind: Kind, p_cell: Vector2i) -> void:
 	sprite.texture = tex
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	sprite.position = SPRITE_OFF
+	var size := tex.get_size()
+	sprite.position = Vector2(-size.x * 0.5, IsoVolume.HALF - size.y)
 	sprite.z_as_relative = true
 	sprite.z_index = 0
 	add_child(sprite)
+	_muzzle = Vector2(0, sprite.position.y + size.y * 0.42)
 	if kind == Kind.FIRE:
 		var flame := Flame.new()
-		flame.position = Vector2(8, -78)
+		flame.position = _muzzle
 		flame.z_as_relative = true
 		flame.z_index = 0
 		add_child(flame)
 	var bar := HpBar.new()
 	bar.z_as_relative = true
 	bar.z_index = 0
-	bar.y_off = -148.0
+	bar.y_off = sprite.position.y - 8.0
 	add_child(bar)
 	add_to_group("iso")
 
@@ -163,7 +163,7 @@ func _shoot(target: Zombie) -> void:
 	if game:
 		bonus = float(game.tower_bonus())
 	var damage := maxi(int(round(float(_stats.dmg) * bonus)), 1)
-	shot.setup(global_position + Vector2(0, -70), aim, target, damage, float(_stats.splash), float(_stats.shot_speed), kind == Kind.FIRE)
+	shot.setup(global_position + _muzzle, aim, target, damage, float(_stats.splash), float(_stats.shot_speed), kind == Kind.FIRE)
 	game.fx.add_child(shot)
 
 func hurt(amount: int) -> bool:
@@ -177,15 +177,15 @@ func _game() -> Node:
 	return get_tree().get_first_node_in_group("game")
 
 func _draw() -> void:
-	var pts := PackedVector2Array()
-	var rad := 34.0 if is_defense() else 40.0
-	for i in 14:
-		var a := TAU * float(i) / 14.0
-		pts.append(Vector2(cos(a) * rad, sin(a) * rad * 0.42 + 10.0))
-	draw_colored_polygon(pts, Color(0, 0, 0, 0.28))
+	var rad := 36.0 if is_defense() else 42.0
+	draw_circle(Vector2.ZERO, rad, Color(0, 0, 0, 0.22))
 	if is_functional():
 		var dot := Color(0.4, 0.85, 0.45) if has_staff() else Color(0.85, 0.35, 0.3)
-		draw_circle(Vector2(0, -150), 6, dot)
+		var art := _art()
+		var dot_at := Vector2(0, -70)
+		if art:
+			dot_at = Vector2(0, art.position.y + 14.0)
+		draw_circle(dot_at, 6, dot)
 	if float(_stats.range) > 0.0 and _game() and _game().inspected == self:
 		draw_arc(Vector2.ZERO, float(_stats.range), 0, TAU, 48, Color(1, 0.86, 0.35, 0.55), 2.0)
 

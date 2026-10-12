@@ -1,25 +1,57 @@
 class_name IsoVolume
 extends RefCounted
 
-# Virtual ground box in iso tile space, plus a height. Depth never reads
-# sprite pixels. HALF_W / HALF_H match the 176×98 diamond, including the
-# TileMapLayer origin (cell 0,0 sits at (HALF_W, HALF_H)).
+# Ground contact in square tile space, plus a height. Depth never reads sprite
+# pixels. The map is orthographic top-down: +X is east, +Y is south. Cell
+# (0, 0) sits at (HALF, HALF) on a stacked square TileMapLayer.
+#
+# Authoring (data/iso_volumes.json), one entry per kind:
+#   shape "ellipse" — rx, ry, optional ox/oy from the cell center (or the feet).
+#   shape "poly" — poly is a list of [x, y] offsets around that same origin.
+#   z — height of the prism. The solver compares these shapes; it does not
+#   assume one shared rectangle. Walkers are an ellipse with area, never a point.
+# Draw the ground contact (trunk, wall base, stance), not the roof or canopy.
 
-const HALF_W := 88.0
-const HALF_H := 49.0
+const TILE := 128.0
+const HALF := 64.0
+# One old isometric step was hypot(88, 49). Speeds and ranges scale with the
+# new square so a walker still crosses one tile in the same time.
+const WORLD_SCALE := 1.2708197158225134
+const TREE_ANCHOR := Vector2(-127.5, -157.0)
+const ROCK_ANCHOR := Vector2(-129.5, -196.0)
+
+enum Shape { ELLIPSE, POLY }
 
 const TABLE := {
-	"house": {"w": 1.0, "h": 1.0, "z": 2.2},
-	"farm": {"w": 1.0, "h": 1.0, "z": 1.6},
-	"workshop": {"w": 1.0, "h": 1.0, "z": 1.8},
-	"wall": {"w": 0.9, "h": 0.9, "z": 1.15},
-	"spear": {"w": 0.7, "h": 0.7, "z": 1.6},
-	"fire": {"w": 0.6, "h": 0.6, "z": 1.3},
-	"tree": {"w": 0.45, "h": 0.45, "z": 2.2},
-	"rock": {"w": 0.62, "h": 0.62, "z": 0.7},
-	"walker": {"w": 0.35, "h": 0.35, "z": 1.0},
+	"house": {
+		"shape": "poly", "z": 2.2,
+		"poly": [[-0.40, 0.48], [0.46, 0.48], [0.46, 0.06], [0.08, -0.18], [-0.40, 0.06]],
+	},
+	"farm": {
+		"shape": "poly", "z": 0.85,
+		"poly": [[-0.46, 0.48], [0.46, 0.48], [0.46, 0.18], [-0.46, 0.18]],
+	},
+	"workshop": {
+		"shape": "poly", "z": 1.8,
+		"poly": [[-0.22, 0.48], [0.22, 0.48], [0.22, -0.02], [-0.22, -0.02]],
+	},
+	"wall": {
+		"shape": "poly", "z": 1.15,
+		"poly": [[-0.46, 0.48], [0.46, 0.48], [0.46, 0.22], [-0.46, 0.22]],
+	},
+	"spear": {
+		"shape": "poly", "z": 1.65,
+		"poly": [[-0.34, 0.46], [0.34, 0.46], [0.22, 0.08], [-0.22, 0.08]],
+	},
+	"fire": {"shape": "ellipse", "ox": 0.0, "oy": 0.18, "rx": 0.20, "ry": 0.14, "z": 1.25},
+	"tree": {"shape": "ellipse", "ox": 0.0, "oy": -0.06, "rx": 0.14, "ry": 0.06, "z": 2.35},
+	"rock": {"shape": "ellipse", "ox": 0.06, "oy": -0.08, "rx": 0.24, "ry": 0.12, "z": 0.7},
+	"walker": {"shape": "ellipse", "rx": 0.16, "ry": 0.145, "z": 1.05},
 }
 
+var shape := Shape.ELLIPSE
+var center := Vector2.ZERO
+var radius := Vector2.ZERO
 var min_x := 0.0
 var max_x := 0.0
 var min_y := 0.0
@@ -53,58 +85,64 @@ static func _ensure() -> void:
 		_table = TABLE.duplicate(true)
 
 static func world_to_iso(world: Vector2) -> Vector2:
-	var dx := (world.x - HALF_W) / HALF_W
-	var dy := (world.y - HALF_H) / HALF_H
-	return Vector2((dx + dy) * 0.5, (dy - dx) * 0.5)
+	return Vector2((world.x - HALF) / TILE, (world.y - HALF) / TILE)
 
 static func iso_to_world(iso: Vector2) -> Vector2:
-	return Vector2(
-		HALF_W + (iso.x - iso.y) * HALF_W,
-		HALF_H + (iso.x + iso.y) * HALF_H
-	)
+	return Vector2(HALF + iso.x * TILE, HALF + iso.y * TILE)
+
+static func walker_support(dir: Vector2) -> float:
+	var spec: Dictionary = spec_for("walker")
+	return _ellipse_support(Vector2(float(spec.rx), float(spec.ry)), dir)
 
 static func from_cell(cell: Vector2i, key: String) -> IsoVolume:
-	var spec: Dictionary = spec_for(key)
-	var vol := IsoVolume.new()
-	var cx := float(cell.x)
-	var cy := float(cell.y)
-	var hw := float(spec.w) * 0.5
-	var hh := float(spec.h) * 0.5
-	vol.min_x = cx - hw
-	vol.max_x = cx + hw
-	vol.min_y = cy - hh
-	vol.max_y = cy + hh
-	vol.min_z = 0.0
-	vol.max_z = float(spec.z)
-	vol.sort_origin = Vector3(cx, cy, 0.0)
-	vol.ground_poly_iso = PackedVector2Array([
-		Vector2(vol.min_x, vol.min_y),
-		Vector2(vol.max_x, vol.min_y),
-		Vector2(vol.max_x, vol.max_y),
-		Vector2(vol.min_x, vol.max_y),
-	])
-	return vol
+	return _from_spec(Vector2(float(cell.x), float(cell.y)), spec_for(key))
 
 static func from_feet(world: Vector2) -> IsoVolume:
-	var iso := world_to_iso(world)
-	var spec: Dictionary = spec_for("walker")
+	return _from_spec(world_to_iso(world), spec_for("walker"))
+
+static func _from_spec(origin: Vector2, spec: Dictionary) -> IsoVolume:
 	var vol := IsoVolume.new()
-	var hw := float(spec.w) * 0.5
-	var hh := float(spec.h) * 0.5
-	vol.min_x = iso.x - hw
-	vol.max_x = iso.x + hw
-	vol.min_y = iso.y - hh
-	vol.max_y = iso.y + hh
-	vol.min_z = 0.0
+	vol.min_z = float(spec.get("min_z", 0.0))
 	vol.max_z = float(spec.z)
-	vol.sort_origin = Vector3(iso.x, iso.y, 0.0)
-	vol.ground_poly_iso = PackedVector2Array([
-		Vector2(vol.min_x, vol.min_y),
-		Vector2(vol.max_x, vol.min_y),
-		Vector2(vol.max_x, vol.max_y),
-		Vector2(vol.min_x, vol.max_y),
-	])
+	var ox := float(spec.get("ox", 0.0))
+	var oy := float(spec.get("oy", 0.0))
+	vol.center = origin + Vector2(ox, oy)
+	var shape_name := str(spec.get("shape", "poly"))
+	if shape_name == "ellipse":
+		vol.shape = Shape.ELLIPSE
+		vol.radius = Vector2(float(spec.rx), float(spec.ry))
+		vol.ground_poly_iso = _ellipse_poly(vol.center, vol.radius, 20)
+	else:
+		vol.shape = Shape.POLY
+		var pts := PackedVector2Array()
+		if spec.has("poly"):
+			for item in spec.poly:
+				pts.append(vol.center + Vector2(float(item[0]), float(item[1])))
+		else:
+			var hw := float(spec.w) * 0.5
+			var hh := float(spec.h) * 0.5
+			pts = PackedVector2Array([
+				vol.center + Vector2(-hw, -hh),
+				vol.center + Vector2(hw, -hh),
+				vol.center + Vector2(hw, hh),
+				vol.center + Vector2(-hw, hh),
+			])
+		vol.ground_poly_iso = pts
+	vol._apply_bounds()
 	return vol
+
+static func _ellipse_poly(at: Vector2, rad: Vector2, steps: int) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in steps:
+		var a := TAU * float(i) / float(steps)
+		pts.append(at + Vector2(cos(a) * rad.x, sin(a) * rad.y))
+	return pts
+
+static func _ellipse_support(rad: Vector2, dir: Vector2) -> float:
+	if dir.length_squared() < 0.000001:
+		return 0.0
+	var d := dir.normalized()
+	return sqrt(rad.x * rad.x * d.x * d.x + rad.y * rad.y * d.y * d.y)
 
 static func sprite_rect(sprite: CanvasItem) -> Rect2:
 	if sprite == null:
@@ -131,5 +169,107 @@ static func sprite_rect(sprite: CanvasItem) -> Rect2:
 		mx.y = maxf(mx.y, g.y)
 	return Rect2(mn, mx - mn)
 
+func bounds_center() -> Vector2:
+	return Vector2((min_x + max_x) * 0.5, (min_y + max_y) * 0.5)
+
+func reach(dir: Vector2) -> float:
+	if dir.length_squared() < 0.000001:
+		return 0.0
+	var d := dir.normalized()
+	if shape == Shape.ELLIPSE:
+		return _ellipse_support(radius, d)
+	var origin := bounds_center()
+	var best := 0.0
+	for p in ground_poly_iso:
+		best = maxf(best, (p - origin).dot(d))
+	return best
+
+func shifted(delta: Vector2) -> IsoVolume:
+	var copy := IsoVolume.new()
+	copy.shape = shape
+	copy.center = center + delta
+	copy.radius = radius
+	copy.min_z = min_z
+	copy.max_z = max_z
+	var moved := PackedVector2Array()
+	for p in ground_poly_iso:
+		moved.append(p + delta)
+	copy.ground_poly_iso = moved
+	copy._apply_bounds()
+	return copy
+
+func south_rim_on(x0: float, x1: float) -> float:
+	if shape == Shape.ELLIPSE:
+		var lo := maxf(x0, center.x - radius.x)
+		var hi := minf(x1, center.x + radius.x)
+		if hi < lo:
+			return max_y
+		var x := clampf(center.x, lo, hi)
+		var dx := 0.0
+		if radius.x > 0.00001:
+			dx = (x - center.x) / radius.x
+		var half := radius.y * sqrt(maxf(0.0, 1.0 - dx * dx))
+		return center.y + half
+	var clipped := _clip_poly_x(ground_poly_iso, x0, x1)
+	if clipped.is_empty():
+		return max_y
+	var best := -1.0e20
+	for p in clipped:
+		best = maxf(best, p.y)
+	return best
+
 func depth_key() -> float:
 	return sort_origin.x + sort_origin.y + sort_origin.z * 0.01
+
+func _apply_bounds() -> void:
+	if shape == Shape.ELLIPSE:
+		min_x = center.x - radius.x
+		max_x = center.x + radius.x
+		min_y = center.y - radius.y
+		max_y = center.y + radius.y
+	else:
+		if ground_poly_iso.is_empty():
+			min_x = center.x
+			max_x = center.x
+			min_y = center.y
+			max_y = center.y
+		else:
+			min_x = ground_poly_iso[0].x
+			max_x = min_x
+			min_y = ground_poly_iso[0].y
+			max_y = min_y
+			for p in ground_poly_iso:
+				min_x = minf(min_x, p.x)
+				max_x = maxf(max_x, p.x)
+				min_y = minf(min_y, p.y)
+				max_y = maxf(max_y, p.y)
+	# Tie-break uses the south rim, not a single foot point.
+	sort_origin = Vector3(center.x, max_y, min_z)
+
+static func _clip_poly_x(poly: PackedVector2Array, x0: float, x1: float) -> PackedVector2Array:
+	return _clip_half(_clip_half(poly, x0, true), x1, false)
+
+static func _clip_half(poly: PackedVector2Array, bound: float, keep_above: bool) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var n := poly.size()
+	if n < 3:
+		return out
+	for i in n:
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % n]
+		var a_in := a.x >= bound if keep_above else a.x <= bound
+		var b_in := b.x >= bound if keep_above else b.x <= bound
+		if a_in and b_in:
+			out.append(b)
+		elif a_in and not b_in:
+			out.append(_hit_x(a, b, bound))
+		elif not a_in and b_in:
+			out.append(_hit_x(a, b, bound))
+			out.append(b)
+	return out
+
+static func _hit_x(a: Vector2, b: Vector2, bound: float) -> Vector2:
+	var dx := b.x - a.x
+	var t := 0.0 if absf(dx) < 0.000001 else (bound - a.x) / dx
+	t = clampf(t, 0.0, 1.0)
+	return a.lerp(b, t)

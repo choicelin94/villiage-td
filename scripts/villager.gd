@@ -109,7 +109,7 @@ func _pick_goal(game: Node) -> void:
 	var here: Vector2i = game.world_to_cell(global_position)
 	_path = game.route_cells(here, cell)
 	_path_i = 0
-	while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 10.0:
+	while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 10.0 * IsoVolume.WORLD_SCALE:
 		_path_i += 1
 	if _path_i < _path.size():
 		_goal = game.cell_center(_path[_path_i])
@@ -121,7 +121,7 @@ func _walk(delta: float, game: Node) -> void:
 	if _path_i < _path.size():
 		_goal = game.cell_center(_path[_path_i])
 	var vel := _goal - global_position
-	if vel.length() < 8.0:
+	if vel.length() < 8.0 * IsoVolume.WORLD_SCALE:
 		if _path_i < _path.size():
 			_path_i += 1
 			if _path_i >= _path.size():
@@ -175,7 +175,7 @@ func _leave(delta: float) -> void:
 			var exit_cell: Vector2i = game.nearest_spawn(global_position)
 			_path = game.route_cells(here, exit_cell)
 			_path_i = 0
-			while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 10.0:
+			while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 10.0 * IsoVolume.WORLD_SCALE:
 				_path_i += 1
 		if _path_i >= _path.size():
 			var vel := Vector2(0, -speed)
@@ -186,7 +186,7 @@ func _leave(delta: float) -> void:
 			return
 	var goal: Vector2 = game.cell_center(_path[_path_i])
 	var vel := goal - global_position
-	if vel.length() < 8.0:
+	if vel.length() < 8.0 * IsoVolume.WORLD_SCALE:
 		_path_i += 1
 		return
 	var dir := vel.normalized()

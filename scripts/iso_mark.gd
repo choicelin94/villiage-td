@@ -25,7 +25,8 @@ func _draw() -> void:
 	if kind == Kind.LINE:
 		_draw_line()
 	elif kind == Kind.DOT:
-		draw_circle(Vector2.ZERO, 6.0, color)
+		_draw_line()
+		draw_circle(Vector2.ZERO, 4.0, color)
 	elif kind == Kind.TAG:
 		_draw_tag()
 
@@ -41,7 +42,7 @@ func _draw_line() -> void:
 	var ring := ground.duplicate()
 	ring.append(ground[0])
 	draw_polyline(ring, color, 3.0)
-	var lift := -vol.max_z * 36.0
+	var lift := -vol.max_z * IsoVolume.TILE * 0.32
 	var top := PackedVector2Array()
 	for p in ground:
 		top.append(p + Vector2(0.0, lift))
