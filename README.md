@@ -18,17 +18,17 @@ The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pa
 
 **https://choicelin94.github.io/villiage-td/**
 
-线上页面来自 `main` 的 `/docs`。这一支合并之后，人物会沿着地砖靠近镜头的斜边切换前后，东角和西角不再整栋房子突然盖住或被盖住。景深试验页：
+线上页面来自 `main` 的 `/docs`。这一支里，房屋、树和岩石走同一条景深：按各自贴图的南沿排序，走动的人切成横条，胸口可以转到树干或岩石后面，脚留在前面。选中线和建造高亮也跟这条深度走。景深试验页：
 
 **https://choicelin94.github.io/villiage-td/depth-lab/**
 
-游戏里右上角的「景深」也会打开同一页。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/iso-depth-lab-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
+游戏里右上角的「景深」也会打开同一页。若要先预览，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/unified-iso-depth-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
 
-The live site serves `/docs` from `main`. After this branch merges, people flip in front of or behind a building along the tile's near diagonal, so the east and west corners no longer pop on one horizontal cut. The depth lab is at:
+The live site serves `/docs` from `main`. On this branch, houses, trees, and rocks share one depth rule: each sorts on the southern contour of its own sprite, and a walker is split into horizontal bands so the chest can pass behind a trunk or rock while the feet stay in front. Selection lines and the build highlight use that same depth. The depth lab is at:
 
 **https://choicelin94.github.io/villiage-td/depth-lab/**
 
-The in-game **Depth** button opens the same page. To preview first, set **Settings → Pages → Deploy from a branch** to `cursor/iso-depth-lab-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
+The in-game **Depth** button opens the same page. To preview first, set **Settings → Pages → Deploy from a branch** to `cursor/unified-iso-depth-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
 
 本地先看网页包 / preview the export locally:
 
@@ -146,9 +146,9 @@ Leaving everyone unassigned loses on wave 1, because they are still outside. Sta
 1. 用 Godot 打开本目录的 `project.godot`。
 2. 按 `F5` 运行主场景 `scenes/main.tscn`。
 
-渲染器是 **GL Compatibility**，方便网页导出。地图是 Godot 的等距 `TileMapLayer`（diamond，约 45° 俯视）。房屋、木墙、树和岩石用靠近镜头的两条边（西角 → 南角 → 东角）参加排序，走动的人用脚点。画面重叠的物件连成依赖图，再做拓扑排序。因此东角和西角沿着斜边切换前后。整张精灵仍然一起翻转，不会只挡住半个身体。建筑、树和岩石仍然挡住走路。驻岗只出现在建筑详情里。
+渲染器是 **GL Compatibility**，方便网页导出。地图是 Godot 的等距 `TileMapLayer`（diamond，约 45° 俯视）。房屋、木墙、树和岩石用同一段代码，取贴图不透明部分的南沿来排序，不再按种类各写一套。走动的人切成横条，每条用自己的底边参加同一张依赖图，再做拓扑排序。所以树干和岩石可以挡住胸口，脚仍留在前面。调试用的彩线和建造时的地砖高亮挂在被描述的物件上，站在前面的人会盖住它们。建筑、树和岩石仍然挡住走路。驻岗只出现在建筑详情里。
 
-Open `project.godot` in Godot 4.7.x and press `F5`. The project uses the GL Compatibility renderer. The ground is an isometric `TileMapLayer` (diamond, about 45° top-down). Houses, walls, trees, and rocks sort on the two near tile edges (west corner → south corner → east corner). Walkers sort as a foot point. Overlapping sprites become a dependency graph, then a topological order, so the east and west corners flip along the diagonal. The whole sprite still flips together. It does not hide half a body. Buildings, trees, and rocks still block walking. Staffing still appears only in the building panel.
+Open `project.godot` in Godot 4.7.x and press `F5`. The project uses the GL Compatibility renderer. The ground is an isometric `TileMapLayer` (diamond, about 45° top-down). Houses, walls, trees, and rocks share one code path: each sorts on the southern contour of its opaque sprite, with no per-type rule. Walkers are horizontal bands. Every band joins the same dependency graph, then a topological order, so a trunk or rock can cover the chest while the feet stay in front. Debug lines and the build-tile highlight are drawn with the object they describe, and a person standing in front covers them. Buildings, trees, and rocks still block walking. Staffing still appears only in the building panel.
 
 ### 导出网页 / Export web
 

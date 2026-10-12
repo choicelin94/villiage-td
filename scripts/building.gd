@@ -89,13 +89,22 @@ func setup(p_kind: Kind, p_cell: Vector2i) -> void:
 	add_to_group("iso")
 
 func iso_points() -> PackedVector2Array:
+	var sprite := _art()
+	if sprite:
+		return IsoSort.front_edge(sprite)
 	return IsoSort.footprint(global_position)
 
 func iso_rect() -> Rect2:
+	var sprite := _art()
+	if sprite:
+		return IsoSort.front_rect(sprite)
+	return Rect2(global_position, Vector2.ZERO)
+
+func _art() -> Sprite2D:
 	for child in get_children():
 		if child is Sprite2D:
-			return IsoSort.sprite_rect(child)
-	return Rect2(global_position, Vector2.ZERO)
+			return child
+	return null
 
 func is_defense() -> bool:
 	return bool(_stats.defense)

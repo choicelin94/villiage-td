@@ -122,7 +122,9 @@ func _build_props() -> void:
 	house.setup(Building.Kind.HOUSE, HOUSE_CELL)
 	add_child(house)
 	tree = _prop(TREE_CELL, "res://assets/village/tree.png")
+	tree.name = "Tree"
 	rock = _prop(ROCK_CELL, "res://assets/village/rock.png")
+	rock.name = "Rock"
 
 func _prop(cell: Vector2i, path: String) -> Node2D:
 	var node := Node2D.new()
@@ -163,10 +165,36 @@ func _build_camera() -> void:
 	camera.make_current()
 
 func _build_guides() -> void:
-	var guides := Node2D.new()
-	guides.z_index = 3500
-	guides.set_script(load("res://scripts/depth_guides.gd"))
-	add_child(guides)
+	_mark_line(house, Color(1, 0.86, 0.25, 0.95))
+	_mark_line(tree, Color(0.45, 0.9, 0.45, 0.9))
+	_mark_line(rock, Color(0.75, 0.8, 0.85, 0.9))
+	_mark_dot(player, Color(0.4, 0.75, 1))
+	_mark_dot(near_one, Color(0.4, 0.9, 0.5))
+	_mark_dot(far_one, Color(1, 0.45, 0.4))
+	_mark_tag(player, "lab.tag_you")
+	_mark_tag(near_one, "lab.tag_near")
+	_mark_tag(far_one, "lab.tag_far")
+
+func _mark_line(node: Node2D, color: Color) -> void:
+	var mark := IsoMark.new()
+	mark.kind = IsoMark.Kind.LINE
+	mark.color = color
+	mark.source = node
+	node.add_child(mark)
+
+func _mark_dot(person: Villager, color: Color) -> void:
+	var mark := IsoMark.new()
+	mark.kind = IsoMark.Kind.DOT
+	mark.color = color
+	person.add_child(mark)
+
+func _mark_tag(person: Villager, key: String) -> void:
+	var mark := IsoMark.new()
+	mark.kind = IsoMark.Kind.TAG
+	mark.text_key = key
+	var head := person.head_slice()
+	mark.position = Vector2(-18, -132) - head.position
+	head.add_child(mark)
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -250,14 +278,16 @@ func _build_scenarios() -> void:
 	var h := _cell_center(HOUSE_CELL)
 	var t := _cell_center(TREE_CELL)
 	var r := _cell_center(ROCK_CELL)
+	var tree_tip := _south_tip(tree)
+	var rock_tip := _south_tip(rock)
 	_scenarios = [
 		{"btn": "lab.btn_front", "title": "lab.front", "expect": "lab.expect_front", "pos": h + Vector2(0, 78), "focus": h, "crowd": false},
 		{"btn": "lab.btn_east_near", "title": "lab.east_near", "expect": "lab.expect_near", "pos": h + Vector2(70, 30), "focus": h, "crowd": false},
 		{"btn": "lab.btn_east_far", "title": "lab.east_far", "expect": "lab.expect_far", "pos": h + Vector2(80, -8), "focus": h, "crowd": false},
 		{"btn": "lab.btn_west_near", "title": "lab.west_near", "expect": "lab.expect_near", "pos": h + Vector2(-70, 30), "focus": h, "crowd": false},
 		{"btn": "lab.btn_west_far", "title": "lab.west_far", "expect": "lab.expect_far", "pos": h + Vector2(-80, -8), "focus": h, "crowd": false},
-		{"btn": "lab.btn_tree", "title": "lab.tree", "expect": "lab.expect_far", "pos": t + Vector2(0, -36), "focus": t, "crowd": false},
-		{"btn": "lab.btn_rock", "title": "lab.rock", "expect": "lab.expect_front", "pos": r + Vector2(0, 78), "focus": r, "crowd": false},
+		{"btn": "lab.btn_tree", "title": "lab.tree", "expect": "lab.expect_far", "pos": Vector2(tree_tip.x, tree_tip.y - 40.0), "focus": t, "crowd": false},
+		{"btn": "lab.btn_rock", "title": "lab.rock", "expect": "lab.expect_far", "pos": Vector2(rock_tip.x, rock_tip.y - 40.0), "focus": r, "crowd": false},
 		{"btn": "lab.btn_crowd", "title": "lab.crowd", "expect": "lab.expect_crowd", "pos": h + Vector2(0, 78), "focus": h, "crowd": true},
 	]
 	_refresh_copy()
@@ -313,6 +343,14 @@ func _can_step(from_pos: Vector2, to_pos: Vector2) -> bool:
 		return true
 	return to_cell == ground.local_to_map(from_pos)
 
+func _south_tip(node: Node2D) -> Vector2:
+	var pts: PackedVector2Array = node.iso_points()
+	var tip := pts[0]
+	for p in pts:
+		if p.y > tip.y:
+			tip = p
+	return tip
+
 func _auto_check() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -324,26 +362,160 @@ func _auto_check() -> void:
 	_show_scenario(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var near_front := player.z_index > house.z_index
+	var near_front := player.feet_slice().z_index > house.z_index
+	var near_head_behind := player.head_slice().z_index < house.z_index
 	await _capture("/opt/cursor/artifacts/lab-east-near.png")
 	_show_scenario(2)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var far_behind := player.z_index < house.z_index
+	var far_behind := player.feet_slice().z_index < house.z_index and player.head_slice().z_index < house.z_index
 	await _capture("/opt/cursor/artifacts/lab-east-far.png")
 	_show_scenario(7)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var crowd_near := near_one.z_index > house.z_index
-	var crowd_far := far_one.z_index < house.z_index
-	var crowd_front := player.z_index > house.z_index
+	var crowd_near := near_one.feet_slice().z_index > house.z_index
+	var crowd_far := far_one.feet_slice().z_index < house.z_index
+	var crowd_front := player.feet_slice().z_index > house.z_index
 	await _capture("/opt/cursor/artifacts/lab-crowd.png")
+	var tree_tip := _south_tip(tree)
+	var tree_behind := await _occluder_case(tree, tree_tip, "/opt/cursor/artifacts/lab-tree-behind.png", "/opt/cursor/artifacts/lab-tree-straddle.png")
+	var rock_tip := _south_tip(rock)
+	var rock_behind := await _occluder_case(rock, rock_tip, "/opt/cursor/artifacts/lab-rock-behind.png", "/opt/cursor/artifacts/lab-rock-straddle.png")
+	var line_ok := await _line_case()
 	var math_ok := cmp_near > 0 and cmp_far < 0
-	var ok := math_ok and near_front and far_behind and crowd_near and crowd_far and crowd_front
+	var ok := math_ok and near_front and near_head_behind and far_behind and crowd_near and crowd_far and crowd_front and tree_behind and rock_behind and line_ok
 	print("LAB_CMP near=", cmp_near, " far=", cmp_far)
-	print("LAB_Z near_front=", near_front, " far_behind=", far_behind, " crowd=", crowd_near, crowd_far, crowd_front)
+	print("LAB_Z near_front=", near_front, " near_head_behind=", near_head_behind, " far_behind=", far_behind, " crowd=", crowd_near, crowd_far, crowd_front)
+	print("LAB_PROP tree=", tree_behind, " rock=", rock_behind, " line=", line_ok)
 	print("LAB_OK ", ok)
 	get_tree().quit(0 if ok else 1)
+
+func _occluder_case(prop: Node2D, tip: Vector2, behind_path: String, straddle_path: String) -> bool:
+	near_one.visible = false
+	far_one.visible = false
+	player.visible = false
+	camera.position = prop.global_position
+	await get_tree().process_frame
+	var bare := await _grab()
+	player.visible = true
+	player.global_position = Vector2(tip.x, tip.y - 40.0)
+	player._set_frame(2, 0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var feet_behind := player.feet_slice().z_index < prop.z_index
+	var head_behind := player.head_slice().z_index < prop.z_index
+	var covered := _opaque_ratio(prop, bare, await _grab(), Vector2(tip.x, tip.y - 36.0), 18.0)
+	await _capture(behind_path)
+	player.global_position = Vector2(tip.x, tip.y + 16.0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var feet_front := player.feet_slice().z_index > prop.z_index
+	var head_back := player.head_slice().z_index < prop.z_index
+	var chest_hidden := _opaque_ratio(prop, bare, await _grab(), Vector2(tip.x, tip.y - 48.0), 14.0)
+	var feet_shown := _opaque_ratio(prop, bare, await _grab(), Vector2(tip.x, tip.y - 8.0), 10.0)
+	await _capture(straddle_path)
+	var passed := feet_behind and head_behind and covered < 0.12 and feet_front and head_back and chest_hidden < 0.2 and feet_shown > 0.2
+	print("LAB_CASE ", prop.name, " feet_behind=", feet_behind, " head_behind=", head_behind, " covered=", covered, " feet_front=", feet_front, " head_back=", head_back, " chest=", chest_hidden, " feet_px=", feet_shown)
+	return passed
+
+func _line_case() -> bool:
+	near_one.visible = false
+	far_one.visible = false
+	var tip := _south_tip(house)
+	camera.position = house.global_position
+	player.visible = true
+	player.global_position = house.global_position + Vector2(0, -90)
+	player._set_frame(2, 0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var away := await _grab()
+	var line_at := _yellow_near(away, tip, 14)
+	player.global_position = Vector2(tip.x, tip.y)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var over := await _grab()
+	await _capture("/opt/cursor/artifacts/lab-line.png")
+	var covered := false
+	if line_at.x >= 0.0:
+		covered = not _is_yellow(over.get_pixel(int(line_at.x), int(line_at.y)))
+	var side := _south_tip(house)
+	var side_pt := Vector2(side.x - 70.0, IsoSort.y_at(house.iso_points(), side.x - 70.0))
+	var side_px := _yellow_near(over, side_pt, 10)
+	var side_stays := side_px.x >= 0.0
+	print("LAB_LINE found=", line_at, " covered=", covered, " side=", side_stays)
+	return line_at.x >= 0.0 and covered and side_stays
+
+func _opaque_ratio(prop: Node2D, bare: Image, covered: Image, world: Vector2, radius: float) -> float:
+	var sprite := _art_of(prop)
+	if sprite == null or sprite.texture == null or bare == null or covered == null:
+		return 1.0
+	var img := sprite.texture.get_image()
+	if img == null:
+		return 1.0
+	if img.is_compressed():
+		img.decompress()
+	var xform := get_viewport().get_canvas_transform()
+	var changed := 0
+	var opaque := 0
+	var steps := int(radius)
+	for oy in range(-steps, steps + 1, 2):
+		for ox in range(-steps, steps + 1, 2):
+			var at := world + Vector2(ox, oy)
+			var local: Vector2 = sprite.to_local(at)
+			var ix := int(local.x)
+			var iy := int(local.y)
+			if ix < 0 or iy < 0 or ix >= img.get_width() or iy >= img.get_height():
+				continue
+			if img.get_pixel(ix, iy).a < 0.45:
+				continue
+			var screen: Vector2 = xform * at
+			var sx := int(screen.x)
+			var sy := int(screen.y)
+			if sx < 0 or sy < 0 or sx >= bare.get_width() or sy >= bare.get_height():
+				continue
+			if sx >= covered.get_width() or sy >= covered.get_height():
+				continue
+			opaque += 1
+			var ca := covered.get_pixel(sx, sy)
+			var cb := bare.get_pixel(sx, sy)
+			if absf(ca.r - cb.r) + absf(ca.g - cb.g) + absf(ca.b - cb.b) > 0.18:
+				changed += 1
+	if opaque == 0:
+		return 1.0
+	return float(changed) / float(opaque)
+
+func _art_of(node: Node2D) -> Sprite2D:
+	for child in node.get_children():
+		if child is Sprite2D:
+			return child
+	return null
+
+func _yellow_near(image: Image, world: Vector2, radius: int) -> Vector2:
+	if image == null:
+		return Vector2(-1, -1)
+	var screen: Vector2 = get_viewport().get_canvas_transform() * world
+	var best := Vector2(-1, -1)
+	var best_d := 100000.0
+	for oy in range(-radius, radius + 1):
+		for ox in range(-radius, radius + 1):
+			var x := int(screen.x) + ox
+			var y := int(screen.y) + oy
+			if x < 0 or y < 0 or x >= image.get_width() or y >= image.get_height():
+				continue
+			if not _is_yellow(image.get_pixel(x, y)):
+				continue
+			var d := Vector2(ox, oy).length_squared()
+			if d < best_d:
+				best_d = d
+				best = Vector2(x, y)
+	return best
+
+func _is_yellow(c: Color) -> bool:
+	return c.r > 0.72 and c.g > 0.55 and c.b < 0.5 and c.g > c.b + 0.2 and c.r > c.b + 0.25
+
+func _grab() -> Image:
+	await RenderingServer.frame_post_draw
+	return get_viewport().get_texture().get_image()
 
 func _capture(path: String) -> void:
 	await RenderingServer.frame_post_draw
