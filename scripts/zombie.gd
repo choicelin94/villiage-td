@@ -51,12 +51,12 @@ func _ready() -> void:
 	_anim.sprite_frames = _get_frames()
 	_anim.centered = false
 	_anim.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_anim.z_index = 2
+	_anim.z_index = 0
 	add_child(_anim)
 	_anim.play("move")
 	_anchor()
 	var bar := HpBarZ.new()
-	bar.z_index = 3
+	bar.z_index = 0
 	add_child(bar)
 	_repath()
 
