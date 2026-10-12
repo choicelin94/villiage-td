@@ -1,19 +1,19 @@
 extends Node2D
 
+var cell := Vector2i.ZERO
+var volume_key := "tree"
+var _volume: IsoVolume
+
 func _ready() -> void:
 	add_to_group("iso")
 
-func iso_points() -> PackedVector2Array:
+func get_iso_volume() -> IsoVolume:
+	if _volume == null:
+		_volume = IsoVolume.from_cell(cell, volume_key)
+	_volume.node = self
 	var sprite := _art()
-	if sprite:
-		return IsoSort.front_edge(sprite)
-	return IsoSort.footprint(global_position)
-
-func iso_rect() -> Rect2:
-	var sprite := _art()
-	if sprite:
-		return IsoSort.front_rect(sprite)
-	return Rect2(global_position, Vector2.ZERO)
+	_volume.screen_rect = IsoVolume.sprite_rect(sprite) if sprite else Rect2(global_position, Vector2(8, 8))
+	return _volume
 
 func _art() -> Sprite2D:
 	for child in get_children():
