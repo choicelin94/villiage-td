@@ -3,6 +3,8 @@ extends CanvasLayer
 
 signal start_pressed
 signal restart_pressed
+signal zoom_in_pressed
+signal zoom_out_pressed
 signal place_requested(kind: int)
 signal sell_pressed
 
@@ -14,15 +16,18 @@ var _flash_t := 0.0
 var _top: Panel
 var _bottom: Panel
 var _hint: Label
-var _wood: Label
-var _gold: Label
-var _pop: Label
-var _beds: Label
-var _walls: Label
-var _wave: Label
-var _core: Label
+var _wood: StatChip
+var _gold: StatChip
+var _pop: StatChip
+var _beds: StatChip
+var _walls: StatChip
+var _wave: StatChip
+var _core: StatChip
 var _start: Button
 var _leave: Button
+var _zoom_in: Button
+var _zoom_out: Button
+var _phone := false
 var _panel: Panel
 var _scroll: ScrollContainer
 var _list: VBoxContainer
@@ -93,17 +98,27 @@ func flash(text: String) -> void:
 	_hint.text = text
 	_flash_t = 2.4
 
+func set_phone(phone: bool) -> void:
+	if _phone == phone and _zoom_in != null:
+		_zoom_in.visible = not phone
+		_zoom_out.visible = not phone
+		return
+	_phone = phone
+	_layout()
+
+func zoom_buttons_visible() -> bool:
+	return _zoom_in != null and _zoom_in.visible
+
 func refresh(wood: int, gold: int, people: int, housed: int, beds: int, walls: int, wall_cap: int, wave_label: String, phase: String, claim: float) -> void:
-	_wood.text = "木材 %d" % wood
-	_gold.text = "金币 %d" % gold
-	_pop.text = "村民 %d" % people
-	_beds.text = "床 %d/%d" % [housed, beds]
-	_walls.text = "墙 %d/%d" % [walls, wall_cap]
-	_wave.text = wave_label
+	_wood.set_value(str(wood))
+	_gold.set_value(str(gold))
+	_pop.set_value(str(people))
+	_beds.set_value("%d/%d" % [housed, beds])
+	_walls.set_value("%d/%d" % [walls, wall_cap])
+	_wave.set_value(wave_label)
+	_core.visible = claim > 0.0
 	if claim > 0.0:
-		_core.text = "难民 %.0fs" % ceil(claim)
-	else:
-		_core.text = ""
+		_core.set_value(str(int(ceil(claim))))
 	var busy := phase == "combat" or phase == "win" or phase == "lose"
 	_start.disabled = busy
 	_start.modulate = Color(0.55, 0.55, 0.55) if busy else Color.WHITE
@@ -119,7 +134,7 @@ func show_end(win: bool) -> void:
 		_end_body.text = "村民全部被感染了。\nEvery villager was infected."
 
 func _idle_hint() -> String:
-	return "点空地，在右侧选择建筑。先点村民，再点建筑来派人。双指缩放，单指拖动地图。  |  Tap empty ground, then pick a building on the right. Tap a villager, then a building, to assign. Pinch to zoom and drag to pan."
+	return "点空地，在右侧选择建筑。先点村民，再点建筑来派人。双指缩放，单指拖动地图。  |  Tap empty ground, then pick a building on the right. Tap a villager, then a building, to assign. Pinch to zoom, or use + and - on a computer. Drag to pan."
 
 func _layout() -> void:
 	var view := get_viewport().get_visible_rect().size
@@ -137,6 +152,11 @@ func _layout() -> void:
 	var gap := 10.0
 	_place_icon(_start, 12.0, bot_h + gap + icon, icon)
 	_place_icon(_leave, 12.0 + icon + gap, bot_h + gap + icon, icon)
+	var zoom_x := 12.0 + (icon + gap) * 2.0
+	_zoom_out.visible = not _phone
+	_zoom_in.visible = not _phone
+	_place_icon(_zoom_out, zoom_x, bot_h + gap + icon, icon)
+	_place_icon(_zoom_in, zoom_x + icon + gap, bot_h + gap + icon, icon)
 	var panel_w := minf(300.0, maxf(168.0, view.x * (0.46 if _narrow else 0.28)))
 	_panel.offset_left = -panel_w
 	_panel.offset_top = top_h + 8.0
@@ -169,13 +189,13 @@ func _build_top() -> void:
 	row_b.add_theme_constant_override("separation", 12)
 	col.add_child(row_a)
 	col.add_child(row_b)
-	_wood = _stat(Color(0.86, 0.62, 0.32))
-	_gold = _stat(Color(0.98, 0.82, 0.28))
-	_pop = _stat(Color(0.65, 0.86, 0.98))
-	_beds = _stat(Color(0.75, 0.9, 0.7))
-	_walls = _stat(Color(0.9, 0.75, 0.5))
-	_wave = _stat(Color(0.9, 0.92, 0.84))
-	_core = _stat(Color(1, 0.86, 0.4))
+	_wood = _chip("wood", "木材 / Wood", Color(0.86, 0.62, 0.32))
+	_gold = _chip("gold", "金币 / Gold", Color(0.98, 0.82, 0.28))
+	_pop = _chip("people", "村民 / People", Color(0.65, 0.86, 0.98))
+	_beds = _chip("bed", "床 已住/总数 / Beds", Color(0.75, 0.9, 0.7))
+	_walls = _chip("wall", "墙 / Walls", Color(0.9, 0.75, 0.5))
+	_wave = _chip("wave", "波次 / Wave", Color(0.9, 0.92, 0.84))
+	_core = _chip("clock", "难民倒计时 / Refugees", Color(1, 0.86, 0.4))
 	row_a.add_child(_wood)
 	row_a.add_child(_gold)
 	row_a.add_child(_pop)
@@ -214,6 +234,14 @@ func _build_actions() -> void:
 	_leave.tooltip_text = "离开并重开 / Leave and restart"
 	_leave.pressed.connect(func() -> void: restart_pressed.emit())
 	add_child(_leave)
+	_zoom_out = _icon_button("ZoomOutButton", "minus", Color(0.16, 0.2, 0.18), Color(0.55, 0.62, 0.5))
+	_zoom_out.tooltip_text = "缩小 / Zoom out"
+	_zoom_out.pressed.connect(func() -> void: zoom_out_pressed.emit())
+	add_child(_zoom_out)
+	_zoom_in = _icon_button("ZoomInButton", "plus", Color(0.16, 0.2, 0.18), Color(0.55, 0.62, 0.5))
+	_zoom_in.tooltip_text = "放大 / Zoom in"
+	_zoom_in.pressed.connect(func() -> void: zoom_in_pressed.emit())
+	add_child(_zoom_in)
 
 func _build_panel() -> void:
 	_panel = Panel.new()
@@ -385,15 +413,14 @@ func _icon_button(node_name: String, kind: String, bg: Color, border: Color) -> 
 	btn.add_child(mark)
 	return btn
 
-func _stat(color: Color) -> Label:
-	var label := Label.new()
-	label.theme = _theme
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", 16)
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.clip_text = true
-	return label
+func _chip(kind: String, tip: String, color: Color) -> StatChip:
+	var chip := StatChip.new()
+	chip.kind = kind
+	chip.theme = _theme
+	chip.tooltip_text = tip
+	chip.number_color = color
+	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return chip
 
 func _style_button(btn: Button, bg: Color, border: Color) -> void:
 	btn.add_theme_stylebox_override("normal", _box(bg, border))
@@ -441,7 +468,90 @@ class IconMark:
 				c + Vector2(16, 0),
 			]), col)
 			return
+		if kind == "plus" or kind == "minus":
+			draw_line(c + Vector2(-12, 0), c + Vector2(12, 0), col, 4.0)
+			if kind == "plus":
+				draw_line(c + Vector2(0, -12), c + Vector2(0, 12), col, 4.0)
+			return
 		draw_rect(Rect2(c + Vector2(-18, -16), Vector2(20, 32)), col, false, 3.0)
 		draw_line(c + Vector2(4, 0), c + Vector2(18, 0), col, 3.0)
 		draw_line(c + Vector2(12, -6), c + Vector2(18, 0), col, 3.0)
 		draw_line(c + Vector2(12, 6), c + Vector2(18, 0), col, 3.0)
+
+
+class StatChip:
+	extends HBoxContainer
+
+	var kind := "wood"
+	var number_color := Color.WHITE
+	var _label: Label
+	var _icon: StatIcon
+
+	func _ready() -> void:
+		add_theme_constant_override("separation", 4)
+		_icon = StatIcon.new()
+		_icon.kind = kind
+		_icon.custom_minimum_size = Vector2(22, 22)
+		_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_icon)
+		_label = Label.new()
+		_label.theme = theme
+		_label.add_theme_color_override("font_color", number_color)
+		_label.add_theme_font_size_override("font_size", 16)
+		_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_label.clip_text = true
+		_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_label)
+
+	func set_value(text: String) -> void:
+		if _label:
+			_label.text = text
+
+
+class StatIcon:
+	extends Control
+
+	var kind := "wood"
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		var s := size
+		var c := s * 0.5
+		if kind == "wood":
+			draw_rect(Rect2(c + Vector2(-9, -4), Vector2(18, 8)), Color(0.55, 0.34, 0.16))
+			draw_rect(Rect2(c + Vector2(-9, -4), Vector2(18, 8)), Color(0.35, 0.2, 0.08), false, 1.5)
+			draw_line(c + Vector2(-4, -4), c + Vector2(-4, 4), Color(0.35, 0.2, 0.08), 1.5)
+			return
+		if kind == "gold":
+			draw_circle(c, 8.0, Color(0.95, 0.78, 0.22))
+			draw_arc(c, 8.0, 0, TAU, 16, Color(0.55, 0.38, 0.08), 1.5)
+			draw_line(c + Vector2(0, -4), c + Vector2(0, 4), Color(0.55, 0.38, 0.08), 1.5)
+			return
+		if kind == "people":
+			draw_circle(c + Vector2(0, -5), 4.0, Color(0.95, 0.86, 0.7))
+			draw_colored_polygon(PackedVector2Array([
+				c + Vector2(-6, 8), c + Vector2(0, -1), c + Vector2(6, 8)
+			]), Color(0.45, 0.62, 0.85))
+			return
+		if kind == "bed":
+			draw_rect(Rect2(c + Vector2(-9, -3), Vector2(18, 10)), Color(0.75, 0.55, 0.38))
+			draw_rect(Rect2(c + Vector2(-9, -6), Vector2(6, 6)), Color(0.92, 0.9, 0.82))
+			return
+		if kind == "wall":
+			draw_rect(Rect2(c + Vector2(-8, -7), Vector2(4, 14)), Color(0.62, 0.48, 0.28))
+			draw_rect(Rect2(c + Vector2(3, -7), Vector2(4, 14)), Color(0.62, 0.48, 0.28))
+			draw_line(c + Vector2(-8, -2), c + Vector2(7, -2), Color(0.4, 0.28, 0.14), 2.0)
+			return
+		if kind == "wave":
+			draw_line(c + Vector2(-7, 8), c + Vector2(-7, -8), Color(0.85, 0.82, 0.7), 2.0)
+			draw_colored_polygon(PackedVector2Array([
+				c + Vector2(-7, -8), c + Vector2(8, -4), c + Vector2(-7, 0)
+			]), Color(0.86, 0.32, 0.28))
+			return
+		draw_arc(c, 8.0, 0, TAU, 16, Color(0.95, 0.86, 0.45), 2.0)
+		draw_line(c, c + Vector2(0, -5), Color(0.95, 0.86, 0.45), 2.0)
+		draw_line(c, c + Vector2(4, 2), Color(0.95, 0.86, 0.45), 2.0)

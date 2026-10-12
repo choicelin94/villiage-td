@@ -107,6 +107,8 @@ func _ready() -> void:
 	add_child(hud)
 	hud.start_pressed.connect(_try_start_wave)
 	hud.restart_pressed.connect(_restart)
+	hud.zoom_in_pressed.connect(_on_zoom_in)
+	hud.zoom_out_pressed.connect(_on_zoom_out)
 	hud.place_requested.connect(_on_place_requested)
 	hud.sell_pressed.connect(_on_sell_requested)
 	get_viewport().size_changed.connect(_on_viewport_resized)
@@ -133,6 +135,8 @@ func _ready() -> void:
 			_flow_shot()
 	elif OS.get_environment("TD_UI") == "1":
 		_ui_shot()
+	elif OS.get_environment("TD_FACE") == "1":
+		_face_check()
 	elif OS.get_environment("TD_SHOT") == "1":
 		_opening_shot()
 
@@ -388,10 +392,47 @@ func _on_viewport_resized() -> void:
 	_sync_pixels()
 	if _cam_user:
 		_clamp_camera()
+		if hud:
+			hud.set_phone(_is_phone())
 	else:
 		_apply_fit_zoom(true)
 	if hud:
 		hud._layout()
+
+func _is_phone() -> bool:
+	var view := get_viewport_rect().size
+	var short_side := minf(view.x, view.y)
+	var long_side := maxf(view.x, view.y)
+	if short_side <= 520.0:
+		return true
+	if DisplayServer.is_touchscreen_available() and short_side < 700.0 and long_side < 1100.0:
+		return true
+	return false
+
+func _center_half_focus() -> Vector2:
+	return (
+		cell_center(Vector2i(5, 5))
+		+ cell_center(Vector2i(14, 5))
+		+ cell_center(Vector2i(5, 14))
+		+ cell_center(Vector2i(14, 14))
+	) * 0.25
+
+func _center_half_span() -> Vector2:
+	var corners: Array[Vector2] = [
+		cell_center(Vector2i(5, 5)),
+		cell_center(Vector2i(14, 5)),
+		cell_center(Vector2i(5, 14)),
+		cell_center(Vector2i(14, 14)),
+	]
+	var mn := corners[0]
+	var mx := corners[0]
+	for p in corners:
+		mn.x = minf(mn.x, p.x)
+		mn.y = minf(mn.y, p.y)
+		mx.x = maxf(mx.x, p.x)
+		mx.y = maxf(mx.y, p.y)
+	var pad := Vector2(float(TILE.x) * 0.5, float(TILE.y) * 0.5)
+	return (mx + pad) - (mn - pad)
 
 func _apply_fit_zoom(force: bool) -> void:
 	var view := get_viewport_rect().size
@@ -402,19 +443,29 @@ func _apply_fit_zoom(force: bool) -> void:
 	var fit := minf(usable.x / span.x, usable.y / span.y)
 	_cam_min_zoom = maxf(fit * 0.92, 0.08)
 	_cam_max_zoom = maxf(fit * 6.0, 1.45)
+	var phone := _is_phone()
+	if hud:
+		hud.set_phone(phone)
 	if not force:
 		camera.zoom.x = clampf(camera.zoom.x, _cam_min_zoom, _cam_max_zoom)
 		camera.zoom.y = camera.zoom.x
 		_clamp_camera()
 		return
-	var zoom_v := fit
-	var focus := (_map_min + _map_max) * 0.5
-	if view.x < 760.0:
-		zoom_v = clampf(maxf(fit * 2.6, 0.4), _cam_min_zoom, _cam_max_zoom)
-		focus = cell_center(HEART)
+	var half := _center_half_span()
+	var fit_half := minf(usable.x / half.x, usable.y / half.y)
+	var zoom_v := fit_half
+	if phone:
+		zoom_v = maxf(fit_half * 1.85, 0.48)
+	zoom_v = clampf(zoom_v, _cam_min_zoom, _cam_max_zoom)
 	camera.zoom = Vector2(zoom_v, zoom_v)
-	camera.position = focus
+	camera.position = _center_half_focus()
 	_clamp_camera()
+
+func _on_zoom_in() -> void:
+	_zoom_at(get_viewport_rect().size * 0.5, camera.zoom.x * 1.18)
+
+func _on_zoom_out() -> void:
+	_zoom_at(get_viewport_rect().size * 0.5, camera.zoom.x / 1.18)
 
 func _zoom_at(screen_point: Vector2, new_zoom: float) -> void:
 	var old := camera.zoom.x
@@ -1024,17 +1075,12 @@ func _burst(at: Vector2, radius: float, color: Color) -> Burst:
 func _refresh_hud() -> void:
 	if hud == null:
 		return
-	var label := "准备"
-	if phase == "combat":
-		label = "波 %d/%d" % [wave_number, TOTAL_WAVES]
-	elif wave_number > 0 and phase == "prep":
-		label = "下一波 %d/%d" % [wave_number + 1, TOTAL_WAVES]
+	var shown := wave_number
+	if phase == "prep" and wave_number > 0 and wave_number < TOTAL_WAVES:
+		shown = wave_number + 1
 	elif phase == "win":
-		label = "胜利"
-	elif phase == "lose":
-		label = "失败"
-	else:
-		label = "波 0/%d" % TOTAL_WAVES
+		shown = TOTAL_WAVES
+	var label := "%d/%d" % [shown, TOTAL_WAVES]
 	var claim := 0.0
 	for v in _alive_villagers():
 		if v.refugee and v.claim_left > claim:
@@ -1337,6 +1383,13 @@ func _ui_shot() -> void:
 	hud._layout()
 	await get_tree().process_frame
 	print("UI_VIEW ", get_viewport_rect().size, " win=", DisplayServer.window_get_size(), " zoom=", camera.zoom.x)
+	var focus := _center_half_focus()
+	var view := get_viewport_rect().size
+	var screen_focus: Vector2 = get_viewport().get_canvas_transform() * focus
+	var phone := _is_phone()
+	var zoom_hidden := not hud.zoom_buttons_visible()
+	var framed := camera.position.distance_to(focus) < 120.0 and screen_focus.distance_to(view * 0.5) < 140.0
+	print("UI_PHONE ", phone, " zoom_btns=", hud.zoom_buttons_visible(), " cam=", camera.position, " focus=", focus, " screen_focus=", screen_focus, " framed=", framed)
 	await _capture("/tmp/shots/phone.png")
 	var cell := _visible_open_cell()
 	print("UI_CELL ", cell, " screen=", get_viewport().get_canvas_transform() * cell_center(cell))
@@ -1360,8 +1413,9 @@ func _ui_shot() -> void:
 	print("UI_PAN ", cam_before, " -> ", camera.position, " moved=", panned)
 	var icons := hud.get_node_or_null("StartButton") != null and hud.get_node_or_null("LeaveButton") != null
 	print("UI_ICONS ", icons)
-	if placed and zoomed and panned and icons and not hud.has_ground():
+	if placed and zoomed and panned and icons and not hud.has_ground() and phone and zoom_hidden and framed:
 		get_tree().quit(0)
+		return
 	get_tree().quit(1)
 
 func _visible_open_cell() -> Vector2i:
@@ -1413,7 +1467,72 @@ func _push_drag(index: int, pos: Vector2, rel: Vector2) -> void:
 func _opening_shot() -> void:
 	await get_tree().create_timer(0.6).timeout
 	await _capture(OS.get_environment("TD_SHOT_PATH") if OS.get_environment("TD_SHOT_PATH") != "" else "/tmp/shots/start.png")
-	get_tree().quit(0)
+	var focus := _center_half_focus()
+	var view := get_viewport_rect().size
+	var screen_focus: Vector2 = get_viewport().get_canvas_transform() * focus
+	var phone := _is_phone()
+	print("CAM_PHONE ", phone, " zoom=", camera.zoom.x, " pos=", camera.position, " focus=", focus, " screen=", screen_focus, " view=", view, " btns=", hud.zoom_buttons_visible())
+	var near := camera.position.distance_to(focus) < 80.0
+	var centered := screen_focus.distance_to(view * 0.5) < 90.0
+	var z0 := camera.zoom.x
+	var zin := hud.get_node_or_null("ZoomInButton") as Button
+	if zin and zin.visible:
+		_click_screen(zin.get_global_rect().get_center())
+	await get_tree().process_frame
+	await get_tree().process_frame
+	print("CAM_ZOOM_BTN ", z0, " -> ", camera.zoom.x, " user=", _cam_user)
+	var zoomed := camera.zoom.x > z0 + 0.01
+	if not phone and hud.zoom_buttons_visible() and near and centered and zoomed:
+		get_tree().quit(0)
+		return
+	get_tree().quit(1)
+
+func _face_check() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var people := _alive_villagers()
+	var spots: Array[Vector2i] = [Vector2i(6, 6), Vector2i(6, 7), Vector2i(7, 6), Vector2i(7, 7)]
+	var dirs: Array[Vector2] = [
+		Vector2(160, 0),
+		Vector2(-160, 0),
+		Vector2(0, 160),
+		Vector2(0, -160),
+	]
+	var starts: Array[Vector2] = []
+	for i in mini(people.size(), dirs.size()):
+		var v: Villager = people[i]
+		v.global_position = cell_center(spots[i])
+		v.job = null
+		v._goal = v.global_position + dirs[i]
+		v._retarget = 8.0
+		starts.append(v.global_position)
+		v._step_anim(dirs[i], 0.0)
+		print("FACE_SET i=", i, " row=", v._facing, " goal_delta=", v._goal - v.global_position)
+	_spawn_zombie("normal", true, cell_center(Vector2i(15, 4)))
+	var zombies := get_tree().get_nodes_in_group("zombies")
+	var zombie: Zombie = zombies[0]
+	var z0 := zombie.global_position
+	await get_tree().create_timer(0.5).timeout
+	var ok := true
+	for i in mini(people.size(), dirs.size()):
+		var v: Villager = people[i]
+		var expect := LpcFacing.row_for(dirs[i])
+		var moved: Vector2 = v.global_position - starts[i]
+		print("FACE_V i=", i, " expect=", expect, " got=", v._facing, " frame=", v._frame, " moved=", moved, " goal_left=", v._goal - v.global_position, " retarget=", v._retarget)
+		if v._facing != expect or v._frame == 0:
+			ok = false
+	var zdelta: Vector2 = zombie.global_position - z0
+	var zexpect := LpcFacing.row_for(zdelta)
+	print("FACE_Z vel=", zdelta, " expect=", zexpect, " got=", zombie._facing, " frame=", zombie._frame_i)
+	if zdelta.length() < 8.0 or zombie._facing != zexpect:
+		ok = false
+	print("FACE_OK ", ok)
+	camera.zoom = Vector2(1.8, 1.8)
+	camera.position = people[2].global_position + Vector2(40, -20)
+	_cam_user = true
+	await get_tree().process_frame
+	await _capture("/opt/cursor/artifacts/facing-walk.png")
+	get_tree().quit(0 if ok else 1)
 
 func _demo_shot() -> void:
 	await get_tree().create_timer(2.4).timeout

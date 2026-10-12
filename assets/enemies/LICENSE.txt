@@ -1,6 +1,6 @@
 LPC zombies in this folder
 
-zombie_stand.png and zombie_hold.png stack two layers from the Universal LPC
+zombie_walk.png stacks two layers from the Universal LPC
 Spritesheet Character Generator:
 
 https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator
@@ -19,5 +19,6 @@ bluecarrot16.
 
 Source page: https://opengameart.org/content/lpc-zombie
 
-zombie_stand.png is walk column 1. zombie_hold.png is walk column 4. Both are
-the front row, scaled 2x with nearest-neighbor filtering.
+zombie_walk.png is the full walk cycle: 9 columns by 4 rows, scaled 2x
+with nearest-neighbor filtering. Row 0 is up (back), row 1 is left, row 2
+is down (face toward the camera), and row 3 is right.
