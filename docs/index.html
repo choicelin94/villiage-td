@@ -70,10 +70,19 @@ body {
 	display: none;
 }
 
-#depth-lab-link, #stress-link {
+#site-links {
 	position: fixed;
 	z-index: 50;
 	top: 8px;
+	left: 8px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	max-width: calc(100vw - 16px);
+	pointer-events: none;
+}
+
+#depth-lab-link, #stress-link, #codex-link {
 	color: #ffe7a8;
 	background: rgba(12, 22, 16, 0.88);
 	border: 1px solid #8a7040;
@@ -82,14 +91,6 @@ body {
 	font: 14px/1.2 Arial, sans-serif;
 	text-decoration: none;
 	pointer-events: auto;
-}
-
-#depth-lab-link {
-	left: 8px;
-}
-
-#stress-link {
-	left: 108px;
 }
 
 #status-progress {
@@ -120,8 +121,11 @@ body {
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
-		<a id="depth-lab-link" href="depth-lab/">Depth lab</a>
-		<a id="stress-link" href="stress/">Stress</a>
+		<nav id="site-links">
+			<a id="depth-lab-link" href="depth-lab/">Depth lab</a>
+			<a id="stress-link" href="stress/">Stress</a>
+			<a id="codex-link" href="codex/">图鉴</a>
+		</nav>
 
 		<noscript>
 			Your browser does not support JavaScript.

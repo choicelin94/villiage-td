@@ -132,6 +132,14 @@ const TEXT := {
 		"zh": "房屋、木墙、树和岩石的比较结果会留下。只有挪动过的人会重新比较。盒子分开就用包围盒定前后，叠在一起才做整块是否在北侧的比较。",
 		"en": "Houses, walls, trees, and rocks keep their pair results. Only people who moved are compared again. Separated boxes take their order from the box. Overlapping boxes ask whether one footprint is entirely to the north.",
 	},
+	"unit.villager": {"zh": "村民", "en": "Villager"},
+	"unit.spearman": {"zh": "矛兵", "en": "Spearman"},
+	"unit.engineer": {"zh": "工程师", "en": "Engineer"},
+	"enemy.spear_normal": {"zh": "持矛尸潮", "en": "Spear horde"},
+	"enemy.spear_fast": {"zh": "迅捷尸潮", "en": "Fast horde"},
+	"enemy.spear_infected": {"zh": "被感染的村民", "en": "Infected villager"},
+	"enemy.shooter_brute": {"zh": "持枪蛮兵", "en": "Gun brute"},
+	"enemy.shooter_boss": {"zh": "持枪首领", "en": "Gun boss"},
 }
 
 func _ready() -> void:

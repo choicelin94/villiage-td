@@ -1,0 +1,1051 @@
+{
+  "counts": {
+    "units": 3,
+    "enemies": 5,
+    "buildings": 6,
+    "scenery": 4
+  },
+  "sections": {
+    "units": [
+      {
+        "id": "villager",
+        "section": "units",
+        "name_zh": "村民",
+        "name_en": "Villager",
+        "portrait": "thumbs/villager.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "职责",
+            "v": "劳工 · worker"
+          },
+          {
+            "k": "生命",
+            "v": "1"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "0"
+          },
+          {
+            "k": "攻击间隔",
+            "v": "—"
+          },
+          {
+            "k": "移速",
+            "v": "137.249"
+          },
+          {
+            "k": "射程",
+            "v": "—"
+          },
+          {
+            "k": "费用",
+            "v": "无"
+          },
+          {
+            "k": "训练",
+            "v": "—"
+          },
+          {
+            "k": "形象",
+            "v": "villager"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "已出场。碰到僵尸即感染，没有生命条。生命记 1，表示一次接触就会离场。移速是尸潮基准 72 的 1.5 倍，已乘 WORLD_SCALE。",
+        "skins": [
+          {
+            "name": "wolf",
+            "thumb": "thumbs/villager__wolf.png"
+          },
+          {
+            "name": "penguin",
+            "thumb": "thumbs/villager__penguin.png"
+          },
+          {
+            "name": "raccoon",
+            "thumb": "thumbs/villager__raccoon.png"
+          },
+          {
+            "name": "knight",
+            "thumb": "thumbs/villager__knight.png"
+          },
+          {
+            "name": "frog",
+            "thumb": "thumbs/villager__frog.png"
+          },
+          {
+            "name": "robot",
+            "thumb": "thumbs/villager__robot.png"
+          },
+          {
+            "name": "skeleton",
+            "thumb": "thumbs/villager__skeleton.png"
+          }
+        ],
+        "volume": "walker"
+      },
+      {
+        "id": "spearman",
+        "section": "units",
+        "name_zh": "矛兵",
+        "name_en": "Spearman",
+        "portrait": "thumbs/spearman.png",
+        "badge": "配置已有 · 尚未出场",
+        "badge_tone": "soon",
+        "stats": [
+          {
+            "k": "职责",
+            "v": "近战 · melee"
+          },
+          {
+            "k": "生命",
+            "v": "64"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "10"
+          },
+          {
+            "k": "攻击间隔",
+            "v": "0.85 秒"
+          },
+          {
+            "k": "移速",
+            "v": "137.249"
+          },
+          {
+            "k": "射程",
+            "v": "128"
+          },
+          {
+            "k": "费用",
+            "v": "10 木 + 16 金"
+          },
+          {
+            "k": "训练",
+            "v": "5 秒"
+          },
+          {
+            "k": "形象",
+            "v": "villager"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "配置已有，对局尚未生成。头像暂用村民皮肤 knight。生命、攻击、费用和训练时间只写在本目录，脚本里没有对应常量。移速暂与村民相同。",
+        "skins": [],
+        "volume": "walker"
+      },
+      {
+        "id": "engineer",
+        "section": "units",
+        "name_zh": "工程师",
+        "name_en": "Engineer",
+        "portrait": "thumbs/engineer.png",
+        "badge": "配置已有 · 尚未出场",
+        "badge_tone": "soon",
+        "stats": [
+          {
+            "k": "职责",
+            "v": "支援 · support"
+          },
+          {
+            "k": "生命",
+            "v": "48"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "0"
+          },
+          {
+            "k": "攻击间隔",
+            "v": "—"
+          },
+          {
+            "k": "移速",
+            "v": "137.249"
+          },
+          {
+            "k": "射程",
+            "v": "—"
+          },
+          {
+            "k": "费用",
+            "v": "16 木 + 24 金"
+          },
+          {
+            "k": "训练",
+            "v": "6 秒"
+          },
+          {
+            "k": "形象",
+            "v": "villager"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "配置已有，对局尚未生成。头像暂用村民皮肤 robot。不攻击。数值只写在本目录。移速暂与村民相同。",
+        "skins": [],
+        "volume": "walker"
+      }
+    ],
+    "enemies": [
+      {
+        "id": "spear_normal",
+        "section": "enemies",
+        "name_zh": "持矛尸潮",
+        "name_en": "Spear horde",
+        "portrait": "thumbs/spear_normal.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "生命",
+            "v": "34（第 1 波）"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "1"
+          },
+          {
+            "k": "攻击间隔",
+            "v": "0.9 秒"
+          },
+          {
+            "k": "移速",
+            "v": "91.499（第 1 波）"
+          },
+          {
+            "k": "射程",
+            "v": "128"
+          },
+          {
+            "k": "体型",
+            "v": "×1.05"
+          },
+          {
+            "k": "赏金",
+            "v": "4 金"
+          },
+          {
+            "k": "木材",
+            "v": "2 木"
+          },
+          {
+            "k": "标签",
+            "v": "尸潮 · 持矛"
+          },
+          {
+            "k": "形象",
+            "v": "spear"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "已出场。卡片上的生命和移速是第 1 波。之后各波用波次表的基准，再乘本条倍率。",
+        "skins": [],
+        "volume": "walker"
+      },
+      {
+        "id": "spear_fast",
+        "section": "enemies",
+        "name_zh": "迅捷尸潮",
+        "name_en": "Fast horde",
+        "portrait": "thumbs/spear_fast.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "生命",
+            "v": "24（第 1 波）"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "1"
+          },
+          {
+            "k": "攻击间隔",
+            "v": "0.9 秒"
+          },
+          {
+            "k": "移速",
+            "v": "123.524（第 1 波）"
+          },
+          {
+            "k": "射程",
+            "v": "128"
+          },
+          {
+            "k": "体型",
+            "v": "×0.95"
+          },
+          {
+            "k": "赏金",
+            "v": "5 金"
+          },
+          {
+            "k": "木材",
+            "v": "1 木"
+          },
+          {
+            "k": "标签",
+            "v": "尸潮 · 持矛 · 迅捷"
+          },
+          {
+            "k": "形象",
+            "v": "spear"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "已出场。持矛，更快、更脆。生命倍率 0.7，速度倍率 1.35。",
+        "skins": [],
+        "volume": "walker"
+      },
+      {
+        "id": "spear_infected",
+        "section": "enemies",
+        "name_zh": "被感染的村民",
+        "name_en": "Infected villager",
+        "portrait": "thumbs/spear_infected.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "生命",
+            "v": "22（第 1 波）"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "1"
+          },
+          {
+            "k": "攻击间隔",
+            "v": "0.9 秒"
+          },
+          {
+            "k": "移速",
+            "v": "91.499（第 1 波）"
+          },
+          {
+            "k": "射程",
+            "v": "128"
+          },
+          {
+            "k": "体型",
+            "v": "×1.05"
+          },
+          {
+            "k": "赏金",
+            "v": "4 金"
+          },
+          {
+            "k": "木材",
+            "v": "2 木"
+          },
+          {
+            "k": "标签",
+            "v": "感染 · 持矛"
+          },
+          {
+            "k": "形象",
+            "v": "spear"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "已出场。村民被感染后变成持矛哥布林。生命是当前波次普通尸潮算完后的 65%（向零截断），至少 12。卡片是第 1 波。",
+        "skins": [],
+        "volume": "walker"
+      },
+      {
+        "id": "shooter_brute",
+        "section": "enemies",
+        "name_zh": "持枪蛮兵",
+        "name_en": "Gun brute",
+        "portrait": "thumbs/shooter_brute.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "生命",
+            "v": "75（第 1 波）"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "2"
+          },
+          {
+            "k": "攻击间隔",
+            "v": "0.9 秒"
+          },
+          {
+            "k": "移速",
+            "v": "64.049（第 1 波）"
+          },
+          {
+            "k": "射程",
+            "v": "128"
+          },
+          {
+            "k": "体型",
+            "v": "×1.3"
+          },
+          {
+            "k": "赏金",
+            "v": "9 金"
+          },
+          {
+            "k": "木材",
+            "v": "3 木"
+          },
+          {
+            "k": "标签",
+            "v": "持枪 · 蛮兵"
+          },
+          {
+            "k": "形象",
+            "v": "shooter"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "已出场。持枪哥布林。生命倍率 2.2，速度倍率 0.7。",
+        "skins": [],
+        "volume": "walker"
+      },
+      {
+        "id": "shooter_boss",
+        "section": "enemies",
+        "name_zh": "持枪首领",
+        "name_en": "Gun boss",
+        "portrait": "thumbs/shooter_boss.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "生命",
+            "v": "143（第 1 波）"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "3"
+          },
+          {
+            "k": "攻击间隔",
+            "v": "0.9 秒"
+          },
+          {
+            "k": "移速",
+            "v": "54.899（第 1 波）"
+          },
+          {
+            "k": "射程",
+            "v": "128"
+          },
+          {
+            "k": "体型",
+            "v": "×1.6"
+          },
+          {
+            "k": "赏金",
+            "v": "30 金"
+          },
+          {
+            "k": "木材",
+            "v": "8 木"
+          },
+          {
+            "k": "标签",
+            "v": "持枪 · 首领"
+          },
+          {
+            "k": "形象",
+            "v": "shooter"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "已出场。第 10 波出现。持枪哥布林。生命倍率 4.2，速度倍率 0.6。",
+        "skins": [],
+        "volume": "walker"
+      }
+    ],
+    "buildings": [
+      {
+        "id": "wall",
+        "section": "buildings",
+        "name_zh": "木墙",
+        "name_en": "Wall",
+        "portrait": "thumbs/wall.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "挡路 · 防御"
+          },
+          {
+            "k": "种类",
+            "v": "WALL"
+          },
+          {
+            "k": "生命",
+            "v": "170"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "费用",
+            "v": "18 木"
+          },
+          {
+            "k": "上限",
+            "v": "28"
+          },
+          {
+            "k": "派人",
+            "v": "不需要"
+          },
+          {
+            "k": "体积",
+            "v": "wall"
+          }
+        ],
+        "note": "已出场。不用派人。挡路。全图最多 28 座，含开局已有的墙。",
+        "skins": [],
+        "volume": "wall"
+      },
+      {
+        "id": "spear_tower",
+        "section": "buildings",
+        "name_zh": "矛塔",
+        "name_en": "Spear",
+        "portrait": "thumbs/spear_tower.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "穿刺 · 防御"
+          },
+          {
+            "k": "种类",
+            "v": "SPEAR"
+          },
+          {
+            "k": "生命",
+            "v": "200"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "费用",
+            "v": "24 木 + 40 金"
+          },
+          {
+            "k": "攻击",
+            "v": "24"
+          },
+          {
+            "k": "攻击间隔",
+            "v": "0.64 秒"
+          },
+          {
+            "k": "射程",
+            "v": "584.577"
+          },
+          {
+            "k": "溅射",
+            "v": "0"
+          },
+          {
+            "k": "弹速",
+            "v": "889.574"
+          },
+          {
+            "k": "派人",
+            "v": "需要"
+          },
+          {
+            "k": "体积",
+            "v": "spear"
+          }
+        ],
+        "note": "已出场。派人之后才攻击。单体，优先打深入村落的僵尸。",
+        "skins": [],
+        "volume": "spear"
+      },
+      {
+        "id": "fire_tower",
+        "section": "buildings",
+        "name_zh": "火塔",
+        "name_en": "Fire",
+        "portrait": "thumbs/fire_tower.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "溅射 · 防御"
+          },
+          {
+            "k": "种类",
+            "v": "FIRE"
+          },
+          {
+            "k": "生命",
+            "v": "160"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "费用",
+            "v": "16 木 + 64 金"
+          },
+          {
+            "k": "攻击",
+            "v": "18"
+          },
+          {
+            "k": "攻击间隔",
+            "v": "1.05 秒"
+          },
+          {
+            "k": "射程",
+            "v": "533.744"
+          },
+          {
+            "k": "溅射",
+            "v": "152.498"
+          },
+          {
+            "k": "弹速",
+            "v": "482.911"
+          },
+          {
+            "k": "派人",
+            "v": "需要"
+          },
+          {
+            "k": "体积",
+            "v": "fire"
+          }
+        ],
+        "note": "已出场。派人之后才攻击。火球溅射。",
+        "skins": [],
+        "volume": "fire"
+      },
+      {
+        "id": "house",
+        "section": "buildings",
+        "name_zh": "房屋",
+        "name_en": "House",
+        "portrait": "thumbs/house.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "床位 · 招募"
+          },
+          {
+            "k": "种类",
+            "v": "HOUSE"
+          },
+          {
+            "k": "生命",
+            "v": "120"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "费用",
+            "v": "22 木"
+          },
+          {
+            "k": "床位",
+            "v": "4"
+          },
+          {
+            "k": "派人",
+            "v": "需要"
+          },
+          {
+            "k": "体积",
+            "v": "house"
+          }
+        ],
+        "note": "已出场。派人之后提供 4 个床位。不直接训练单位。难民在清波后出现。",
+        "skins": [],
+        "volume": "house"
+      },
+      {
+        "id": "farm",
+        "section": "buildings",
+        "name_zh": "农场",
+        "name_en": "Farm",
+        "portrait": "thumbs/farm.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "产木材 · 生产"
+          },
+          {
+            "k": "种类",
+            "v": "FARM"
+          },
+          {
+            "k": "生命",
+            "v": "80"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "费用",
+            "v": "16 木 + 12 金"
+          },
+          {
+            "k": "产出",
+            "v": "每波 +6 木"
+          },
+          {
+            "k": "派人",
+            "v": "需要"
+          },
+          {
+            "k": "体积",
+            "v": "farm"
+          }
+        ],
+        "note": "已出场。派人之后，每波结束额外 +6 木材。",
+        "skins": [],
+        "volume": "farm"
+      },
+      {
+        "id": "workshop",
+        "section": "buildings",
+        "name_zh": "工坊",
+        "name_en": "Workshop",
+        "portrait": "thumbs/workshop.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "强化塔 · 生产"
+          },
+          {
+            "k": "种类",
+            "v": "WORKSHOP"
+          },
+          {
+            "k": "生命",
+            "v": "100"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "费用",
+            "v": "20 木 + 28 金"
+          },
+          {
+            "k": "加成",
+            "v": "塔伤害 ×1.25"
+          },
+          {
+            "k": "派人",
+            "v": "需要"
+          },
+          {
+            "k": "体积",
+            "v": "workshop"
+          }
+        ],
+        "note": "已出场。派人之后，矛塔和火塔伤害 ×1.25，多座不叠加。",
+        "skins": [],
+        "volume": "workshop"
+      }
+    ],
+    "scenery": [
+      {
+        "id": "tree",
+        "section": "scenery",
+        "name_zh": "树",
+        "name_en": "Tree",
+        "portrait": "thumbs/tree.png",
+        "badge": "挡建造",
+        "badge_tone": "scene",
+        "stats": [
+          {
+            "k": "体积",
+            "v": "tree"
+          },
+          {
+            "k": "贴图",
+            "v": "tree.png"
+          },
+          {
+            "k": "建造",
+            "v": "不能"
+          }
+        ],
+        "note": "已出场。树干落地的那一块椭圆挡建造。树冠不参与碰撞。",
+        "skins": [],
+        "volume": "tree"
+      },
+      {
+        "id": "tree_b",
+        "section": "scenery",
+        "name_zh": "树 · 变体 B",
+        "name_en": "Tree B",
+        "portrait": "thumbs/tree_b.png",
+        "badge": "挡建造",
+        "badge_tone": "scene",
+        "stats": [
+          {
+            "k": "体积",
+            "v": "tree"
+          },
+          {
+            "k": "贴图",
+            "v": "tree_b.png"
+          },
+          {
+            "k": "建造",
+            "v": "不能"
+          }
+        ],
+        "note": "已出场。贴图变体，体积键仍是 tree。",
+        "skins": [],
+        "volume": "tree"
+      },
+      {
+        "id": "tree_c",
+        "section": "scenery",
+        "name_zh": "树 · 变体 C",
+        "name_en": "Tree C",
+        "portrait": "thumbs/tree_c.png",
+        "badge": "挡建造",
+        "badge_tone": "scene",
+        "stats": [
+          {
+            "k": "体积",
+            "v": "tree"
+          },
+          {
+            "k": "贴图",
+            "v": "tree_c.png"
+          },
+          {
+            "k": "建造",
+            "v": "不能"
+          }
+        ],
+        "note": "已出场。贴图变体，体积键仍是 tree。",
+        "skins": [],
+        "volume": "tree"
+      },
+      {
+        "id": "rock",
+        "section": "scenery",
+        "name_zh": "岩石",
+        "name_en": "Rock",
+        "portrait": "thumbs/rock.png",
+        "badge": "挡建造",
+        "badge_tone": "scene",
+        "stats": [
+          {
+            "k": "体积",
+            "v": "rock"
+          },
+          {
+            "k": "贴图",
+            "v": "rock.png"
+          },
+          {
+            "k": "建造",
+            "v": "不能"
+          }
+        ],
+        "note": "已出场。椭圆体积挡建造。",
+        "skins": [],
+        "volume": "rock"
+      }
+    ]
+  },
+  "waves": [
+    {
+      "wave": 1,
+      "n": 5,
+      "hp": 34,
+      "speed": 91.499,
+      "gap": 0.9,
+      "fast": 0,
+      "brute": 0,
+      "boss": 0
+    },
+    {
+      "wave": 2,
+      "n": 7,
+      "hp": 44,
+      "speed": 94.041,
+      "gap": 0.78,
+      "fast": 2,
+      "brute": 0,
+      "boss": 0
+    },
+    {
+      "wave": 3,
+      "n": 8,
+      "hp": 54,
+      "speed": 94.041,
+      "gap": 0.7,
+      "fast": 2,
+      "brute": 1,
+      "boss": 0
+    },
+    {
+      "wave": 4,
+      "n": 8,
+      "hp": 66,
+      "speed": 96.582,
+      "gap": 0.64,
+      "fast": 3,
+      "brute": 1,
+      "boss": 0
+    },
+    {
+      "wave": 5,
+      "n": 9,
+      "hp": 78,
+      "speed": 96.582,
+      "gap": 0.58,
+      "fast": 3,
+      "brute": 2,
+      "boss": 0
+    },
+    {
+      "wave": 6,
+      "n": 9,
+      "hp": 90,
+      "speed": 99.124,
+      "gap": 0.54,
+      "fast": 3,
+      "brute": 2,
+      "boss": 0
+    },
+    {
+      "wave": 7,
+      "n": 10,
+      "hp": 102,
+      "speed": 99.124,
+      "gap": 0.5,
+      "fast": 4,
+      "brute": 2,
+      "boss": 0
+    },
+    {
+      "wave": 8,
+      "n": 10,
+      "hp": 114,
+      "speed": 99.124,
+      "gap": 0.48,
+      "fast": 4,
+      "brute": 3,
+      "boss": 0
+    },
+    {
+      "wave": 9,
+      "n": 11,
+      "hp": 126,
+      "speed": 101.666,
+      "gap": 0.46,
+      "fast": 4,
+      "brute": 3,
+      "boss": 0
+    },
+    {
+      "wave": 10,
+      "n": 8,
+      "hp": 130,
+      "speed": 96.582,
+      "gap": 0.5,
+      "fast": 3,
+      "brute": 2,
+      "boss": 1
+    }
+  ],
+  "economy": {
+    "wave_clear_wood": 8,
+    "wave_clear_gold": 14,
+    "staffed_farm_wood": 6,
+    "workshop_tower_damage": 1.25
+  }
+}

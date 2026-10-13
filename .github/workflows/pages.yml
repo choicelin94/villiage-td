@@ -1,0 +1,68 @@
+# Publish docs/ to GitHub Pages.
+#
+# The codex is regenerated from data/ and assets/ before deploy. The Godot
+# web export is not run here: the 4.7.2 export templates are about 1.28 GB,
+# and a fresh export overwrites the hand-maintained links on docs/index.html.
+# Commit docs/index.js, docs/index.wasm, and docs/index.pck from a local
+# Godot 4.7.2 export. See docs/ARCHITECTURE.md.
+
+name: Pages
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  codex:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Pillow
+        run: pip install pillow
+      - name: Regenerate the codex
+        run: python3 tools/build_codex.py
+      - name: Codex page must match the catalogs
+        run: |
+          git diff --exit-code -- docs/codex/index.html docs/codex/catalog.json
+          if git status --porcelain -- docs/codex/thumbs | grep -E '^\?\?|^ D|^D '; then
+            echo "docs/codex/thumbs added or removed a file. Commit the generated thumbs."
+            exit 1
+          fi
+
+  deploy:
+    needs: codex
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Pillow
+        run: pip install pillow
+      - name: Regenerate the codex into the site
+        run: python3 tools/build_codex.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4
