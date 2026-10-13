@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://byfmy6cpcqocq"
-path="res://.godot/imported/woman.png-610e52107b3c30a4fb2a17b352b5d169.ctex"
+uid="uid://bjxujytxsl3vc"
+path="res://.godot/imported/villager_4.png-ec35abd53a8090cc076e9ed6abde6faa.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/people/woman.png"
-dest_files=["res://.godot/imported/woman.png-610e52107b3c30a4fb2a17b352b5d169.ctex"]
+source_file="res://assets/characters/villager_4.png"
+dest_files=["res://.godot/imported/villager_4.png-ec35abd53a8090cc076e9ed6abde6faa.ctex"]
 
 [params]
 

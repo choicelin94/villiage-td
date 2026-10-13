@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bvdmj0y7wyicc"
-path="res://.godot/imported/man_brown.png-e05a84609899109d079985c09b69664f.ctex"
+uid="uid://dhgcln27fd74m"
+path="res://.godot/imported/villager_0.png-e403d694a81f77ea8bcab318be677ee5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/people/man_brown.png"
-dest_files=["res://.godot/imported/man_brown.png-e05a84609899109d079985c09b69664f.ctex"]
+source_file="res://assets/characters/villager_0.png"
+dest_files=["res://.godot/imported/villager_0.png-e403d694a81f77ea8bcab318be677ee5.ctex"]
 
 [params]
 

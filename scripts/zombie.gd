@@ -24,14 +24,17 @@ var _repath_cd := 0.0
 var _stuck_t := 0.0
 var _last_pos := Vector2.ZERO
 var _rewarded := false
-var _anim: Sprite2D
-var _atlas: AtlasTexture
+var _actor: SpineActor
+var _visual := "spear"
 var _base_mod := Color.WHITE
 var _facing := 2
 var _frame_i := 0
 var _frame_t := 0.0
+var _hurt_t := 0.0
+var _death_i := 0
+var _death_t := 0.0
 
-func setup(p_hp: int, p_speed: float, p_scale: float, p_dmg: int, p_wood: int, p_gold: int, p_kind: String, p_mod: Color) -> void:
+func setup(p_hp: int, p_speed: float, p_scale: float, p_dmg: int, p_wood: int, p_gold: int, p_kind: String, p_mod: Color, p_visual: String = "spear") -> void:
 	max_hp = p_hp
 	hp = p_hp
 	speed = p_speed
@@ -40,6 +43,7 @@ func setup(p_hp: int, p_speed: float, p_scale: float, p_dmg: int, p_wood: int, p
 	reward_gold = p_gold
 	kind_name = p_kind
 	_base_mod = p_mod
+	_visual = p_visual
 	bite = maxi(p_dmg, 1)
 	scale = Vector2(p_scale, p_scale)
 
@@ -49,16 +53,10 @@ func mark_fresh() -> void:
 func _ready() -> void:
 	add_to_group("zombies")
 	add_to_group("iso")
-	_atlas = AtlasTexture.new()
-	_atlas.atlas = load("res://assets/enemies/zombie_walk.png")
-	_anim = Sprite2D.new()
-	_anim.texture = _atlas
-	_anim.centered = false
-	_anim.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_anim.position = Vector2(-LpcFacing.FRAME * 0.5, -LpcFacing.FRAME + 6.0)
-	_anim.z_as_relative = true
-	_anim.z_index = 0
-	add_child(_anim)
+	_actor = SpineActor.new()
+	_actor.kind = _visual
+	_actor.skin = 0
+	add_child(_actor)
 	_face(Vector2.DOWN, 0.0, false)
 	var bar := HpBarZ.new()
 	bar.z_as_relative = true
@@ -69,15 +67,21 @@ func _ready() -> void:
 func _face(vel: Vector2, delta: float, faster: bool) -> void:
 	if vel.length_squared() > 0.000001:
 		_facing = LpcFacing.row_for(vel)
+	var clip := "move"
+	if _hurt_t > 0.0 and _actor != null and _actor.clip_count("hurt") > 0:
+		clip = "hurt"
+	elif faster and _actor != null and _actor.clip_count("attack") > 0:
+		clip = "attack"
 	_frame_t += delta
-	var step := 0.07 if faster else 0.1
+	var step := 0.08 if clip != "move" else 0.1
+	var count := 1
+	if _actor:
+		count = maxi(_actor.clip_count(clip), 1)
 	if _frame_t >= step:
 		_frame_t = 0.0
-		_frame_i = (_frame_i + 1) % LpcFacing.COLS
-	if _atlas == null:
-		return
-	_anim.flip_h = false
-	_atlas.region = LpcFacing.region(_frame_i, _facing)
+		_frame_i = (_frame_i + 1) % count
+	if _actor:
+		_actor.show_frame(clip, _frame_i, _facing)
 
 func notify_map_changed() -> void:
 	_repath()
@@ -87,6 +91,7 @@ func hurt(amount: int) -> void:
 		return
 	hp -= amount
 	_flash = 0.1
+	_hurt_t = 0.32
 	if hp <= 0:
 		hp = 0
 		_die()
@@ -105,7 +110,8 @@ func _die() -> void:
 func get_iso_volume() -> IsoVolume:
 	var vol := IsoVolume.from_feet(global_position)
 	vol.node = self
-	vol.screen_rect = IsoVolume.sprite_rect(_anim) if _anim else Rect2(global_position, Vector2(8, 8))
+	var body := _actor.sprite() if _actor else null
+	vol.screen_rect = IsoVolume.sprite_rect(body) if body else Rect2(global_position, Vector2(8, 8))
 	return vol
 
 func _process(delta: float) -> void:
@@ -114,17 +120,23 @@ func _process(delta: float) -> void:
 	if dying:
 		_death -= delta
 		modulate.a = clampf(_death / 0.28, 0.0, 1.0)
+		_death_t += delta
+		if _actor and _actor.clip_count("death") > 0 and _death_t >= 0.045:
+			_death_t = 0.0
+			_death_i += 1
+			_actor.show_frame("death", _death_i, _facing)
 		if _death <= 0.0:
 			queue_free()
 		return
 	_flash = maxf(_flash - delta, 0.0)
+	_hurt_t = maxf(_hurt_t - delta, 0.0)
 	var tint := _base_mod
 	if fresh > 0.0:
 		tint = Color(1, 1, 0.45)
 	elif _flash > 0.0:
 		tint = Color(1, 0.55, 0.5)
-	if _anim:
-		_anim.modulate = tint
+	if _actor:
+		_actor.modulate = tint
 	_repath_cd -= delta
 	var moved := global_position.distance_to(_last_pos)
 	if _last_pos != Vector2.ZERO and moved < speed * delta * 0.25:
@@ -149,6 +161,7 @@ func _process(delta: float) -> void:
 		_stuck_t = 0.0
 		_repath()
 	if _path_i >= _path.size():
+		_hold_idle(delta)
 		return
 	var game := _game()
 	if game == null:
@@ -235,6 +248,19 @@ func _repath() -> void:
 	if _path_i >= _path.size() and _attack.x >= 0:
 		_attacking = true
 
+func bar_anchor() -> float:
+	return _actor.bar_y() if _actor else -110.0
+
+func _hold_idle(delta: float) -> void:
+	if _actor == null:
+		return
+	_frame_t += delta
+	var count := maxi(_actor.clip_count("idle"), 1)
+	if _frame_t >= 0.12:
+		_frame_t = 0.0
+		_frame_i = (_frame_i + 1) % count
+	_actor.show_frame("idle", _frame_i, _facing)
+
 func _game() -> Node:
 	return get_tree().get_first_node_in_group("game")
 
@@ -259,7 +285,9 @@ class HpBarZ:
 		if p.hp >= p.max_hp:
 			return
 		var w := 32.0
-		var y := -70.0
+		var y := -110.0
+		if p.has_method("bar_anchor"):
+			y = p.bar_anchor()
 		var ratio := clampf(float(p.hp) / float(maxi(p.max_hp, 1)), 0.0, 1.0)
 		draw_rect(Rect2(-w * 0.5, y, w, 4), Color(0, 0, 0, 0.65))
 		draw_rect(Rect2(-w * 0.5, y, w * ratio, 4), Color(0.75, 0.2, 0.18))

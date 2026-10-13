@@ -163,17 +163,16 @@ func _prop(cell: Vector2i, path: String, key: String) -> Node2D:
 	return node
 
 func _build_people() -> void:
-	var tex: Texture2D = load("res://assets/people/man_brown.png")
-	player = _person(tex, _cell_center(HOUSE_CELL) + Vector2(0, 90))
-	near_one = _person(load("res://assets/people/woman.png"), Vector2.ZERO)
-	far_one = _person(load("res://assets/people/man_blue.png"), Vector2.ZERO)
+	player = _person(0, _cell_center(HOUSE_CELL) + Vector2(0, 90))
+	near_one = _person(1, Vector2.ZERO)
+	far_one = _person(2, Vector2.ZERO)
 	near_one.visible = false
 	far_one.visible = false
 
-func _person(tex: Texture2D, at: Vector2) -> Villager:
+func _person(skin: int, at: Vector2) -> Villager:
 	var v := Villager.new()
 	v.position = at
-	v.setup(tex, "m", 108.0)
+	v.setup(skin, "m", 108.0)
 	v.anchored = true
 	add_child(v)
 	return v
@@ -807,10 +806,9 @@ func _crowd_slots() -> Array[Vector2]:
 
 func _place_crowd() -> void:
 	var slots := _crowd_slots()
-	var tex: Texture2D = load("res://assets/people/woman.png")
 	var want := mini(16, slots.size())
 	while _crowd.size() < want:
-		var person := _person(tex, Vector2.ZERO)
+		var person := _person(_crowd.size() % 7, Vector2.ZERO)
 		person.visible = false
 		_crowd.append(person)
 	for i in _crowd.size():
@@ -826,12 +824,7 @@ func _hide_crowd() -> void:
 
 func _overlap_change(prop: Node2D, person: Villager, bare: Image, covered: Image) -> Dictionary:
 	var sprite := _art_of(prop)
-	var body := person.get_node_or_null("Sprite2D")
-	if body == null:
-		for child in person.get_children():
-			if child is Sprite2D:
-				body = child
-				break
+	var body := _body_sprite(person)
 	if sprite == null or body == null or bare == null or covered == null:
 		return {"opaque": 0, "ratio": 1.0}
 	var img := sprite.texture.get_image()
@@ -884,6 +877,18 @@ func _overlap_change(prop: Node2D, person: Villager, bare: Image, covered: Image
 				changed += 1
 	var ratio := 1.0 if opaque == 0 else float(changed) / float(opaque)
 	return {"opaque": opaque, "ratio": ratio}
+
+func _body_sprite(person: Node) -> Sprite2D:
+	var direct := person.get_node_or_null("Sprite2D")
+	if direct is Sprite2D:
+		return direct
+	for child in person.get_children():
+		if child is Sprite2D:
+			return child
+		var nested := child.get_node_or_null("Sprite2D")
+		if nested is Sprite2D:
+			return nested
+	return null
 
 func _art_of(node: Node2D) -> Sprite2D:
 	for child in node.get_children():

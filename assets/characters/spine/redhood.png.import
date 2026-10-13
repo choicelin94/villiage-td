@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d0jh0xat0q2jk"
-path="res://.godot/imported/man_old.png-1f64d4579903c212f2b2b0296ad03ea7.ctex"
+uid="uid://brbe2vgdxym0y"
+path="res://.godot/imported/redhood.png-ee0776807999f4b88c9e38f1345a1179.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/people/man_old.png"
-dest_files=["res://.godot/imported/man_old.png-1f64d4579903c212f2b2b0296ad03ea7.ctex"]
+source_file="res://assets/characters/spine/redhood.png"
+dest_files=["res://.godot/imported/redhood.png-ee0776807999f4b88c9e38f1345a1179.ctex"]
 
 [params]
 

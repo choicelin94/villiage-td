@@ -41,12 +41,7 @@ const KIND_MOD := {
 	"boss": {"hp": 4.2, "speed": 0.6, "scale": 1.6, "dmg": 3, "wood": 8, "gold": 30, "mod": Color(0.62, 0.82, 0.55)},
 }
 
-const MALE_TEX := [
-	"res://assets/people/man_brown.png",
-	"res://assets/people/man_old.png",
-	"res://assets/people/man_blue.png",
-]
-const FEMALE_TEX := "res://assets/people/woman.png"
+const SKIN_COUNT := 7
 
 var wood := START_WOOD
 var gold := START_GOLD
@@ -75,7 +70,7 @@ var spawn_gap := 0.8
 var spawn_cursor := 0
 var _selftest := false
 var _selftest_t0 := 0
-var _male_i := 0
+var _skin_i := 0
 var _map_min := Vector2.ZERO
 var _map_max := Vector2.ZERO
 var _cam_min_zoom := 0.12
@@ -149,6 +144,8 @@ func _ready() -> void:
 		_ui_shot()
 	elif OS.get_environment("TD_FACE") == "1":
 		_face_check()
+	elif OS.get_environment("TD_CHAR") == "1":
+		_char_shot()
 	elif OS.get_environment("TD_LANG") == "1":
 		_lang_shot()
 	elif OS.get_environment("TD_MOVE") == "1":
@@ -357,11 +354,8 @@ func _spawn_starter_people() -> void:
 func _make_villager(cell: Vector2i, sex: String, as_refugee: bool) -> Villager:
 	var v := Villager.new()
 	v.position = cell_center(cell)
-	var tex_path := FEMALE_TEX
-	if sex == "m":
-		tex_path = MALE_TEX[_male_i % MALE_TEX.size()]
-		_male_i += 1
-	v.setup(load(tex_path), sex, VILLAGER_SPEED)
+	v.setup(_skin_i % SKIN_COUNT, sex, VILLAGER_SPEED)
+	_skin_i += 1
 	v.refugee = as_refugee
 	v.claim_left = CLAIM_TIME if as_refugee else -1.0
 	actors.add_child(v)
@@ -760,7 +754,10 @@ func _spawn_zombie(kind: String, turned: bool, at: Vector2) -> void:
 	var hp := maxi(int(round(float(spec.hp) * float(mod.hp))), 1)
 	if turned:
 		hp = maxi(int(hp * 0.65), 12)
-	z.setup(hp, float(spec.speed) * float(mod.speed) * IsoVolume.WORLD_SCALE, float(mod.scale), int(mod.dmg), int(mod.wood), int(mod.gold), kind, mod.mod)
+	# Spear goblins are the horde. Brutes and the boss are the gun goblin, so
+	# the two monster packs stay distinct from each other and from villagers.
+	var visual := "shooter" if kind == "brute" or kind == "boss" else "spear"
+	z.setup(hp, float(spec.speed) * float(mod.speed) * IsoVolume.WORLD_SCALE, float(mod.scale), int(mod.dmg), int(mod.wood), int(mod.gold), kind, Color.WHITE, visual)
 	actors.add_child(z)
 
 func _on_wave_cleared() -> void:
@@ -2124,6 +2121,65 @@ func _opening_shot() -> void:
 		return
 	get_tree().quit(1)
 
+func _char_shot() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	for person in _alive_villagers():
+		person.visible = false
+	var idle := _make_villager(Vector2i(6, 8), "m", false)
+	idle.anchored = true
+	idle._set_frame(2, 0)
+	var walking := _make_villager(Vector2i(8, 8), "f", false)
+	walking.anchored = true
+	walking._step_anim(Vector2.RIGHT, 0.2)
+	walking._step_anim(Vector2.RIGHT, 0.2)
+	walking._step_anim(Vector2.RIGHT, 0.2)
+	camera.zoom = Vector2(2.2, 2.2)
+	_cam_user = true
+	camera.position = idle.global_position + Vector2(80, 10)
+	await get_tree().process_frame
+	await _capture("/opt/cursor/artifacts/spine-villager-idle.png")
+	camera.position = walking.global_position + Vector2(40, 10)
+	await get_tree().process_frame
+	await _capture("/opt/cursor/artifacts/spine-villager-walk.png")
+	var spear := Zombie.new()
+	spear.position = cell_center(Vector2i(11, 8))
+	spear.setup(20, 0.0, 1.05, 1, 0, 0, "normal", Color.WHITE, "spear")
+	actors.add_child(spear)
+	spear._face(Vector2.LEFT, 0.2, false)
+	spear._face(Vector2.LEFT, 0.2, false)
+	var gun := Zombie.new()
+	gun.position = cell_center(Vector2i(13, 8))
+	gun.setup(40, 0.0, 1.15, 1, 0, 0, "brute", Color.WHITE, "shooter")
+	actors.add_child(gun)
+	gun._face(Vector2.RIGHT, 0.2, true)
+	gun._face(Vector2.RIGHT, 0.2, true)
+	spear.process_mode = Node.PROCESS_MODE_DISABLED
+	gun.process_mode = Node.PROCESS_MODE_DISABLED
+	camera.zoom = Vector2(1.6, 1.6)
+	camera.position = (spear.global_position + gun.global_position) * 0.5
+	await get_tree().process_frame
+	await _capture("/opt/cursor/artifacts/spine-monsters.png")
+	var behind := _make_villager(Vector2i(9, 15), "m", false)
+	behind.anchored = true
+	behind._set_frame(3, 1)
+	var front := Zombie.new()
+	front.position = cell_center(Vector2i(9, 17))
+	front.setup(20, 0.0, 1.05, 1, 0, 0, "normal", Color.WHITE, "spear")
+	actors.add_child(front)
+	front._face(Vector2.LEFT, 0.16, false)
+	front.process_mode = Node.PROCESS_MODE_DISABLED
+	idle.visible = false
+	walking.visible = false
+	spear.visible = false
+	gun.visible = false
+	camera.zoom = Vector2(1.7, 1.7)
+	camera.position = cell_center(Vector2i(9, 16))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await _capture("/opt/cursor/artifacts/spine-occlusion.png")
+	get_tree().quit(0)
+
 func _face_check() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -2157,8 +2213,10 @@ func _face_check() -> void:
 		var v: Villager = people[i]
 		var expect := LpcFacing.row_for(dirs[i])
 		var moved: Vector2 = v.global_position - starts[i]
-		print("FACE_V i=", i, " expect=", expect, " got=", v._facing, " frame=", v._frame, " moved=", moved, " goal_left=", v._goal - v.global_position, " retarget=", v._retarget)
-		if v._facing != expect or v._frame == 0:
+		print("FACE_V i=", i, " expect=", expect, " got=", v._facing, " frame=", v._frame, " steps=", v._steps, " moved=", moved)
+		# A 6-frame run cycle wraps back to frame 0 inside this wait. Steps
+		# prove the walk loop kept running. Facing still has to match.
+		if v._facing != expect or v._steps < 8:
 			ok = false
 	var zdelta: Vector2 = zombie.global_position - z0
 	var zexpect := LpcFacing.row_for(zdelta)
@@ -2175,11 +2233,12 @@ func _face_check() -> void:
 	turn._goal = turn.global_position + Vector2(0, -220)
 	turn._retarget = 8.0
 	var turn0 := turn.global_position
+	var turn_steps := turn._steps
 	await get_tree().create_timer(0.35).timeout
 	var turn_moved: Vector2 = turn.global_position - turn0
 	var turn_expect := 0
-	print("FACE_TURN moved=", turn_moved, " expect=", turn_expect, " got=", turn._facing, " frame=", turn._frame)
-	if turn_moved.y >= -4.0 or turn._facing != turn_expect or turn._frame == 0:
+	print("FACE_TURN moved=", turn_moved, " expect=", turn_expect, " got=", turn._facing, " frame=", turn._frame, " steps=", turn._steps)
+	if turn_moved.y >= -4.0 or turn._facing != turn_expect or turn._steps <= turn_steps:
 		ok = false
 	print("FACE_OK ", ok)
 	camera.zoom = Vector2(1.8, 1.8)
