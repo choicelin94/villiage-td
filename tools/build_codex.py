@@ -163,6 +163,51 @@ WAVE_FOOTNOTE = (
     "这里的基准移速还没有乘 WORLD_SCALE，它只用来算这个比例。"
     "被感染的村民是单独的 spear_infected，不再在普通僵尸上再乘 0.65。"
 )
+# Level-1 modules. Scenery stays its own module: those cards are props, not buildings.
+CODEX_MODULES = (
+    ("units", "角色", "村民会出场。矛兵和工匠已写入 Balance，对局还不会生成。"),
+    ("enemies", "敌人", "卡片是第 1 波的世界单位。后面的波次在「波次」模块里按比例缩放。"),
+    ("buildings", "建筑", "塔立着就会攻击，不用派人。房屋立着就给床位，农场立着就产木材。"),
+    ("scenery", "场景", "树和岩石挡住建造。草地和道路是地面，不进图鉴。"),
+    ("waves", "波次", "一次只看一波。左侧图标决定这一波显示哪些字段，换条目时不会收起。"),
+)
+# Chinese stat label -> slug. Every label the cards or waves emit must be listed.
+FIELD_SLUG = {
+    "职责": "role",
+    "生命": "hp",
+    "防御": "def",
+    "攻击": "atk",
+    "攻速": "aspd",
+    "移速": "mspd",
+    "射程": "range",
+    "费用": "cost",
+    "训练": "train",
+    "形象": "look",
+    "体积": "vol",
+    "体型": "scale",
+    "赏金": "gold",
+    "木材": "wood",
+    "标签": "tag",
+    "经验": "xp",
+    "类别": "cat",
+    "种类": "kind",
+    "溅射": "splash",
+    "弹速": "shot",
+    "床位": "beds",
+    "产出": "yield",
+    "可招募": "recruit",
+    "加成": "bonus",
+    "上限": "cap",
+    "贴图": "tex",
+    "建造": "build",
+    "普通": "normal",
+    "迅捷": "fast",
+    "精锐": "elite",
+    "首领": "boss",
+    "基准生命": "basehp",
+    "基准移速": "basespd",
+    "间隔": "gap",
+}
 
 
 def die(message: str) -> None:
@@ -551,30 +596,71 @@ def wave_rows(waves: list) -> list:
     return rows
 
 
+GLYPHS = {
+    "units": '<circle cx="12" cy="8" r="3"/><path d="M6 19c.8-3 2.8-4.5 6-4.5s5.2 1.5 6 4.5"/>',
+    "enemies": '<path d="M14.5 4.5 19.5 9.5"/><path d="M14.5 4.5 5 17.5"/><path d="M5 17.5 3.6 20.4 7.2 19.2"/><path d="M9.2 13.2l2.8 2.8"/>',
+    "buildings": '<path d="M4 11 12 4l8 7"/><path d="M6.5 10.5V20h11v-9.5"/><path d="M10 20v-5h4v5"/>',
+    "scenery": '<path d="M12 21v-6"/><path d="M12 15c-4 .2-6.2-2.4-4.6-6 1.2-3.6 7.2-5 8.2-.4 1.6 3.4-.2 6.2-3.6 6.4z"/>',
+    "waves": '<path d="M3 8c1.6 0 1.6 2.4 3.2 2.4S7.8 8 9.4 8s1.6 2.4 3.2 2.4 1.6-2.4 3.2-2.4 1.6 2.4 3.2 2.4 1.6-2.4 3.2-2.4"/><path d="M3 14.5c1.6 0 1.6 2.4 3.2 2.4s1.6-2.4 3.2-2.4 1.6 2.4 3.2 2.4 1.6-2.4 3.2-2.4 1.6 2.4 3.2 2.4 1.6-2.4 3.2-2.4"/>',
+    "menu": '<path d="M4 7h16M4 12h16M4 17h10"/>',
+    "close": '<path d="M6 6l12 12M18 6 6 18"/>',
+    "role": '<circle cx="12" cy="8" r="3"/><path d="M6.5 19c.7-2.8 2.6-4.2 5.5-4.2s4.8 1.4 5.5 4.2"/><path d="M17 6.5h3.2M18.6 5v3"/>',
+    "hp": '<path d="M12 19s-6.2-3.8-6.2-8A3.5 3.5 0 0 1 12 8.2 3.5 3.5 0 0 1 18.2 11C18.2 15.2 12 19 12 19z"/>',
+    "def": '<path d="M12 3.5 19 6.2v5.3c0 4.2-2.8 7-7 8.8-4.2-1.8-7-4.6-7-8.8V6.2z"/>',
+    "atk": '<path d="M14.5 4.5 19.5 9.5"/><path d="M14.5 4.5 6 16.2"/><path d="M6 16.2 4.2 20l3.6-1.4"/>',
+    "aspd": '<path d="M13 5.5 18 10.5"/><path d="M13 5.5 7 14"/><circle cx="8.2" cy="16.8" r="2"/>',
+    "mspd": '<path d="M4 8h8M8 4.5 12 8 8 11.5"/><path d="M4 16h11M11 12.5 15 16l-4 3.5"/>',
+    "range": '<circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.6"/><path d="M12 3.5V6M12 18v2.5M3.5 12H6M18 12h2.5"/>',
+    "cost": '<ellipse cx="12" cy="8" rx="6" ry="2.3"/><path d="M6 8v4c0 1.3 2.7 2.3 6 2.3s6-1 6-2.3V8"/><path d="M6 12v3.5c0 1.3 2.7 2.3 6 2.3s6-1 6-2.3V12"/>',
+    "train": '<path d="M8 4h8M8 20h8"/><path d="M9 4c0 4 6 4 6 8s-6 4-6 8"/><path d="M15 4c0 4-6 4-6 8s6 4 6 8"/>',
+    "look": '<circle cx="12" cy="12" r="7"/><circle cx="9.2" cy="11" r=".8" fill="currentColor" stroke="none"/><circle cx="14.8" cy="11" r=".8" fill="currentColor" stroke="none"/><path d="M9 15.2c1 .9 5 .9 6 0"/>',
+    "vol": '<path d="M12 3.5 20 8v8l-8 4.5L4 16V8z"/><path d="M12 12.2 20 8M12 12.2 4 8M12 12.2V20"/>',
+    "scale": '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    "gold": '<circle cx="12" cy="12" r="7"/><path d="M12 8v8M9.6 10.2c.5-.7 1.3-1.1 2.4-1.1 1.5 0 2.4.7 2.4 1.8S13.5 12.6 12 12.6h-.8c-1.5 0-2.4.7-2.4 1.8s.9 1.8 2.4 1.8c1.1 0 1.9-.4 2.4-1.1"/>',
+    "wood": '<path d="M6 7h12v3H6zM5 11h14v3H5zM7 15h10v3H7z"/>',
+    "tag": '<path d="M4 12.2 11.8 4.5H19v7.2L11.2 19.5z"/><circle cx="15" cy="8.8" r="1.1" fill="currentColor" stroke="none"/>',
+    "xp": '<path d="M12 3.8 14.1 9h5.5l-4.4 3.2 1.7 5.3L12 14.6 6.9 17.5 8.6 12.2 4.2 9h5.5z"/>',
+    "cat": '<rect x="4" y="4" width="6.5" height="6.5" rx="1.3"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.3"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.3"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.3"/>',
+    "kind": '<path d="M12 4 20 8l-8 4L4 8z"/><path d="M4 12l8 4 8-4"/><path d="M4 16l8 4 8-4"/>',
+    "splash": '<circle cx="12" cy="12" r="2"/><path d="M12 4.5V7M12 17v2.5M4.5 12H7M17 12h2.5M6.4 6.4l1.8 1.8M15.8 15.8l1.8 1.8M17.6 6.4 15.8 8.2M8.2 15.8 6.4 17.6"/>',
+    "shot": '<path d="M4 12h12"/><path d="M12 7.5 16.5 12 12 16.5"/>',
+    "beds": '<path d="M4 17V9"/><path d="M4 13h8.5A3.5 3.5 0 0 1 16 16.5H4"/><path d="M4 17h16v2.5"/><circle cx="8" cy="11" r="1.3"/>',
+    "yield": '<path d="M12 20V10"/><path d="M12 14C9 13 7 10.5 8 7.5 11 7.5 13 9.5 12 14z"/><path d="M12 15c3-1 5-3 4-6-3 .2-5 2.2-4 6z"/>',
+    "recruit": '<circle cx="9" cy="9" r="2.1"/><circle cx="16" cy="9.6" r="1.7"/><path d="M4.6 18c.5-2.5 2.3-3.8 4.4-3.8s3.9 1.3 4.4 3.8"/><path d="M13.2 18c.3-1.7 1.5-2.8 3-2.8 1.3 0 2.3.7 2.9 2.2"/>',
+    "bonus": '<circle cx="12" cy="12" r="7"/><path d="M12 8.5v7M8.5 12h7"/>',
+    "cap": '<path d="M6 7h12"/><path d="M8 7v9.5A1.5 1.5 0 0 0 9.5 18h5a1.5 1.5 0 0 0 1.5-1.5V7"/><path d="M10 12h4"/>',
+    "tex": '<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.3"/><path d="M4 16.2 8.6 12.5 12 15.4l2.4-1.8L20 18"/>',
+    "build": '<path d="M14 4.5 19.5 8"/><path d="M14 4.5 8 13.5"/><path d="M8 13.5 6.2 18.2 10.2 16.6"/><path d="M4 20h8"/>',
+    "normal": '<circle cx="12" cy="8" r="3"/><path d="M6.5 19c.7-3 2.6-4.5 5.5-4.5s4.8 1.5 5.5 4.5"/>',
+    "fast": '<path d="M13 3.5 6.5 13H12l-1 7.5L18 10h-5.2z"/>',
+    "elite": '<path d="M12 3.5 14.3 9H20l-4.6 3.4L17.2 18 12 14.7 6.8 18l1.8-5.6L4 9h5.7z"/>',
+    "boss": '<path d="M4.5 16V9.5L8 12.2 12 5l4 7.2 3.5-2.7V16"/><path d="M4.5 16h15v3h-15z"/>',
+    "basehp": '<path d="M12 16.2s-5.2-3.2-5.2-6.5A2.8 2.8 0 0 1 12 7.4a2.8 2.8 0 0 1 5.2 2.3c0 3.3-5.2 6.5-5.2 6.5z"/><path d="M5 20.2h14"/>',
+    "basespd": '<path d="M4 8.5h8M8.5 5 12.5 8.5 8.5 12"/><path d="M4 15.5h11M11 12l4 3.5-4 3.5"/><path d="M4 21h16"/>',
+    "gap": '<circle cx="12" cy="12" r="7"/><path d="M12 8v4.6l2.8 1.8"/>',
+}
+
+
+def glyph(name: str) -> str:
+    if name not in GLYPHS:
+        die(f"missing icon {name}")
+    return (
+        '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+        f"{GLYPHS[name]}</svg>"
+    )
+
+
+def field_slug(label: str) -> str:
+    slug = FIELD_SLUG.get(label)
+    if slug is None:
+        die(f"no icon for field {label}")
+    if slug not in GLYPHS:
+        die(f"field {label} slug {slug} has no glyph")
+    return slug
+
+
 def render_page(catalog: dict) -> str:
-    sections = {
-        "units": ("友方单位", "Units", "村民会出场。矛兵和工匠已写入 Balance，对局还不会生成。"),
-        "enemies": ("敌人", "Enemies", "卡片是第 1 波的世界单位。波次说明在卡片下面，一次只看一波。"),
-        "buildings": ("建筑", "Buildings", "塔立着就会攻击，不用派人。房屋立着就给床位，农场立着就产木材。"),
-        "scenery": ("场景", "Scenery", "树和岩石挡住建造。草地和道路是地面，不进图鉴。"),
-    }
-    nav = []
-    blocks = []
-    wave_css = ""
-    for key, (zh, en, blurb) in sections.items():
-        nav.append(f'<a href="#{key}">{esc(zh)}</a>')
-        items = [render_card(item) for item in catalog["sections"][key]]
-        extra = ""
-        if key == "enemies":
-            nav.append('<a href="#waves">波次</a>')
-            extra, wave_css = render_waves(catalog["waves"])
-        if key == "buildings":
-            extra = render_economy(catalog["economy"])
-        blocks.append(
-            f'<section id="{key}">'
-            f"<header><h2>{esc(zh)} <span>{esc(en)}</span></h2><p>{esc(blurb)}</p></header>"
-            f'<div class="grid">{"".join(items)}</div>{extra}</section>'
-        )
+    shell, codex_css = build_codex_view(catalog)
     counts = catalog["counts"]
     total = sum(counts.values())
     summary = (
@@ -636,7 +722,7 @@ body {{
   font: 16px/1.5 "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
 }}
 a {{ color: var(--gold); }}
-header.top, main {{ width: min(1120px, calc(100% - 32px)); margin: 0 auto; }}
+header.top, .codex-shell {{ width: min(1180px, calc(100% - 32px)); margin: 0 auto; }}
 header.top {{ padding: 28px 0 8px; }}
 .kicker {{ margin: 0; color: var(--muted); letter-spacing: .08em; font-size: 13px; }}
 h1 {{ margin: 4px 0; font-size: clamp(32px, 5vw, 48px); line-height: 1.1; }}
@@ -706,7 +792,7 @@ tr + tr td, tr + tr th {{ border-top: 1px solid var(--line); }}
 }}
 footer {{ width: min(1120px, calc(100% - 32px)); margin: 0 auto 32px; color: var(--muted); font-size: 13px; }}
 a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
-{wave_css}
+{codex_css}
 </style>
 </head>
 <body>
@@ -714,11 +800,9 @@ a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
   <p class="kicker">部落村落塔防</p>
   <h1>图鉴</h1>
   <p class="summary">{esc(summary)}，共 {total} 张。</p>
-  <nav>{"".join(nav)}<a href="../">返回游戏</a></nav>
+  <nav><a href="../">返回游戏</a></nav>
 </header>
-<main>
-{"".join(blocks)}
-</main>
+{shell}
 <footer>
   <p>头像是序列帧左上角第 0 帧，或建筑的俯视图，透明边已裁掉。数值来自 data/units.json、data/enemies.json、data/buildings.json，对局由 scripts/balance.gd 加载同一份。攻速是每秒攻击次数。伤害是 max(1, round(attack × 100 / (100 + defense)))。移速、射程、溅射和弹速是世界单位。卡片上的小数最多显示 4 位。</p>
   <p>此页由 tools/build_codex.py 生成。改目录后重新运行脚本，再提交 docs/codex/。</p>
@@ -726,30 +810,6 @@ a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
 </body>
 </html>
 """
-
-
-def render_card(item: dict) -> str:
-    stats = "".join(f"<dt>{esc(row['k'])}</dt><dd>{esc(row['v'])}</dd>" for row in item["stats"])
-    skins = ""
-    if item["skins"]:
-        thumbs = "".join(
-            f'<img src="{esc(skin["thumb"])}" alt="{esc(item["name_zh"])} {esc(skin["name"])}">'
-            for skin in item["skins"]
-        )
-        skins = f'<div class="skins">{thumbs}</div>'
-    note = f'<p class="note">{esc(item["note"])}</p>' if item["note"] else ""
-    return (
-        "<article>"
-        f'<div class="portrait"><img src="{esc(item["portrait"])}" alt="{esc(item["name_zh"])}头像"></div>'
-        f"{skins}"
-        f'<h3>{esc(item["name_zh"])}</h3>'
-        f'<p class="en">{esc(item["name_en"])}</p>'
-        f'<p class="wid">{esc(item["id"])}</p>'
-        f'<span class="badge {esc(item["badge_tone"])}">{esc(item["badge"])}</span>'
-        f"<dl>{stats}</dl>"
-        f"{note}"
-        "</article>"
-    )
 
 
 def _wave_columns() -> list:
@@ -760,153 +820,256 @@ def _wave_columns() -> list:
             if key in seen:
                 die(f"duplicate wave column {key}")
             seen.add(key)
+            field_slug(label)
             columns.append((group, key, label, hint))
     if seen != set(WAVE_FIELDS):
         die(f"wave columns {sorted(seen)} do not match WAVE_FIELDS")
     return columns
 
 
-def _wave_css(count: int) -> str:
-    show = []
-    selected = []
-    focused = []
-    for index in range(1, count + 1):
-        show.append(
-            f"#wave-pick-{index}:checked ~ .wave-panel[data-wave=\"{index}\"] {{ display: block; }}"
+def _fields_in(items: list) -> list:
+    labels = []
+    for item in items:
+        for row in item["stats"]:
+            label = row["k"]
+            if label not in labels:
+                labels.append(label)
+                field_slug(label)
+    return labels
+
+
+def _stat_tiles(rows: list, section: str) -> str:
+    tiles = []
+    for row in rows:
+        slug = field_slug(row["k"])
+        tiles.append(
+            f'<div class="stat-tile" data-field="{esc(slug)}">'
+            f'<dt>{esc(row["k"])}</dt>'
+            f'<dd>{esc(row["v"])}</dd></div>'
         )
-        selected.append(f"#wave-pick-{index}:checked ~ .wave-tabs label[for=\"wave-pick-{index}\"]")
-        focused.append(
-            f"#wave-pick-{index}:focus-visible ~ .wave-tabs label[for=\"wave-pick-{index}\"]"
+    return f'<dl class="card-stats">{"".join(tiles)}</dl>'
+
+
+def _detail_panel(item: dict, section: str, item_id: str) -> str:
+    skins = ""
+    if item["skins"]:
+        thumbs = "".join(
+            f'<img src="{esc(skin["thumb"])}" alt="{esc(item["name_zh"])} {esc(skin["name"])}">'
+            for skin in item["skins"]
         )
-    hide = []
-    for _group, key, _label, _hint in _wave_columns():
-        hide.append(
-            f".waves:not(:has(#col-{key}:checked)) [data-col=\"{key}\"] {{ display: none; }}"
-        )
-    group_hide = []
-    for group, _title, cols in WAVE_GROUPS:
-        chain = "".join(f":not(:has(#col-{key}:checked))" for key, _label, _hint in cols)
-        group_hide.append(f".waves{chain} [data-group=\"{group}\"] {{ display: none; }}")
+        skins = f'<div class="skins">{thumbs}</div>'
+    note = f'<p class="note">{esc(item["note"])}</p>' if item["note"] else ""
     return (
-        WAVE_PANEL_CSS
-        + "\n"
-        + "\n".join(show)
-        + "\n"
-        + ",\n".join(selected)
-        + " {\n"
-        "  background: var(--text);\n"
-        "  color: var(--bg);\n"
-        "  border-color: transparent;\n"
-        "  font-weight: 700;\n"
-        "}\n"
-        + ",\n".join(focused)
-        + " {\n"
-        "  outline: 2px solid var(--gold);\n"
-        "  outline-offset: 2px;\n"
-        "}\n"
-        + "\n".join(hide)
-        + "\n"
-        + "\n".join(group_hide)
-        + "\n"
-        ".waves:not(:has(#col-hp:checked)):not(:has(#col-speed:checked)) .wave-scale { display: none; }\n"
-        ".waves:not(:has(.wave-col input:checked)) .wave-empty { display: block; }\n"
-        ".waves:not(:has(.wave-col input:checked)) .wave-group { display: none; }\n"
+        f'<article class="item-panel" data-item="{esc(section)}-{esc(item_id)}">'
+        '<div class="detail">'
+        f'<div class="portrait"><img src="{esc(item["portrait"])}" alt="{esc(item["name_zh"])}头像">'
+        f"{skins}</div>"
+        '<div class="detail-copy">'
+        f'<h3>{esc(item["name_zh"])}</h3>'
+        f'<p class="en">{esc(item["name_en"])}</p>'
+        f'<p class="wid">{esc(item["id"])}</p>'
+        f'<span class="badge {esc(item["badge_tone"])}">{esc(item["badge"])}</span>'
+        '<p class="field-empty">这些字段都已隐藏。点左侧图标即可显示。</p>'
+        f'{_stat_tiles(item["stats"], section)}'
+        f"{note}</div></div></article>"
     )
 
 
-def render_waves(rows: list) -> tuple:
-    """One tab per wave, plus a column picker that stays outside the tabs.
-
-    Rows come from data/enemies.json via wave_rows(). Column keys are WAVE_GROUPS,
-    checked against WAVE_FIELDS so the picker cannot drift from the match data.
-    """
-    if not rows:
-        die("waves are empty")
-    _wave_columns()
-    ref = rows[0]
+def _wave_panel(row: dict, ref: dict) -> str:
+    number = int(row["wave"])
     ref_hp = float(ref["hp"]) or 1.0
     ref_speed = float(ref["speed"]) or 1.0
-    picks = []
-    tabs = []
-    panels = []
-    for row in rows:
-        number = int(row["wave"])
-        checked = " checked" if number == int(rows[0]["wave"]) else ""
-        picks.append(
-            f'<input class="wave-pick" type="radio" name="wave-pick" '
-            f'id="wave-pick-{number}" aria-controls="wave-panel-{number}"{checked}>'
-        )
-        tabs.append(f'<label for="wave-pick-{number}">第 {number} 波</label>')
-        hp_ratio = float(row["hp"]) / ref_hp
-        speed_ratio = float(row["speed"]) / ref_speed
-        groups = []
-        for group, title, cols in WAVE_GROUPS:
-            stats = []
-            for key, label, hint in cols:
-                value = row[key]
-                mark = ""
-                if group == "counts":
-                    mark = " is-present" if int(value) > 0 else " is-zero"
-                stats.append(
-                    f'<div class="wave-stat{mark}" data-col="{esc(key)}">'
-                    f"<dt>{esc(label)}</dt>"
-                    f"<dd><span class=\"wave-num\">{esc(fmt_num(value))}</span>"
-                    f'<span class="hint">{esc(hint)}</span></dd></div>'
-                )
-            groups.append(
-                f'<section class="wave-group" data-group="{esc(group)}">'
-                f"<h4>{esc(title)}</h4>"
-                f'<dl class="wave-stats">{"".join(stats)}</dl></section>'
-            )
-        panels.append(
-            f'<article class="wave-panel" id="wave-panel-{number}" data-wave="{number}">'
-            f"<h3>第 {number} 波</h3>"
-            f'<p class="wave-scale"><span class="wave-scale-label">相对第 1 波</span>'
-            f'<span data-col="hp">生命 ×{esc(fmt_num(hp_ratio))}</span>'
-            f'<span data-col="speed">移速 ×{esc(fmt_num(speed_ratio))}</span></p>'
-            f'<p class="wave-empty">可选栏里的字段都已隐藏。勾选左侧项目即可显示。</p>'
-            f'{"".join(groups)}</article>'
-        )
-    sidebar = []
+    hp_ratio = float(row["hp"]) / ref_hp
+    speed_ratio = float(row["speed"]) / ref_speed
+    groups = []
     for group, title, cols in WAVE_GROUPS:
-        sidebar.append(f'<p class="wave-aside-kicker">{esc(title)}</p>')
-        for key, label, _hint in cols:
-            sidebar.append(
-                f'<label class="wave-col" for="col-{esc(key)}">'
-                f'<input type="checkbox" id="col-{esc(key)}" checked> '
-                f"<span>{esc(label)}</span></label>"
+        tiles = []
+        for key, label, hint in cols:
+            slug = field_slug(label)
+            value = row[key]
+            mark = ""
+            if group == "counts":
+                mark = " is-present" if int(value) > 0 else " is-zero"
+            tiles.append(
+                f'<div class="stat-tile{mark}" data-field="{esc(slug)}">'
+                f"<dt>{esc(label)}</dt>"
+                f'<dd><span class="wave-num">{esc(fmt_num(value))}</span>'
+                f'<span class="hint">{esc(hint)}</span></dd></div>'
             )
-    html = (
-        '<div class="waves" id="waves" data-waves>'
-        '<input class="wave-drawer" type="checkbox" id="wave-drawer" aria-label="打开可选栏">'
-        '<div class="waves-head">'
-        '<label class="waves-drawer-btn" for="wave-drawer">可选栏</label>'
-        '<div class="waves-title">'
-        "<h3>波次说明</h3>"
-        '<p class="waves-lead">一次只看一波。左侧可选栏决定显示哪些字段，换波次时不会收起。</p>'
-        "</div></div>"
-        '<label class="wave-backdrop" for="wave-drawer" aria-hidden="true"></label>'
-        '<div class="waves-layout">'
-        '<aside class="wave-aside" id="wave-columns" aria-label="可选栏">'
-        '<div class="wave-aside-bar"><h3>可选栏</h3>'
-        '<label class="wave-aside-close" for="wave-drawer">关闭</label></div>'
-        "<p>勾选后每一波都显示。换到别的波次，这一栏还在。</p>"
-        f'{"".join(sidebar)}'
+        groups.append(
+            f'<section class="wave-group" data-group="{esc(group)}">'
+            f"<h4>{esc(title)}</h4>"
+            f'<dl class="card-stats">{"".join(tiles)}</dl></section>'
+        )
+    return (
+        f'<article class="item-panel" data-item="waves-{number}">'
+        f"<h3>第 {number} 波</h3>"
+        f'<p class="wave-scale"><span class="wave-scale-label">相对第 1 波</span>'
+        f'<span data-field="basehp">生命 ×{esc(fmt_num(hp_ratio))}</span>'
+        f'<span data-field="basespd">移速 ×{esc(fmt_num(speed_ratio))}</span></p>'
+        '<p class="field-empty">这些字段都已隐藏。点左侧图标即可显示。</p>'
+        f'{"".join(groups)}</article>'
+    )
+
+
+def _icon_toggle(input_id: str, label: str, slug: str, kind: str, checked: str, name: str = "") -> str:
+    name_attr = f' name="{esc(name)}"' if name else ""
+    input_type = "radio" if name else "checkbox"
+    return (
+        f'<label class="{kind}" title="{esc(label)}">'
+        f'<input type="{input_type}" id="{esc(input_id)}"{name_attr}{checked} '
+        f'aria-label="{esc(label)}">'
+        f"{glyph(slug)}</label>"
+    )
+
+
+def build_codex_view(catalog: dict) -> tuple:
+    """Left rail: module icons, then the current module's entries, then field icons.
+
+    Entries are the level-2 jump list. The main column only shows the chosen card
+    or wave. Field icons are per module and apply to every card in that module.
+    """
+    columns = _wave_columns()
+    modules = []
+    for key, title, blurb in CODEX_MODULES:
+        if key == "waves":
+            items = catalog["waves"]
+            fields = [label for _group, _title, cols in WAVE_GROUPS for _key, label, _hint in cols]
+        else:
+            items = catalog["sections"][key]
+            fields = _fields_in(items)
+        modules.append((key, title, blurb, items, fields))
+
+    module_btns = []
+    item_navs = []
+    field_sets = []
+    sections = []
+    rules = []
+    for index, (key, title, blurb, items, fields) in enumerate(modules):
+        checked = " checked" if index == 0 else ""
+        module_btns.append(
+            _icon_toggle(f"sec-{key}", title, key, "mod-btn", checked, "codex-sec")
+            .replace("</label>", f"<span>{esc(title)}</span></label>", 1)
+        )
+        links = []
+        panels = []
+        rules.append(
+            f'.codex:has(#sec-{key}:checked) .item-nav[data-for="{key}"] {{ display: flex; }}'
+        )
+        rules.append(
+            f'.codex:has(#sec-{key}:checked) .field-set[data-for="{key}"] {{ display: flex; }}'
+        )
+        rules.append(
+            f'.codex:has(#sec-{key}:checked) .codex-section[data-section="{key}"] {{ display: block; }}'
+        )
+        if key == "waves":
+            ref = items[0]
+            for row in items:
+                number = int(row["wave"])
+                item_checked = " checked" if number == int(ref["wave"]) else ""
+                links.append(
+                    f'<label class="item-link" title="第 {number} 波">'
+                    f'<input type="radio" name="item-waves" id="item-waves-{number}"'
+                    f'{item_checked} aria-label="第 {number} 波">'
+                    f'<span class="wave-mark">{number}</span><span>第 {number} 波</span></label>'
+                )
+                panels.append(_wave_panel(row, ref))
+                rules.append(
+                    f'.codex:has(#item-waves-{number}:checked) '
+                    f'.item-panel[data-item="waves-{number}"] {{ display: block; }}'
+                )
+            extra = f'<p class="footnote">{esc(WAVE_FOOTNOTE)}</p>'
+        else:
+            for item_index, item in enumerate(items):
+                item_id = str(item["id"])
+                item_checked = " checked" if item_index == 0 else ""
+                links.append(
+                    f'<label class="item-link" title="{esc(item["name_zh"])}">'
+                    f'<input type="radio" name="item-{key}" id="item-{key}-{esc(item_id)}"'
+                    f'{item_checked} aria-label="{esc(item["name_zh"])}">'
+                    f'<img src="{esc(item["portrait"])}" alt="">'
+                    f'<span>{esc(item["name_zh"])}</span></label>'
+                )
+                panels.append(_detail_panel(item, key, item_id))
+                rules.append(
+                    f'.codex:has(#item-{key}-{item_id}:checked) '
+                    f'.item-panel[data-item="{key}-{item_id}"] {{ display: block; }}'
+                )
+            extra = render_economy(catalog["economy"]) if key == "buildings" else ""
+        item_navs.append(
+            f'<div class="item-nav" data-for="{esc(key)}">{"".join(links)}</div>'
+        )
+        toggles = []
+        for label in fields:
+            slug = field_slug(label)
+            toggles.append(
+                _icon_toggle(f"field-{key}-{slug}", label, slug, "icon-btn", " checked")
+            )
+            rules.append(
+                f'.codex:not(:has(#field-{key}-{slug}:checked)) '
+                f'[data-section="{key}"] [data-field="{slug}"] {{ display: none; }}'
+            )
+        rules.append(
+            f'.codex:not(:has(.field-set[data-for="{key}"] input:checked)) '
+            f'[data-section="{key}"] .field-empty {{ display: block; }}'
+        )
+        rules.append(
+            f'.codex:not(:has(.field-set[data-for="{key}"] input:checked)) '
+            f'[data-section="{key}"] .card-stats,'
+            f'.codex:not(:has(.field-set[data-for="{key}"] input:checked)) '
+            f'[data-section="{key}"] .wave-group {{ display: none; }}'
+        )
+        field_sets.append(
+            f'<div class="field-set" data-for="{esc(key)}">{"".join(toggles)}</div>'
+        )
+        sections.append(
+            f'<section class="codex-section" id="{esc(key)}" data-section="{esc(key)}">'
+            f"<header><h2>{esc(title)}</h2><p>{esc(blurb)}</p></header>"
+            f'{"".join(panels)}{extra}</section>'
+        )
+    count_slugs = [field_slug(label) for _key, label, _hint in WAVE_GROUPS[0][2]]
+    scale_slugs = [field_slug(label) for _key, label, _hint in WAVE_GROUPS[1][2]]
+    rules.append(
+        ".codex"
+        + "".join(f':not(:has(#field-waves-{slug}:checked))' for slug in count_slugs)
+        + ' [data-section="waves"] [data-group="counts"] { display: none; }'
+    )
+    rules.append(
+        ".codex"
+        + "".join(f':not(:has(#field-waves-{slug}:checked))' for slug in scale_slugs)
+        + ' [data-section="waves"] [data-group="scale"] { display: none; }'
+    )
+    rules.append(
+        ".codex:not(:has(#field-waves-basehp:checked)):not(:has(#field-waves-basespd:checked)) "
+        '[data-section="waves"] .wave-scale { display: none; }'
+    )
+    shell = (
+        '<div class="codex" id="codex">'
+        '<input class="codex-drawer" type="checkbox" id="codex-drawer" aria-label="打开目录">'
+        '<div class="codex-shell">'
+        '<label class="codex-backdrop" for="codex-drawer" aria-hidden="true"></label>'
+        '<aside class="codex-aside" aria-label="图鉴目录">'
+        '<div class="rail-block"><p class="rail-kicker">模块</p>'
+        f'<div class="mod-row">{"".join(module_btns)}</div></div>'
+        '<div class="rail-block"><p class="rail-kicker">条目</p>'
+        f'{"".join(item_navs)}</div>'
+        '<div class="rail-block"><p class="rail-kicker">可选字段</p>'
+        '<p class="rail-note">实心是显示，虚线是隐藏。悬停可看字段名。</p>'
+        f'{"".join(field_sets)}</div>'
+        '<label class="drawer-close" for="codex-drawer" title="关闭">'
+        f'<span class="sr">关闭</span>{glyph("close")}</label>'
         "</aside>"
-        '<div class="waves-main">'
-        '<fieldset class="wave-switch">'
-        '<legend class="sr">选择波次</legend>'
-        f'{"".join(picks)}'
-        f'<div class="wave-tabs">{"".join(tabs)}</div>'
-        f'{"".join(panels)}'
-        "</fieldset></div></div>"
-        f'<p class="footnote">{esc(WAVE_FOOTNOTE)}</p>'
+        '<div class="codex-main">'
+        '<label class="codex-drawer-btn" for="codex-drawer" title="目录">'
+        f'<span class="sr">打开目录</span>{glyph("menu")}</label>'
+        f'{"".join(sections)}'
+        "</div></div>"
         "<script>"
         "(function () {"
-        'var root = document.getElementById("waves");'
+        'var root = document.getElementById("codex");'
         "if (!root) return;"
-        'var cols = root.querySelectorAll(".wave-col input");'
-        'var key = "codex-wave-columns";'
+        'var cols = root.querySelectorAll(".field-set input");'
+        'var key = "codex-fields";'
         "try {"
         'var saved = JSON.parse(localStorage.getItem(key) || "null");'
         'if (saved && typeof saved === "object") {'
@@ -921,162 +1084,178 @@ def render_waves(rows: list) -> tuple:
         "try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) {}"
         "}"
         'cols.forEach(function (input) { input.addEventListener("change", store); });'
-        'var drawer = document.getElementById("wave-drawer");'
+        'var drawer = document.getElementById("codex-drawer");'
         "if (!drawer) return;"
-        "function narrow() { return window.matchMedia(\"(max-width: 860px)\").matches; }"
+        'function narrow() { return window.matchMedia("(max-width: 860px)").matches; }'
         "function syncDrawer() {"
-        "document.body.style.overflow = drawer.checked && narrow() ? \"hidden\" : \"\";"
+        'document.body.style.overflow = drawer.checked && narrow() ? "hidden" : "";'
         "if (drawer.checked && narrow()) {"
-        'var first = root.querySelector(".wave-col input");'
-        "if (first) first.focus();"
+        'var current = root.querySelector(".mod-btn input:checked");'
+        'var nav = current && root.querySelector(\'.item-nav[data-for="\' + current.id.replace("sec-", "") + \'"] input\');'
+        "if (nav) nav.focus();"
         "}"
         "}"
         'drawer.addEventListener("change", syncDrawer);'
         'document.addEventListener("keydown", function (event) {'
-        "if (event.key === \"Escape\" && drawer.checked) {"
-        "drawer.checked = false;"
-        "syncDrawer();"
-        "drawer.focus();"
+        'if (event.key === "Escape" && drawer.checked) {'
+        "drawer.checked = false; syncDrawer(); drawer.focus();"
         "}"
         "});"
         "})();"
         "</script></div>"
     )
-    return html, _wave_css(len(rows))
+    return shell, CODEX_LAYOUT_CSS + "\n" + "\n".join(rules) + "\n"
 
 
-WAVE_PANEL_CSS = """
-.waves { margin-top: 28px; scroll-margin-top: 16px; position: relative; }
-.waves-head {
-  display: flex; align-items: flex-start; justify-content: flex-start;
-  gap: 12px; margin-bottom: 12px;
+CODEX_LAYOUT_CSS = """
+.codex { position: relative; }
+.codex-shell {
+  display: grid; grid-template-columns: 252px minmax(0, 1fr);
+  gap: 18px; align-items: start; padding-bottom: 28px;
 }
-.waves-title { min-width: 0; }
-.waves h3 { margin: 0; font-size: 22px; }
-.waves-lead { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
-.waves-drawer-btn, .wave-aside-close {
-  display: none;
-  align-items: center; justify-content: center;
-  min-height: 40px; padding: 8px 14px;
-  border: 1px solid var(--line); border-radius: 999px;
-  background: var(--card); color: var(--text);
-  font: inherit; font-size: 14px; font-weight: 650;
-  cursor: pointer; user-select: none;
-}
-.wave-drawer:focus-visible ~ .waves-head .waves-drawer-btn,
-.wave-aside-close:focus-visible {
-  outline: 2px solid var(--gold); outline-offset: 2px;
-}
-.wave-backdrop { display: none; }
-.wave-drawer, .sr, .wave-pick {
+.sr {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
-.waves-layout {
-  display: grid; grid-template-columns: 232px minmax(0, 1fr);
-  gap: 16px; align-items: start;
+.codex-drawer, .mod-btn input, .item-link input, .icon-btn input {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
-.wave-switch { border: 0; margin: 0; padding: 0; min-width: 0; min-inline-size: 0; }
-.wave-tabs {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(4.8em, 1fr));
-  gap: 6px; margin: 0 0 12px; padding: 6px;
-  background: var(--chip); border: 1px solid var(--line); border-radius: 16px;
-}
-.wave-tabs label {
-  display: flex; align-items: center; justify-content: center;
-  min-height: 40px; padding: 6px 8px; border-radius: 999px;
-  border: 1px solid transparent; cursor: pointer; user-select: none;
-  font-size: 14px; line-height: 1.2; text-align: center;
-}
-.wave-tabs label:hover { background: var(--card); }
-.wave-panel { display: none; padding: 16px 16px 14px; }
-.wave-panel h3 { font-size: 28px; line-height: 1.15; }
-.wave-scale {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
-  margin: 8px 0 14px; color: var(--muted); font-size: 14px;
-}
-.wave-scale span[data-col] {
-  background: var(--well); color: var(--text);
-  border-radius: 999px; padding: 2px 10px;
-}
-.wave-empty { display: none; margin: 0 0 8px; color: var(--muted); }
-.wave-group + .wave-group { margin-top: 14px; }
-.wave-group h4 {
-  margin: 0 0 8px; color: var(--muted); font-size: 13px; font-weight: 650;
-  letter-spacing: .04em;
-}
-dl.wave-stats {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-  gap: 10px; margin: 0;
-}
-.wave-stat {
-  background: var(--well); border-radius: 14px; padding: 10px 12px; min-width: 0;
-}
-.wave-stat.is-present { box-shadow: inset 0 0 0 1px var(--gold); }
-.wave-stat dt { font-size: 14px; font-weight: 650; }
-.wave-stat dd {
-  display: flex; flex-direction: column; align-items: flex-start;
-  margin: 2px 0 0; text-align: left;
-}
-.wave-num {
-  font-size: 28px; font-weight: 700; line-height: 1.15;
-  font-variant-numeric: tabular-nums; color: var(--text);
-}
-.wave-stat.is-zero .wave-num { color: var(--muted); font-weight: 600; }
-.wave-stat .hint {
-  margin-top: 2px; color: var(--muted); font-size: 12px; font-weight: 400; line-height: 1.3;
-}
-.wave-aside {
+.codex-aside {
   position: sticky; top: 16px; align-self: start;
   max-height: calc(100vh - 32px); overflow: auto;
   background: var(--card); border: 1px solid var(--line); border-radius: 18px;
-  box-shadow: var(--shadow); padding: 14px 14px 10px;
+  box-shadow: var(--shadow); padding: 12px;
 }
-.wave-aside-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.wave-aside h3 { font-size: 18px; }
-.wave-aside > p { margin: 6px 0 8px; color: var(--muted); font-size: 13px; }
-.wave-aside-kicker {
-  margin: 12px 0 2px; color: var(--muted); font-size: 12px; letter-spacing: .04em;
+.rail-kicker {
+  margin: 0 0 6px; color: var(--muted); font-size: 12px; letter-spacing: .06em;
 }
-.wave-col {
-  display: flex; align-items: center; gap: 10px;
-  min-height: 40px; margin: 0; padding: 4px 6px; border-radius: 10px;
-  cursor: pointer; font-size: 15px;
+.rail-block + .rail-block { margin-top: 14px; }
+.rail-note { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
+.mod-row { display: flex; gap: 4px; }
+.mod-btn, .icon-btn, .item-link, .codex-drawer-btn, .drawer-close {
+  position: relative; cursor: pointer; user-select: none; color: var(--text);
 }
-.wave-col:hover { background: var(--chip); }
-.wave-col input { width: 18px; height: 18px; margin: 0; accent-color: var(--gold); }
-.waves .footnote { margin: 14px 0 0; }
+.mod-btn {
+  flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 0; padding: 6px 2px 5px; border-radius: 14px;
+  border: 1px solid transparent; background: var(--chip); font-size: 11px; line-height: 1.2;
+}
+.mod-btn svg, .icon-btn svg, .codex-drawer-btn svg, .drawer-close svg {
+  width: 22px; height: 22px; fill: none; stroke: currentColor;
+  stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
+}
+.mod-btn:has(input:checked) { background: var(--text); color: var(--bg); }
+.item-nav { display: none; flex-direction: column; gap: 4px; }
+.item-link {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; border-radius: 12px; border: 1px solid transparent;
+  font-size: 14px;
+}
+.item-link img, .wave-mark {
+  width: 32px; height: 32px; flex: 0 0 32px; border-radius: 8px;
+  background: var(--well); object-fit: contain;
+}
+.wave-mark {
+  display: grid; place-items: center; font-weight: 700; font-size: 13px;
+}
+.item-link:hover, .mod-btn:hover, .icon-btn:hover { border-color: var(--gold); }
+.item-link:has(input:checked) {
+  background: var(--text); color: var(--bg); font-weight: 700;
+}
+.item-link:has(input:checked) .wave-mark { background: var(--bg); color: var(--text); }
+.field-set { display: none; flex-wrap: wrap; gap: 8px; }
+.icon-btn {
+  width: 40px; height: 40px; display: grid; place-items: center;
+  border-radius: 12px; border: 1.5px dashed var(--line);
+  background: transparent; color: var(--muted);
+}
+.icon-btn:has(input:checked) {
+  background: var(--text); color: var(--bg); border-style: solid; border-color: var(--gold);
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+.mod-btn:focus-within, .item-link:focus-within, .icon-btn:focus-within,
+.codex-drawer-btn:focus-within, .drawer-close:focus-within {
+  outline: 2px solid var(--gold); outline-offset: 2px;
+}
+.codex-drawer-btn, .drawer-close { display: none; }
+.codex-section { display: none; margin: 0; }
+.codex-section > header h2 { margin: 0; font-size: 28px; }
+.codex-section > header p { margin: 6px 0 14px; color: var(--muted); }
+.item-panel { display: none; }
+.detail {
+  display: grid; grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  gap: 16px; align-items: start;
+}
+.detail .portrait { aspect-ratio: 1; }
+dl.card-stats {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px; margin: 12px 0 0;
+}
+.stat-tile {
+  background: var(--well); border-radius: 14px; padding: 10px 12px; min-width: 0;
+}
+.stat-tile.is-present { box-shadow: inset 0 0 0 1px var(--gold); }
+.stat-tile dt { font-size: 13px; font-weight: 650; }
+.stat-tile dd {
+  margin: 2px 0 0; text-align: left; font-size: 22px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.stat-tile.is-zero dd, .stat-tile.is-zero .wave-num { color: var(--muted); font-weight: 600; }
+.wave-num { display: block; line-height: 1.15; }
+.stat-tile .hint { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; font-weight: 400; }
+.field-empty { display: none; margin: 12px 0 0; color: var(--muted); }
+.wave-scale {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+  margin: 8px 0 0; color: var(--muted); font-size: 14px;
+}
+.wave-scale span[data-field] {
+  background: var(--well); color: var(--text); border-radius: 999px; padding: 2px 10px;
+}
+.wave-group { margin-top: 14px; }
+.wave-group h4 {
+  margin: 0 0 8px; color: var(--muted); font-size: 13px; font-weight: 650; letter-spacing: .04em;
+}
+.codex .footnote, .codex .callout { margin-top: 14px; }
+.codex-drawer:focus-visible ~ .codex-shell .codex-drawer-btn {
+  outline: 2px solid var(--gold); outline-offset: 2px;
+}
+.codex-backdrop { display: none; }
 @media (min-width: 861px) {
-  .wave-drawer { display: none; }
+  .codex-drawer { display: none; }
 }
 @media (max-width: 860px) {
-  .waves-drawer-btn { display: inline-flex; }
-  .wave-aside-close { display: inline-flex; }
-  .waves-layout { grid-template-columns: 1fr; }
-  .wave-drawer:checked ~ .waves-head .waves-drawer-btn {
-    background: var(--text); color: var(--bg); border-color: transparent;
+  .codex-shell { grid-template-columns: 1fr; }
+  .codex-drawer-btn {
+    display: inline-grid; place-items: center; width: 44px; height: 44px; margin-bottom: 10px;
+    border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--text);
   }
-  .wave-backdrop { display: none; }
-  .wave-drawer:checked ~ .wave-backdrop {
+  .drawer-close {
+    display: grid; place-items: center; width: 36px; height: 36px; margin-left: auto;
+    border-radius: 12px; border: 1px solid var(--line); background: var(--chip);
+  }
+  .codex-drawer:checked ~ .codex-shell .codex-backdrop {
     display: block; position: fixed; inset: 0; z-index: 40;
     background: rgba(20, 26, 20, .45);
   }
-  .wave-aside {
+  .codex-aside {
     position: fixed; z-index: 41; top: 0; left: 0; right: auto;
-    height: 100vh; height: 100dvh; max-height: none;
-    width: min(300px, 86vw); border-radius: 0 18px 18px 0;
+    width: min(320px, 88vw); height: 100vh; height: 100dvh; max-height: none;
+    border-radius: 0 18px 18px 0;
     box-shadow: 16px 0 40px rgba(0, 0, 0, .22);
     transform: translateX(-105%); visibility: hidden;
     transition: transform .18s ease, visibility .18s ease;
     overscroll-behavior: contain;
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
-  .wave-drawer:checked ~ .waves-layout .wave-aside {
+  .codex-drawer:checked ~ .codex-shell .codex-aside {
     transform: translateX(0); visibility: visible;
   }
+  .detail { grid-template-columns: 1fr; }
+  .detail .portrait { max-width: 220px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .wave-aside { transition: none; }
+  .codex-aside { transition: none; }
 }
 """
 
