@@ -10,18 +10,20 @@ This is the maintainer map. Field and id rules are in [ASSET_STANDARD.md](ASSET_
 | --- | --- | --- |
 | `data/` | 配置。平衡、形象目录、占地。只有 JSON。 | 图、脚本、生成的网页 |
 | `assets/` | 资源。角色序列帧、建筑和景物 PNG、字体、可选 Spine。 | 数值、玩法 |
-| `scripts/` | 行为。波次怎么刷、塔怎么打、人怎么走。 | 新的图片文件 |
+| `scripts/` | 行为。波次怎么刷、塔怎么打、人怎么走。平衡从 `data/` 读。 | 新的图片文件 |
 | `scenes/` | 入口场景：主游戏、景深试验、压力页。 | 平衡表 |
 | `docs/` | 已经能打开的静态站：游戏网页包、图鉴、试验页跳转。 | 手改过的图鉴 HTML |
 | `tools/` | 从 `data/` 和 `assets/` 生成图鉴的脚本。 | 运行时逻辑 |
 
-改一张图就改 `assets/`。改一个 id 或一条目录就改 `data/`。已经在对局里生效的数字，还要改 `scripts/` 里的那一份，因为对局还没改成读 JSON。
+改一张图就改 `assets/`。改一条已经出场的数值就改 `data/` 里对应的 JSON，重新开一局即生效。文案在 `scripts/locale.gd`。
 
-Edit art under `assets/`. Edit ids and catalogs under `data/`. Numbers the match already uses also have a copy in `scripts/`, because the match does not load the balance JSON yet.
+Edit art under `assets/`. Edit a live number in the matching JSON under `data/`, then start a new match. Copy lives in `scripts/locale.gd`.
 
 ## 运行时怎么串 / How a match is wired
 
 ```
+project.godot
+  Balance 自动加载 scripts/balance.gd
 scenes/main.tscn
   scripts/main.gd          地图、波次、资源、胜负
     scripts/hud.gd         顶栏和侧栏
@@ -36,7 +38,13 @@ scenes/depth_lab.tscn      景深试验，网页入口 docs/depth-lab/
 scenes/depth_stress.tscn   压力页，网页入口 docs/stress/
 ```
 
+`Balance` 在启动时加载 `data/units.json`、`data/enemies.json`、`data/buildings.json`。伤害是 `max(1, round(attack * 100 / (100 + defense)))`。工坊的 `tower_damage` 先乘在攻击上，再对每个目标套一次这个公式。村民被感染仍是接触，不走这个公式。
+
+塔、农场、房屋、工坊立着就工作，不用先派人。房屋立着就给床位；有人躲在里面才占 1 个床，头顶才有绿点。农场按 `produces.rate` 在清波时加木材。工坊加成不叠加，取还立着的最高一座。`attack_speed` 是每秒攻击次数，冷却是 `1 / attack_speed`。
+
 `project.godot` 的主场景是 `scenes/main.tscn`，渲染器是 GL Compatibility。网页导出关闭了线程和 GDExtension。字体是 `assets/fonts/NotoSansSC-Regular.otf`。
+
+`Balance` loads `data/units.json`, `data/enemies.json`, and `data/buildings.json` at startup. Damage is `max(1, round(attack * 100 / (100 + defense)))`. A workshop's `tower_damage` multiplies attack first, then the formula runs once per target. Villager infection is still contact. Towers, farms, houses, and the workshop work while they stand. `attack_speed` is attacks per second.
 
 玩家看到的三页静态入口都在 `docs/`：
 
@@ -53,40 +61,38 @@ scenes/depth_stress.tscn   压力页，网页入口 docs/stress/
 
 | 文件 | 游戏会读吗 | 图鉴会读吗 |
 | --- | --- | --- |
-| `data/characters.json` | 会。`spine_actor.gd` | 会。用来裁第 0 帧 |
+| `data/units.json` | 会。`scripts/balance.gd` | 会 |
+| `data/enemies.json` | 会。`scripts/balance.gd`，含波次表 | 会 |
+| `data/buildings.json` | 会。`scripts/balance.gd` | 会 |
+| `data/characters.json` | 会。`spine_actor.gd`。`Balance` 只用它把皮肤名换成图序号 | 会。用来裁第 0 帧 |
 | `data/iso_volumes.json` | 会。`iso_volume.gd` 读到就用 | 会。核对体积键还在 |
-| `data/units.json` | 不会 | 会 |
-| `data/enemies.json` | 不会 | 会 |
-| `data/buildings.json` | 不会 | 会 |
 | `assets/characters/*.png` | 会。路径写在 `characters.json` | 会 |
-| `assets/village/*.png` | 会。建筑路径写在 `building.gd`，景物路径写在 `main.gd` | 会。建筑路径以 `buildings.json` 的 `tex` 为准 |
+| `assets/village/*.png` | 会。建筑路径写在 `buildings.json` 的 `tex` | 会 |
 
-`python3 tools/build_codex.py` 是图鉴的正式路径。它需要 Pillow。生成 `docs/codex/index.html`、`docs/codex/catalog.json` 和 `docs/codex/thumbs/`。提交这些生成结果。不要手改它们。
+`python3 tools/build_codex.py` 是图鉴的正式路径。它需要 Pillow。生成 `docs/codex/index.html`、`docs/codex/catalog.json` 和 `docs/codex/thumbs/`。提交这些生成结果。不要手改它们。名字来自 `scripts/locale.gd` 的 `display_key`。单位是否「已出场」看 `main.gd` 里有没有 `Balance.unit("这个 id")`。敌人 id 以 `enemies.json` 为准（`shooter_elite`，不是另一套目录）。
 
 新的挡路景物 PNG 要补进 `tools/build_codex.py` 的 `SCENERY_LABELS`，否则生成器会停。草地和道路是地面，不进图鉴。
 
-## 仍写在脚本里的数值 / Hardcoded balance (debt)
+## 还没收进 JSON 的地方 / Leftover duplication
 
-下面这些已经出场的数，目录里有一份，脚本里还有一份。生成器会对照；对不上就失败。对局本身只读脚本那一份。把对局改成读 JSON 之前，两处都要改。
+单位、敌人和建筑的战斗数值已经只在那三份 JSON 里。下面这些仍是另外一份，或还没接到玩法上。
 
-| 对局里的真源 | 目录里的副本 | 状态 |
+| 真源 | 另一份 | 状态 |
 | --- | --- | --- |
-| `scripts/main.gd` 的 `VILLAGER_SPEED` | `units.json` 里 `villager.move_speed` | 债务。脚本不读 JSON。 |
-| `scripts/main.gd` 的 `WAVES`、`KIND_MOD`、清波奖励、`tower_bonus` | `enemies.json` 的 `waves` 和敌人倍率；`buildings.json` 的 `economy`、农场、工坊 | 债务。 |
-| `scripts/zombie.gd` 的咬击间隔 `_cooldown = 0.9` | 每条敌人的 `attack_speed` | 债务。 |
-| `scripts/building.gd` 的 `STATS` | `buildings.json` | 债务。塔的射程和弹速在脚本里乘 `WORLD_SCALE`，JSON 里写乘完的世界像素。 |
-| `scripts/iso_volume.gd` 的 `TABLE` | `iso_volumes.json` | 文件存在时游戏读 JSON。`TABLE` 只是读失败时的后备，要和 JSON 保持一样。 |
-| `scripts/locale.gd` | 各条目的 `name` | 生成器要求两边的中文和英文一致。 |
-| 无 | `units.json` 的 `spearman`、`engineer` | 只在目录里。`status` 是 `configured`。`main.gd` 只生成村民。 |
+| `data/iso_volumes.json` | `scripts/iso_volume.gd` 的 `TABLE` | JSON 读得到就用 JSON。`TABLE` 只在文件缺失或解析失败时顶上，两边要保持一样。 |
+| `scripts/main.gd` 的 `WAVE_CLEAR_WOOD`（8）和 `WAVE_CLEAR_GOLD`（14） | 没有对应 JSON | 清波底薪仍是这两个常量。农场每波木材是 `buildings.json` 里 `farm.produces.rate`。 |
+| `units.json` 里村民的 `attack` / `attack_speed` / `attack_range` | 对局还没花 | 感染仍是碰到就变。这些攻击数值已经在 Balance 里，还没有挥出去。 |
+| `units.json` 的 `spearman`、`engineer` | `main.gd` 只调用 `Balance.unit("villager")` | 配置已有。房屋的 `recruits` 列了他们，还不是训练按钮。 |
+| `docs/index.html` 的 `<nav id="site-links">` | Godot 重新导出会盖掉 | 景深、压力页、图鉴三个链接是手写的，导出后要放回去。 |
 
-`defense` 在目录里是护甲，现在全是 0。建筑脚本里的 `"defense": true` 表示这一类是防御建筑，对应 JSON 的 `category`，不是护甲。
+波次表里的 `speed` 是缩放用的作者值，还没乘 `WORLD_SCALE`。卡片上的 `move_speed` 已经是第 1 波的世界单位。后面的波次用 `move_speed * wave.speed / waves[0].speed`，不要把表里的 `speed` 再乘一次比例之外的东西。
 
 ## 一次改动怎么走完 / A change, end to end
 
 1. 图放进 `assets/`。不要给已经在用的文件改名。
-2. 形象、占地、平衡分别写入 `data/characters.json`、`data/iso_volumes.json`、`data/units.json` 或 `enemies.json` 或 `buildings.json`。字段见资源标准。
-3. 文案写入 `scripts/locale.gd`，并和 JSON 的 `name` 用同一句中文和英文。
-4. 如果这个实体已经会出场，再改 `scripts/` 里对应的常量。新的建筑 `kind` 还要改 `Building.Kind` 和放置逻辑。
+2. 形象、占地、平衡分别写入 `data/characters.json`、`data/iso_volumes.json`、`data/units.json` 或 `enemies.json` 或 `buildings.json`。字段见资源标准。改占地时把 `iso_volume.gd` 的 `TABLE` 后备一起改。
+3. 文案写入 `scripts/locale.gd` 的 `display_key`。JSON 不需要再抄一份 `name`。
+4. 新的建筑 `kind` 才改 `Building.Kind`、`_volume_key` 和放置逻辑。矛兵和工匠已经在 `units.json` 里；要让他们出场，就在 `main.gd` 里调用 `Balance.unit("spearman")` 或 `Balance.unit("engineer")`。
 5. 运行 `python3 tools/build_codex.py`。
 6. 提交 `data/`、`assets/`、`scripts/` 和 `docs/codex/`。
 7. 推到 `main` 后，Actions 发布网页。见下一节。

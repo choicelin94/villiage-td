@@ -3,54 +3,32 @@ extends Node2D
 
 enum Kind { WALL, SPEAR, FIRE, HOUSE, FARM, WORKSHOP }
 
-const STATS := {
-	Kind.WALL: {
-		"hp": 170, "wood": 18, "gold": 0,
-		"range": 0.0, "dmg": 0, "cd": 0.0, "splash": 0.0, "shot_speed": 0.0,
-		"defense": true, "cap": 0,
-		"tex": "res://assets/village/wall.png",
-	},
-	Kind.SPEAR: {
-		"hp": 200, "wood": 24, "gold": 40,
-		"range": 460.0 * IsoVolume.WORLD_SCALE, "dmg": 24, "cd": 0.64, "splash": 0.0, "shot_speed": 700.0 * IsoVolume.WORLD_SCALE,
-		"defense": true, "cap": 0,
-		"tex": "res://assets/village/spear.png",
-	},
-	Kind.FIRE: {
-		"hp": 160, "wood": 16, "gold": 64,
-		"range": 420.0 * IsoVolume.WORLD_SCALE, "dmg": 18, "cd": 1.05, "splash": 120.0 * IsoVolume.WORLD_SCALE, "shot_speed": 380.0 * IsoVolume.WORLD_SCALE,
-		"defense": true, "cap": 0,
-		"tex": "res://assets/village/fire.png",
-	},
-	Kind.HOUSE: {
-		"hp": 120, "wood": 22, "gold": 0,
-		"range": 0.0, "dmg": 0, "cd": 0.0, "splash": 0.0, "shot_speed": 0.0,
-		"defense": false, "cap": 4,
-		"tex": "res://assets/village/house.png",
-	},
-	Kind.FARM: {
-		"hp": 80, "wood": 16, "gold": 12,
-		"range": 0.0, "dmg": 0, "cd": 0.0, "splash": 0.0, "shot_speed": 0.0,
-		"defense": false, "cap": 0,
-		"tex": "res://assets/village/farm.png",
-	},
-	Kind.WORKSHOP: {
-		"hp": 100, "wood": 20, "gold": 28,
-		"range": 0.0, "dmg": 0, "cd": 0.0, "splash": 0.0, "shot_speed": 0.0,
-		"defense": false, "cap": 0,
-		"tex": "res://assets/village/workshop.png",
-	},
-}
-
 var kind: Kind = Kind.WALL
 var cell := Vector2i.ZERO
 var hp := 1
 var max_hp := 1
+var defense := 0.0
 var always_bar := true
 var cooldown := 0.0
 var _stats: Dictionary = {}
 var staff: Node2D = null
 var _muzzle := Vector2(0, -40)
+
+static func kind_key(p_kind: Kind) -> String:
+	match p_kind:
+		Kind.WALL:
+			return "WALL"
+		Kind.SPEAR:
+			return "SPEAR"
+		Kind.FIRE:
+			return "FIRE"
+		Kind.HOUSE:
+			return "HOUSE"
+		Kind.FARM:
+			return "FARM"
+		Kind.WORKSHOP:
+			return "WORKSHOP"
+	return "WALL"
 
 func has_staff() -> bool:
 	return staff != null and is_instance_valid(staff) and not bool(staff.get("infected")) and not bool(staff.get("leaving"))
@@ -61,10 +39,11 @@ func is_functional() -> bool:
 func setup(p_kind: Kind, p_cell: Vector2i) -> void:
 	kind = p_kind
 	cell = p_cell
-	_stats = STATS[kind]
-	max_hp = int(_stats.hp)
+	_stats = Balance.building_by_kind(kind_key(kind))
+	max_hp = int(_stats.get("hp", 1))
 	hp = max_hp
-	var tex: Texture2D = load(_stats.tex)
+	defense = float(_stats.get("defense", 0.0))
+	var tex: Texture2D = load(str(_stats.get("tex", "")))
 	var sprite := Sprite2D.new()
 	sprite.texture = tex
 	sprite.centered = false
@@ -121,11 +100,11 @@ func _art() -> Sprite2D:
 	return null
 
 func is_defense() -> bool:
-	return bool(_stats.defense)
+	return str(_stats.get("category", "")) == "defense"
 
 func _process(delta: float) -> void:
 	queue_redraw()
-	if float(_stats.range) <= 0.0 or not has_staff():
+	if not bool(_stats.get("can_attack", false)) or hp <= 0:
 		return
 	cooldown -= delta
 	if cooldown > 0.0:
@@ -133,7 +112,8 @@ func _process(delta: float) -> void:
 	var target := _acquire()
 	if target == null:
 		return
-	cooldown = float(_stats.cd)
+	var rate := float(_stats.get("attack_speed", 0.0))
+	cooldown = 1.0 / rate if rate > 0.0 else 0.64
 	_shoot(target)
 
 func _acquire() -> Zombie:
@@ -142,7 +122,7 @@ func _acquire() -> Zombie:
 	var game := _game()
 	if game == null:
 		return null
-	var reach := float(_stats.range)
+	var reach := float(_stats.get("attack_range", 0.0))
 	for node in get_tree().get_nodes_in_group("zombies"):
 		var z := node as Zombie
 		if z == null or z.dying:
@@ -162,8 +142,8 @@ func _shoot(target: Zombie) -> void:
 	var game := _game()
 	if game:
 		bonus = float(game.tower_bonus())
-	var damage := maxi(int(round(float(_stats.dmg) * bonus)), 1)
-	shot.setup(global_position + _muzzle, aim, target, damage, float(_stats.splash), float(_stats.shot_speed), kind == Kind.FIRE)
+	var attack := float(_stats.get("attack", 0.0)) * bonus
+	shot.setup(global_position + _muzzle, aim, target, attack, float(_stats.get("splash", 0.0)), float(_stats.get("shot_speed", 0.0)), kind == Kind.FIRE)
 	game.fx.add_child(shot)
 
 func hurt(amount: int) -> bool:
@@ -179,15 +159,14 @@ func _game() -> Node:
 func _draw() -> void:
 	var rad := 36.0 if is_defense() else 42.0
 	draw_circle(Vector2.ZERO, rad, Color(0, 0, 0, 0.22))
-	if is_functional():
-		var dot := Color(0.4, 0.85, 0.45) if has_staff() else Color(0.85, 0.35, 0.3)
+	if is_functional() and has_staff():
 		var art := _art()
 		var dot_at := Vector2(0, -70)
 		if art:
 			dot_at = Vector2(0, art.position.y + 14.0)
-		draw_circle(dot_at, 6, dot)
-	if float(_stats.range) > 0.0 and _game() and _game().inspected == self:
-		draw_arc(Vector2.ZERO, float(_stats.range), 0, TAU, 48, Color(1, 0.86, 0.35, 0.55), 2.0)
+		draw_circle(dot_at, 6, Color(0.4, 0.85, 0.45))
+	if bool(_stats.get("can_attack", false)) and _game() and _game().inspected == self:
+		draw_arc(Vector2.ZERO, float(_stats.get("attack_range", 0.0)), 0, TAU, 48, Color(1, 0.86, 0.35, 0.55), 2.0)
 
 
 class Flame:

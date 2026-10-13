@@ -22,7 +22,7 @@
           },
           {
             "k": "生命",
-            "v": "1"
+            "v": "36"
           },
           {
             "k": "防御",
@@ -30,19 +30,19 @@
           },
           {
             "k": "攻击",
-            "v": "0"
+            "v": "4"
           },
           {
-            "k": "攻击间隔",
-            "v": "—"
+            "k": "攻速",
+            "v": "0.8 次/秒"
           },
           {
             "k": "移速",
-            "v": "137.249"
+            "v": "137.2485"
           },
           {
             "k": "射程",
-            "v": "—"
+            "v": "45.7495"
           },
           {
             "k": "费用",
@@ -61,7 +61,7 @@
             "v": "walker"
           }
         ],
-        "note": "已出场。碰到僵尸即感染，没有生命条。生命记 1，表示一次接触就会离场。移速是尸潮基准 72 的 1.5 倍，已乘 WORLD_SCALE。",
+        "note": "Cosmetic pool for the auto villagers. move_speed is the old 108 * WORLD_SCALE. Wander still uses 0.72x of it and panic 1.15x, in villager.gd.",
         "skins": [
           {
             "name": "wolf",
@@ -76,16 +76,8 @@
             "thumb": "thumbs/villager__raccoon.png"
           },
           {
-            "name": "knight",
-            "thumb": "thumbs/villager__knight.png"
-          },
-          {
             "name": "frog",
             "thumb": "thumbs/villager__frog.png"
-          },
-          {
-            "name": "robot",
-            "thumb": "thumbs/villager__robot.png"
           },
           {
             "name": "skeleton",
@@ -109,35 +101,35 @@
           },
           {
             "k": "生命",
-            "v": "64"
+            "v": "80"
           },
           {
             "k": "防御",
-            "v": "0"
+            "v": "4"
           },
           {
             "k": "攻击",
-            "v": "10"
+            "v": "12"
           },
           {
-            "k": "攻击间隔",
-            "v": "0.85 秒"
+            "k": "攻速",
+            "v": "1 次/秒"
           },
           {
             "k": "移速",
-            "v": "137.249"
+            "v": "114.3738"
           },
           {
             "k": "射程",
-            "v": "128"
+            "v": "60.9993"
           },
           {
             "k": "费用",
-            "v": "10 木 + 16 金"
+            "v": "40 金"
           },
           {
             "k": "训练",
-            "v": "5 秒"
+            "v": "8 秒"
           },
           {
             "k": "形象",
@@ -148,14 +140,14 @@
             "v": "walker"
           }
         ],
-        "note": "配置已有，对局尚未生成。头像暂用村民皮肤 knight。生命、攻击、费用和训练时间只写在本目录，脚本里没有对应常量。移速暂与村民相同。",
+        "note": "Knight sheet (villager_3). move_speed and attack_range are 90 and 48 times WORLD_SCALE. Not spawned until recruitment is wired.",
         "skins": [],
         "volume": "walker"
       },
       {
         "id": "engineer",
         "section": "units",
-        "name_zh": "工程师",
+        "name_zh": "工匠",
         "name_en": "Engineer",
         "portrait": "thumbs/engineer.png",
         "badge": "配置已有 · 尚未出场",
@@ -167,35 +159,35 @@
           },
           {
             "k": "生命",
-            "v": "48"
+            "v": "60"
           },
           {
             "k": "防御",
-            "v": "0"
+            "v": "2"
           },
           {
             "k": "攻击",
-            "v": "0"
+            "v": "7"
           },
           {
-            "k": "攻击间隔",
-            "v": "—"
+            "k": "攻速",
+            "v": "0.8 次/秒"
           },
           {
             "k": "移速",
-            "v": "137.249"
+            "v": "127.082"
           },
           {
             "k": "射程",
-            "v": "—"
+            "v": "53.3744"
           },
           {
             "k": "费用",
-            "v": "16 木 + 24 金"
+            "v": "10 木 + 30 金"
           },
           {
             "k": "训练",
-            "v": "6 秒"
+            "v": "10 秒"
           },
           {
             "k": "形象",
@@ -206,7 +198,7 @@
             "v": "walker"
           }
         ],
-        "note": "配置已有，对局尚未生成。头像暂用村民皮肤 robot。不攻击。数值只写在本目录。移速暂与村民相同。",
+        "note": "Robot sheet (villager_5). Faster repair comes later. move_speed and attack_range are 100 and 42 times WORLD_SCALE.",
         "skins": [],
         "volume": "walker"
       }
@@ -215,8 +207,8 @@
       {
         "id": "spear_normal",
         "section": "enemies",
-        "name_zh": "持矛尸潮",
-        "name_en": "Spear horde",
+        "name_zh": "持矛僵尸",
+        "name_en": "Spear zombie",
         "portrait": "thumbs/spear_normal.png",
         "badge": "已出场",
         "badge_tone": "live",
@@ -234,8 +226,8 @@
             "v": "1"
           },
           {
-            "k": "攻击间隔",
-            "v": "0.9 秒"
+            "k": "攻速",
+            "v": "1.1111 次/秒"
           },
           {
             "k": "移速",
@@ -259,7 +251,7 @@
           },
           {
             "k": "标签",
-            "v": "尸潮 · 持矛"
+            "v": "普通"
           },
           {
             "k": "形象",
@@ -270,22 +262,22 @@
             "v": "walker"
           }
         ],
-        "note": "已出场。卡片上的生命和移速是第 1 波。之后各波用波次表的基准，再乘本条倍率。",
+        "note": "Old kind normal. Horde spear goblin.",
         "skins": [],
         "volume": "walker"
       },
       {
         "id": "spear_fast",
         "section": "enemies",
-        "name_zh": "迅捷尸潮",
-        "name_en": "Fast horde",
+        "name_zh": "迅捷僵尸",
+        "name_en": "Fast zombie",
         "portrait": "thumbs/spear_fast.png",
         "badge": "已出场",
         "badge_tone": "live",
         "stats": [
           {
             "k": "生命",
-            "v": "24（第 1 波）"
+            "v": "23.8（第 1 波）"
           },
           {
             "k": "防御",
@@ -296,12 +288,12 @@
             "v": "1"
           },
           {
-            "k": "攻击间隔",
-            "v": "0.9 秒"
+            "k": "攻速",
+            "v": "1.1111 次/秒"
           },
           {
             "k": "移速",
-            "v": "123.524（第 1 波）"
+            "v": "123.5237（第 1 波）"
           },
           {
             "k": "射程",
@@ -321,7 +313,7 @@
           },
           {
             "k": "标签",
-            "v": "尸潮 · 持矛 · 迅捷"
+            "v": "迅捷"
           },
           {
             "k": "形象",
@@ -332,7 +324,7 @@
             "v": "walker"
           }
         ],
-        "note": "已出场。持矛，更快、更脆。生命倍率 0.7，速度倍率 1.35。",
+        "note": "Old kind fast. hp is 34 * 0.7, move_speed is 72 * 1.35 * WORLD_SCALE.",
         "skins": [],
         "volume": "walker"
       },
@@ -347,7 +339,7 @@
         "stats": [
           {
             "k": "生命",
-            "v": "22（第 1 波）"
+            "v": "22.1（第 1 波）"
           },
           {
             "k": "防御",
@@ -358,8 +350,8 @@
             "v": "1"
           },
           {
-            "k": "攻击间隔",
-            "v": "0.9 秒"
+            "k": "攻速",
+            "v": "1.1111 次/秒"
           },
           {
             "k": "移速",
@@ -383,7 +375,7 @@
           },
           {
             "k": "标签",
-            "v": "感染 · 持矛"
+            "v": "感染"
           },
           {
             "k": "形象",
@@ -394,22 +386,22 @@
             "v": "walker"
           }
         ],
-        "note": "已出场。村民被感染后变成持矛哥布林。生命是当前波次普通尸潮算完后的 65%（向零截断），至少 12。卡片是第 1 波。",
+        "note": "A villager who was just infected. hp is 34 * 0.65, which replaces the old extra 0.65 multiplier on the normal kind.",
         "skins": [],
         "volume": "walker"
       },
       {
-        "id": "shooter_brute",
+        "id": "shooter_elite",
         "section": "enemies",
-        "name_zh": "持枪蛮兵",
+        "name_zh": "持枪壮汉",
         "name_en": "Gun brute",
-        "portrait": "thumbs/shooter_brute.png",
+        "portrait": "thumbs/shooter_elite.png",
         "badge": "已出场",
         "badge_tone": "live",
         "stats": [
           {
             "k": "生命",
-            "v": "75（第 1 波）"
+            "v": "74.8（第 1 波）"
           },
           {
             "k": "防御",
@@ -420,12 +412,12 @@
             "v": "2"
           },
           {
-            "k": "攻击间隔",
-            "v": "0.9 秒"
+            "k": "攻速",
+            "v": "1.1111 次/秒"
           },
           {
             "k": "移速",
-            "v": "64.049（第 1 波）"
+            "v": "64.0493（第 1 波）"
           },
           {
             "k": "射程",
@@ -445,7 +437,7 @@
           },
           {
             "k": "标签",
-            "v": "持枪 · 蛮兵"
+            "v": "精锐"
           },
           {
             "k": "形象",
@@ -456,7 +448,7 @@
             "v": "walker"
           }
         ],
-        "note": "已出场。持枪哥布林。生命倍率 2.2，速度倍率 0.7。",
+        "note": "Old kind brute. Gun goblin, still walks up and bites. hp is 34 * 2.2.",
         "skins": [],
         "volume": "walker"
       },
@@ -471,7 +463,7 @@
         "stats": [
           {
             "k": "生命",
-            "v": "143（第 1 波）"
+            "v": "142.8（第 1 波）"
           },
           {
             "k": "防御",
@@ -482,12 +474,12 @@
             "v": "3"
           },
           {
-            "k": "攻击间隔",
-            "v": "0.9 秒"
+            "k": "攻速",
+            "v": "1.1111 次/秒"
           },
           {
             "k": "移速",
-            "v": "54.899（第 1 波）"
+            "v": "54.8994（第 1 波）"
           },
           {
             "k": "射程",
@@ -507,7 +499,7 @@
           },
           {
             "k": "标签",
-            "v": "持枪 · 首领"
+            "v": "首领"
           },
           {
             "k": "形象",
@@ -518,7 +510,7 @@
             "v": "walker"
           }
         ],
-        "note": "已出场。第 10 波出现。持枪哥布林。生命倍率 4.2，速度倍率 0.6。",
+        "note": "Old kind boss. Gun goblin, still melee. hp is 34 * 4.2.",
         "skins": [],
         "volume": "walker"
       }
@@ -547,7 +539,7 @@
           },
           {
             "k": "防御",
-            "v": "0"
+            "v": "8"
           },
           {
             "k": "费用",
@@ -558,15 +550,11 @@
             "v": "28"
           },
           {
-            "k": "派人",
-            "v": "不需要"
-          },
-          {
             "k": "体积",
             "v": "wall"
           }
         ],
-        "note": "已出场。不用派人。挡路。全图最多 28 座，含开局已有的墙。",
+        "note": "Blocks movement. No attack.",
         "skins": [],
         "volume": "wall"
       },
@@ -593,7 +581,7 @@
           },
           {
             "k": "防御",
-            "v": "0"
+            "v": "6"
           },
           {
             "k": "费用",
@@ -604,12 +592,12 @@
             "v": "24"
           },
           {
-            "k": "攻击间隔",
-            "v": "0.64 秒"
+            "k": "攻速",
+            "v": "1.5625 次/秒"
           },
           {
             "k": "射程",
-            "v": "584.577"
+            "v": "584.5771"
           },
           {
             "k": "溅射",
@@ -617,18 +605,14 @@
           },
           {
             "k": "弹速",
-            "v": "889.574"
-          },
-          {
-            "k": "派人",
-            "v": "需要"
+            "v": "889.5738"
           },
           {
             "k": "体积",
             "v": "spear"
           }
         ],
-        "note": "已出场。派人之后才攻击。单体，优先打深入村落的僵尸。",
+        "note": "Single-target spear. Range and shot speed are 460 and 700 times WORLD_SCALE.",
         "skins": [],
         "volume": "spear"
       },
@@ -655,7 +639,7 @@
           },
           {
             "k": "防御",
-            "v": "0"
+            "v": "4"
           },
           {
             "k": "费用",
@@ -666,31 +650,27 @@
             "v": "18"
           },
           {
-            "k": "攻击间隔",
-            "v": "1.05 秒"
+            "k": "攻速",
+            "v": "0.9524 次/秒"
           },
           {
             "k": "射程",
-            "v": "533.744"
+            "v": "533.7443"
           },
           {
             "k": "溅射",
-            "v": "152.498"
+            "v": "152.4984"
           },
           {
             "k": "弹速",
-            "v": "482.911"
-          },
-          {
-            "k": "派人",
-            "v": "需要"
+            "v": "482.9115"
           },
           {
             "k": "体积",
             "v": "fire"
           }
         ],
-        "note": "已出场。派人之后才攻击。火球溅射。",
+        "note": "Splash fire. Range, splash, and shot speed are 420, 120, and 380 times WORLD_SCALE.",
         "skins": [],
         "volume": "fire"
       },
@@ -717,7 +697,7 @@
           },
           {
             "k": "防御",
-            "v": "0"
+            "v": "3"
           },
           {
             "k": "费用",
@@ -728,15 +708,15 @@
             "v": "4"
           },
           {
-            "k": "派人",
-            "v": "需要"
+            "k": "可招募",
+            "v": "村民、工匠、矛兵"
           },
           {
             "k": "体积",
             "v": "house"
           }
         ],
-        "note": "已出场。派人之后提供 4 个床位。不直接训练单位。难民在清波后出现。",
+        "note": "Grants beds while it stands. recruits is a later train list, not a spawn button yet.",
         "skins": [],
         "volume": "house"
       },
@@ -763,7 +743,7 @@
           },
           {
             "k": "防御",
-            "v": "0"
+            "v": "2"
           },
           {
             "k": "费用",
@@ -774,15 +754,11 @@
             "v": "每波 +6 木"
           },
           {
-            "k": "派人",
-            "v": "需要"
-          },
-          {
             "k": "体积",
             "v": "farm"
           }
         ],
-        "note": "已出场。派人之后，每波结束额外 +6 木材。",
+        "note": "rate is extra wood added once per cleared wave, on top of the flat wave payout.",
         "skins": [],
         "volume": "farm"
       },
@@ -809,7 +785,7 @@
           },
           {
             "k": "防御",
-            "v": "0"
+            "v": "3"
           },
           {
             "k": "费用",
@@ -817,18 +793,14 @@
           },
           {
             "k": "加成",
-            "v": "塔伤害 ×1.25"
-          },
-          {
-            "k": "派人",
-            "v": "需要"
+            "v": "塔攻击 ×1.25"
           },
           {
             "k": "体积",
             "v": "workshop"
           }
         ],
-        "note": "已出场。派人之后，矛塔和火塔伤害 ×1.25，多座不叠加。",
+        "note": "tower_damage multiplies tower attack before defense. Bonuses do not stack; the highest standing workshop wins.",
         "skins": [],
         "volume": "workshop"
       }
@@ -943,109 +915,109 @@
   "waves": [
     {
       "wave": 1,
-      "n": 5,
+      "normal": 5,
       "hp": 34,
-      "speed": 91.499,
+      "speed": 72.0,
       "gap": 0.9,
       "fast": 0,
-      "brute": 0,
+      "elite": 0,
       "boss": 0
     },
     {
       "wave": 2,
-      "n": 7,
+      "normal": 7,
       "hp": 44,
-      "speed": 94.041,
+      "speed": 74.0,
       "gap": 0.78,
       "fast": 2,
-      "brute": 0,
+      "elite": 0,
       "boss": 0
     },
     {
       "wave": 3,
-      "n": 8,
+      "normal": 8,
       "hp": 54,
-      "speed": 94.041,
+      "speed": 74.0,
       "gap": 0.7,
       "fast": 2,
-      "brute": 1,
+      "elite": 1,
       "boss": 0
     },
     {
       "wave": 4,
-      "n": 8,
+      "normal": 8,
       "hp": 66,
-      "speed": 96.582,
+      "speed": 76.0,
       "gap": 0.64,
       "fast": 3,
-      "brute": 1,
+      "elite": 1,
       "boss": 0
     },
     {
       "wave": 5,
-      "n": 9,
+      "normal": 9,
       "hp": 78,
-      "speed": 96.582,
+      "speed": 76.0,
       "gap": 0.58,
       "fast": 3,
-      "brute": 2,
+      "elite": 2,
       "boss": 0
     },
     {
       "wave": 6,
-      "n": 9,
+      "normal": 9,
       "hp": 90,
-      "speed": 99.124,
+      "speed": 78.0,
       "gap": 0.54,
       "fast": 3,
-      "brute": 2,
+      "elite": 2,
       "boss": 0
     },
     {
       "wave": 7,
-      "n": 10,
+      "normal": 10,
       "hp": 102,
-      "speed": 99.124,
+      "speed": 78.0,
       "gap": 0.5,
       "fast": 4,
-      "brute": 2,
+      "elite": 2,
       "boss": 0
     },
     {
       "wave": 8,
-      "n": 10,
+      "normal": 10,
       "hp": 114,
-      "speed": 99.124,
+      "speed": 78.0,
       "gap": 0.48,
       "fast": 4,
-      "brute": 3,
+      "elite": 3,
       "boss": 0
     },
     {
       "wave": 9,
-      "n": 11,
+      "normal": 11,
       "hp": 126,
-      "speed": 101.666,
+      "speed": 80.0,
       "gap": 0.46,
       "fast": 4,
-      "brute": 3,
+      "elite": 3,
       "boss": 0
     },
     {
       "wave": 10,
-      "n": 8,
+      "normal": 8,
       "hp": 130,
-      "speed": 96.582,
+      "speed": 76.0,
       "gap": 0.5,
       "fast": 3,
-      "brute": 2,
+      "elite": 2,
       "boss": 1
     }
   ],
   "economy": {
     "wave_clear_wood": 8,
     "wave_clear_gold": 14,
-    "staffed_farm_wood": 6,
+    "farm_wood": 6,
     "workshop_tower_damage": 1.25
   }
 }

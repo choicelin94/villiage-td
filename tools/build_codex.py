@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Regenerate the static Codex from balance JSON and sprite sheets.
+"""Regenerate the static Codex from the balance JSON the match already loads.
 
 Run from anywhere:
 
     python3 tools/build_codex.py
 
 Requires Pillow. Writes docs/codex/index.html, catalog.json, and thumbs/.
-Live numbers are checked against the GDScript tables before anything is written.
+Stats come from data/units.json, data/enemies.json, and data/buildings.json,
+the same files scripts/balance.gd reads. Names come from scripts/locale.gd.
 """
 
 from __future__ import annotations
 
 import json
-import math
 import re
 import shutil
 import sys
@@ -33,7 +33,7 @@ REQUIRED_ENEMIES = {
     "spear_normal",
     "spear_fast",
     "spear_infected",
-    "shooter_brute",
+    "shooter_elite",
     "shooter_boss",
 }
 REQUIRED_BUILDINGS = {
@@ -85,7 +85,6 @@ BUILDING_FIELDS = (
     "can_attack",
     "cost",
 )
-ATTACK_FIELDS = ("attack", "attack_speed", "attack_range", "splash", "shot_speed")
 CATEGORIES = {"recruit", "production", "defense"}
 GROUND_TILES = {"grass_a.png", "grass_b.png", "road.png"}
 # id, Chinese, English, iso volume, note
@@ -122,20 +121,18 @@ SCENERY_LABELS = {
 ROLE_ZH = {"worker": "劳工", "melee": "近战", "support": "支援"}
 CATEGORY_ZH = {"recruit": "招募", "production": "生产", "defense": "防御"}
 TAG_ZH = {
+    "normal": "普通",
     "horde": "尸潮",
     "spear": "持矛",
     "fast": "迅捷",
     "infected": "感染",
+    "elite": "精锐",
     "shooter": "持枪",
     "brute": "蛮兵",
     "boss": "首领",
 }
-VISUAL_FOR_KIND = {
-    "normal": "spear",
-    "fast": "spear",
-    "brute": "shooter",
-    "boss": "shooter",
-}
+PEOPLE_VOLUME = "walker"
+WAVE_FIELDS = ("hp", "speed", "gap", "normal", "fast", "elite", "boss")
 
 
 def die(message: str) -> None:
@@ -149,20 +146,6 @@ def load_json(path: Path):
         die(f"missing {path.relative_to(ROOT)}")
     except json.JSONDecodeError as exc:
         die(f"{path.relative_to(ROOT)} is not valid JSON ({exc})")
-
-
-def world_len(authored: float, scale: float) -> float:
-    return round(float(authored) * float(scale) + 1e-12, 3)
-
-
-def gd_round(value: float) -> int:
-    if value >= 0:
-        return int(math.floor(value + 0.5))
-    return int(math.ceil(value - 0.5))
-
-
-def near(left, right) -> bool:
-    return abs(float(left) - float(right)) < 1e-6
 
 
 def res_path(res: str) -> Path:
@@ -194,65 +177,6 @@ def parse_locale(text: str) -> dict:
     return {key: {"zh": zh, "en": en} for key, zh, en in pattern.findall(text)}
 
 
-def parse_waves(text: str) -> list:
-    rows = re.findall(
-        r'\{"n":\s*(\d+),\s*"hp":\s*(\d+),\s*"speed":\s*([\d.]+),\s*"gap":\s*([\d.]+),\s*'
-        r'"fast":\s*(\d+),\s*"brute":\s*(\d+),\s*"boss":\s*(\d+)\}',
-        text,
-    )
-    if len(rows) != 10:
-        die(f"expected 10 waves in main.gd, found {len(rows)}")
-    waves = []
-    for n, hp, speed, gap, fast, brute, boss in rows:
-        waves.append(
-            {
-                "n": int(n),
-                "hp": int(hp),
-                "speed": float(speed),
-                "gap": float(gap),
-                "fast": int(fast),
-                "brute": int(brute),
-                "boss": int(boss),
-            }
-        )
-    return waves
-
-
-def parse_kind_mod(text: str) -> dict:
-    pattern = re.compile(
-        r'"(normal|fast|brute|boss)":\s*\{'
-        r'"hp":\s*([\d.]+),\s*"speed":\s*([\d.]+),\s*"scale":\s*([\d.]+),\s*'
-        r'"dmg":\s*(\d+),\s*"wood":\s*(\d+),\s*"gold":\s*(\d+),',
-    )
-    found = pattern.findall(text)
-    if len(found) != 4:
-        die("could not read KIND_MOD from main.gd")
-    mods = {}
-    for kind, hp, speed, scale, dmg, wood, gold in found:
-        mods[kind] = {
-            "hp": float(hp),
-            "speed": float(speed),
-            "scale": float(scale),
-            "dmg": int(dmg),
-            "wood": int(wood),
-            "gold": int(gold),
-        }
-    return mods
-
-
-def parse_building_stats(text: str) -> dict:
-    blocks = re.findall(r"Kind\.(\w+):\s*\{([^}]*)\}", text, re.S)
-    if len(blocks) < 6:
-        die("could not read Building.STATS")
-    stats = {}
-    for kind, body in blocks:
-        nums = {}
-        for key, raw in re.findall(r'"(\w+)":\s*(-?\d+(?:\.\d+)?)', body):
-            nums[key] = float(raw) if "." in raw else int(raw)
-        stats[kind] = nums
-    return stats
-
-
 def read_const(text: str, name: str) -> float:
     match = re.search(rf"const {name} := ([\d.]+)", text)
     if not match:
@@ -260,11 +184,33 @@ def read_const(text: str, name: str) -> float:
     return float(match.group(1))
 
 
+def volume_by_kind(text: str) -> dict:
+    found = re.findall(r'Kind\.([A-Z_]+):\s*return "([a-z_]+)"', text)
+    if len(found) < 6:
+        die("could not read Building._volume_key")
+    return {kind: key for kind, key in found}
+
+
+def spawned_unit_ids(text: str) -> set:
+    return set(re.findall(r'Balance\.unit\(\s*"([A-Za-z0-9_]+)"\s*\)', text))
+
+
+def kind_aliases(text: str) -> dict:
+    found = re.findall(
+        r'"(normal|fast|brute|boss)":\s*"(spear_[A-Za-z0-9_]+|shooter_[A-Za-z0-9_]+)"',
+        text,
+    )
+    if len(found) < 4:
+        die("could not read Balance._KIND_ALIAS")
+    return {kind: enemy_id for kind, enemy_id in found}
+
+
 def fmt_num(value) -> str:
     number = float(value)
-    if number.is_integer():
-        return str(int(number))
-    return f"{number:.3f}".rstrip("0").rstrip(".")
+    nearest = round(number)
+    if abs(number - nearest) < 1e-9:
+        return str(int(nearest))
+    return f"{number:.4f}".rstrip("0").rstrip(".")
 
 
 def fmt_cost(cost: dict) -> str:
@@ -276,10 +222,10 @@ def fmt_cost(cost: dict) -> str:
     return " + ".join(parts) if parts else "无"
 
 
-def fmt_seconds(value) -> str:
+def fmt_rate(value) -> str:
     if float(value) == 0:
         return "—"
-    return f"{fmt_num(value)} 秒"
+    return f"{fmt_num(value)} 次/秒"
 
 
 def fmt_distance(value) -> str:
@@ -292,19 +238,20 @@ def stat(label: str, value: str) -> dict:
     return {"k": label, "v": value}
 
 
-def load_locale_names(entry: dict, locale: dict) -> None:
+def apply_names(entry: dict, locale: dict) -> None:
     key = entry["display_key"]
     row = locale.get(key)
     if row is None:
         die(f"{entry['id']} display_key {key} is missing from scripts/locale.gd")
     name = entry.get("name")
-    if not isinstance(name, dict):
-        die(f"{entry['id']} needs name.zh and name.en")
-    if row["zh"] != name["zh"] or row["en"] != name["en"]:
+    if isinstance(name, dict) and (row["zh"] != name.get("zh") or row["en"] != name.get("en")):
         die(
             f"{key} disagrees with locale.gd "
-            f"({name['zh']}/{name['en']} vs {row['zh']}/{row['en']})"
+            f"({name.get('zh')}/{name.get('en')} vs {row['zh']}/{row['en']})"
         )
+    entry["name"] = {"zh": row["zh"], "en": row["en"]}
+    if entry.get("note") in (None, "") and entry.get("notes"):
+        entry["note"] = str(entry["notes"])
 
 
 def portrait_from_sheet(sheet: Path, frame: list, dest: Path) -> None:
@@ -345,6 +292,20 @@ def save_thumb(image: Image.Image, dest: Path) -> None:
     canvas.save(dest, "PNG", optimize=True)
 
 
+def portrait_skins(entry: dict, spec: dict) -> list:
+    listed = entry.get("skins")
+    if isinstance(listed, list) and listed:
+        return [str(name) for name in listed]
+    skin = entry.get("skin")
+    if skin:
+        return [str(skin)]
+    catalog = spec.get("skins") or []
+    if catalog:
+        return [str(catalog[0])]
+    die(f"{entry['id']} has no skin and {entry.get('character')} has no skins")
+    return []
+
+
 def sheet_for(spec: dict, skin: str) -> str:
     skins = spec["skins"]
     if skin not in skins:
@@ -357,110 +318,29 @@ def sheet_for(spec: dict, skin: str) -> str:
     return sheets[skins.index(skin)]
 
 
-def enemy_wave1_hp(entry: dict, wave_hp: int) -> int:
-    hp = max(gd_round(wave_hp * float(entry["hp_mul"])), 1)
-    if entry.get("turned"):
-        hp = max(int(hp * float(entry["turned_hp_scale"])), int(entry["turned_hp_min"]))
-    return hp
-
-
-def check_enemy(entry: dict, wave: dict, mods: dict, scale: float, bite: float, tile: float) -> None:
-    kind = entry.get("kind")
-    if kind not in mods:
-        die(f"{entry['id']} kind {kind} is not in KIND_MOD")
-    mod = mods[kind]
-    if not near(entry["hp_mul"], mod["hp"]) or not near(entry["speed_mul"], mod["speed"]):
-        die(f"{entry['id']} multipliers do not match KIND_MOD.{kind}")
-    if not near(entry["scale"], mod["scale"]) or int(entry["attack"]) != mod["dmg"]:
-        die(f"{entry['id']} scale or attack does not match KIND_MOD.{kind}")
-    if int(entry["wood_reward"]) != mod["wood"] or int(entry["gold_reward"]) != mod["gold"]:
-        die(f"{entry['id']} rewards do not match KIND_MOD.{kind}")
-    if entry["character"] != VISUAL_FOR_KIND[kind]:
-        die(f"{entry['id']} character should be {VISUAL_FOR_KIND[kind]}")
-    if int(entry["hp"]) != enemy_wave1_hp(entry, int(wave["hp"])):
-        die(f"{entry['id']} hp {entry['hp']} is not the wave-1 value")
-    expected_speed = world_len(float(wave["speed"]) * float(entry["speed_mul"]), scale)
-    if not near(entry["move_speed"], expected_speed):
-        die(f"{entry['id']} move_speed {entry['move_speed']} != {expected_speed}")
-    if not near(entry["attack_speed"], bite):
-        die(f"{entry['id']} attack_speed should be the zombie bite cooldown {bite}")
-    if not near(entry["attack_range"], tile):
-        die(f"{entry['id']} attack_range should be one tile ({tile})")
-    if int(entry["defense"]) != 0:
-        die(f"{entry['id']} defense is 0; the simulation has no armor")
-
-
-def check_building(entry: dict, stats: dict, scale: float, wall_cap: int, workshop: float) -> None:
-    kind = entry["kind"]
-    block = stats.get(kind)
-    if block is None:
-        die(f"{entry['id']} kind {kind} is missing from Building.STATS")
-    if int(entry["hp"]) != int(block["hp"]):
-        die(f"{entry['id']} hp does not match Building.STATS")
-    if int(entry["cost"]["wood"]) != int(block["wood"]) or int(entry["cost"]["gold"]) != int(block["gold"]):
-        die(f"{entry['id']} cost does not match Building.STATS")
-    attacks = float(block.get("range", 0)) > 0 or int(block.get("dmg", 0)) > 0
-    if bool(entry["can_attack"]) != attacks:
-        die(f"{entry['id']} can_attack does not match Building.STATS")
-    if entry["can_attack"]:
-        for field in ATTACK_FIELDS:
-            if field not in entry:
-                die(f"{entry['id']} can_attack but missing {field}")
-        if int(entry["attack"]) != int(block["dmg"]) or not near(entry["attack_speed"], block["cd"]):
-            die(f"{entry['id']} attack or attack_speed does not match Building.STATS")
-        if not near(entry["attack_range"], world_len(block["range"], scale)):
-            die(f"{entry['id']} attack_range is not range * WORLD_SCALE")
-        if not near(entry["splash"], world_len(block["splash"], scale)):
-            die(f"{entry['id']} splash is not splash * WORLD_SCALE")
-        if not near(entry["shot_speed"], world_len(block["shot_speed"], scale)):
-            die(f"{entry['id']} shot_speed is not shot_speed * WORLD_SCALE")
-    if kind == "WALL":
-        if entry.get("requires_staff") or int(entry.get("place_cap", -1)) != int(wall_cap):
-            die("wall must not require staff and place_cap must be WALL_CAP")
-    elif entry.get("requires_staff") is not True:
-        die(f"{entry['id']} requires a villager")
-    if kind == "HOUSE" and int(entry.get("beds", -1)) != int(block["cap"]):
-        die("house beds must match STATS cap")
-    if kind == "FARM":
-        produces = entry.get("produces") or {}
-        if int(produces.get("wood", -1)) != 6:
-            die("farm produces.wood must be 6")
-    if kind == "WORKSHOP":
-        bonus = entry.get("bonus") or {}
-        if not near(bonus.get("tower_damage", 0), workshop) or bonus.get("stacks") is not False:
-            die("workshop bonus must be the unstacked tower multiplier")
-    if int(entry["defense"]) != 0:
-        die(f"{entry['id']} defense is armor 0; category carries the old defense flag")
-
-
-def check_names_and_art(entry: dict, characters: dict, volumes: dict, locale: dict) -> dict:
-    load_locale_names(entry, locale)
-    visual = entry.get("character")
-    if visual is not None:
-        if visual not in characters:
-            die(f"{entry['id']} character {visual} is missing from characters.json")
-        spec = characters[visual]
-        for key in ("sheets", "skins", "frame", "foot", "faces_right", "clips"):
-            if key not in spec:
-                die(f"characters.json {visual} missing {key}")
-        skin = entry.get("skin")
-        skins = entry.get("skins")
-        if skin is None and not skins:
-            die(f"{entry['id']} needs skin or skins")
-        if skin is not None and skin not in spec["skins"]:
-            die(f"{entry['id']} skin {skin} is not on {visual}")
-        for name in skins or []:
-            if name not in spec["skins"]:
-                die(f"{entry['id']} skins contains unknown {name}")
-    volume = entry.get("volume")
-    if volume and volume not in volumes:
+def bind_entry(entry: dict, characters: dict, volumes: dict, locale: dict, volume: str) -> dict:
+    apply_names(entry, locale)
+    if volume not in volumes:
         die(f"{entry['id']} volume {volume} is missing from iso_volumes.json")
-    return characters.get(visual, {})
+    entry["volume"] = volume
+    visual = entry.get("character")
+    if visual is None:
+        return {}
+    if visual not in characters:
+        die(f"{entry['id']} character {visual} is missing from characters.json")
+    spec = characters[visual]
+    for key in ("sheets", "skins", "frame", "foot", "faces_right", "clips"):
+        if key not in spec:
+            die(f"characters.json {visual} missing {key}")
+    for name in portrait_skins(entry, spec):
+        if name not in spec["skins"]:
+            die(f"{entry['id']} skin {name} is not on {visual}")
+    return spec
 
 
 def make_character_thumbs(entry: dict, spec: dict) -> list:
     frame = spec["frame"]
-    skins = list(entry.get("skins") or [entry["skin"]])
+    skins = portrait_skins(entry, spec)
     made = []
     for skin in skins:
         dest = THUMBS / f"{entry['id']}__{skin}.png"
@@ -481,15 +361,15 @@ def badge_for(status: str) -> tuple:
     return "", ""
 
 
-def unit_card(entry: dict, skins: list) -> dict:
-    badge, tone = badge_for(entry["status"])
+def unit_card(entry: dict, skins: list, spawned: bool) -> dict:
+    badge, tone = badge_for("live" if spawned else "configured")
     role = ROLE_ZH.get(entry["role"], entry["role"])
     stats = [
         stat("职责", f"{role} · {entry['role']}"),
         stat("生命", fmt_num(entry["hp"])),
         stat("防御", fmt_num(entry["defense"])),
         stat("攻击", fmt_num(entry["attack"])),
-        stat("攻击间隔", fmt_seconds(entry["attack_speed"])),
+        stat("攻速", fmt_rate(entry["attack_speed"])),
         stat("移速", fmt_num(entry["move_speed"])),
         stat("射程", fmt_distance(entry["attack_range"])),
         stat("费用", fmt_cost(entry["cost"])),
@@ -501,57 +381,80 @@ def unit_card(entry: dict, skins: list) -> dict:
 
 
 def enemy_card(entry: dict, skins: list) -> dict:
-    badge, tone = badge_for(entry["status"])
+    badge, tone = badge_for("live")
     tags = " · ".join(TAG_ZH.get(tag, tag) for tag in entry["tags"])
     stats = [
         stat("生命", f"{fmt_num(entry['hp'])}（第 1 波）"),
         stat("防御", fmt_num(entry["defense"])),
         stat("攻击", fmt_num(entry["attack"])),
-        stat("攻击间隔", fmt_seconds(entry["attack_speed"])),
+        stat("攻速", fmt_rate(entry["attack_speed"])),
         stat("移速", f"{fmt_num(entry['move_speed'])}（第 1 波）"),
         stat("射程", fmt_distance(entry["attack_range"])),
         stat("体型", f"×{fmt_num(entry['scale'])}"),
         stat("赏金", f"{int(entry['gold_reward'])} 金"),
         stat("木材", f"{int(entry['wood_reward'])} 木"),
-        stat("标签", tags),
-        stat("形象", entry["character"]),
-        stat("体积", entry["volume"]),
     ]
+    if int(entry.get("xp_reward") or 0):
+        stats.append(stat("经验", str(int(entry["xp_reward"]))))
+    stats.extend(
+        [
+            stat("标签", tags),
+            stat("形象", entry["character"]),
+            stat("体积", entry["volume"]),
+        ]
+    )
     return card(entry, "enemies", badge, tone, stats, skins)
 
 
-def building_card(entry: dict, locale: dict) -> dict:
-    badge, tone = badge_for(entry["status"])
-    role = locale.get(entry.get("role_key", ""), {})
-    role_text = entry["category"]
+def building_role(entry: dict, locale: dict) -> str:
+    key = str(entry.get("display_key", ""))
+    role_key = "role." + key.split(".", 1)[1] if key.startswith("build.") else ""
+    role = locale.get(role_key, {})
+    category = CATEGORY_ZH.get(entry["category"], entry["category"])
     if role:
-        role_text = f"{role['zh']} · {CATEGORY_ZH[entry['category']]}"
+        return f"{role['zh']} · {category}"
+    return category
+
+
+def recruit_names(ids: list, locale: dict) -> str:
+    labels = []
+    for unit_id in ids:
+        row = locale.get(f"unit.{unit_id}")
+        labels.append(row["zh"] if row else str(unit_id))
+    return "、".join(labels)
+
+
+def building_card(entry: dict, locale: dict) -> dict:
+    badge, tone = badge_for("live")
     stats = [
-        stat("类别", role_text),
+        stat("类别", building_role(entry, locale)),
         stat("种类", entry["kind"]),
         stat("生命", fmt_num(entry["hp"])),
         stat("防御", fmt_num(entry["defense"])),
         stat("费用", fmt_cost(entry["cost"])),
     ]
     if entry["can_attack"]:
-        stats.extend(
-            [
-                stat("攻击", fmt_num(entry["attack"])),
-                stat("攻击间隔", fmt_seconds(entry["attack_speed"])),
-                stat("射程", fmt_distance(entry["attack_range"])),
-                stat("溅射", fmt_num(entry["splash"])),
-                stat("弹速", fmt_num(entry["shot_speed"])),
-            ]
-        )
-    if "beds" in entry:
+        stats.append(stat("攻击", fmt_num(entry["attack"])))
+        stats.append(stat("攻速", fmt_rate(entry["attack_speed"])))
+        stats.append(stat("射程", fmt_distance(entry["attack_range"])))
+        if "splash" in entry:
+            stats.append(stat("溅射", fmt_num(entry["splash"])))
+        if "shot_speed" in entry:
+            stats.append(stat("弹速", fmt_num(entry["shot_speed"])))
+    if int(entry.get("beds") or 0) > 0:
         stats.append(stat("床位", str(int(entry["beds"]))))
-    if "produces" in entry:
-        stats.append(stat("产出", f"每波 +{int(entry['produces']['wood'])} 木"))
-    if "bonus" in entry:
-        stats.append(stat("加成", f"塔伤害 ×{fmt_num(entry['bonus']['tower_damage'])}"))
-    if "place_cap" in entry:
+    produces = entry.get("produces")
+    if isinstance(produces, dict) and produces.get("rate") is not None:
+        resource = {"wood": "木", "gold": "金"}.get(str(produces.get("resource", "")), str(produces.get("resource", "")))
+        stats.append(stat("产出", f"每波 +{fmt_num(produces['rate'])} {resource}"))
+    recruits = entry.get("recruits") or []
+    if recruits:
+        stats.append(stat("可招募", recruit_names(recruits, locale)))
+    bonus = entry.get("bonus")
+    if isinstance(bonus, dict) and bonus.get("tower_damage") is not None:
+        stats.append(stat("加成", f"塔攻击 ×{fmt_num(bonus['tower_damage'])}"))
+    if int(entry.get("place_cap") or 0) > 0:
         stats.append(stat("上限", str(int(entry["place_cap"]))))
-    stats.append(stat("派人", "需要" if entry["requires_staff"] else "不需要"))
     stats.append(stat("体积", entry["volume"]))
     portrait = THUMBS / f"{entry['id']}.png"
     save_thumb(Image.open(res_path(entry["tex"])), portrait)
@@ -600,19 +503,19 @@ def card(entry: dict, section: str, badge: str, tone: str, stats: list, skins: l
     }
 
 
-def wave_rows(waves: list, scale: float) -> list:
+def wave_rows(waves: list) -> list:
     rows = []
     for index, wave in enumerate(waves, start=1):
         rows.append(
             {
                 "wave": index,
-                "n": wave["n"],
+                "normal": int(wave["normal"]),
                 "hp": wave["hp"],
-                "speed": world_len(wave["speed"], scale),
+                "speed": wave["speed"],
                 "gap": wave["gap"],
-                "fast": wave["fast"],
-                "brute": wave["brute"],
-                "boss": wave["boss"],
+                "fast": int(wave["fast"]),
+                "elite": int(wave["elite"]),
+                "boss": int(wave["boss"]),
             }
         )
     return rows
@@ -620,9 +523,9 @@ def wave_rows(waves: list, scale: float) -> list:
 
 def render_page(catalog: dict) -> str:
     sections = {
-        "units": ("友方单位", "Units", "村民会出场。矛兵和工程师只写在目录里。"),
-        "enemies": ("敌人", "Enemies", "生命和移速随波次变化。卡片写第 1 波，倍率写在备注里。"),
-        "buildings": ("建筑", "Buildings", "功能建筑要派人之后才生效。木墙不用派人。"),
+        "units": ("友方单位", "Units", "村民会出场。矛兵和工匠已写入 Balance，对局还不会生成。"),
+        "enemies": ("敌人", "Enemies", "卡片是第 1 波的世界单位。后面的波次按相对第 1 波的比例缩放。"),
+        "buildings": ("建筑", "Buildings", "塔立着就会攻击，不用派人。房屋立着就给床位，农场立着就产木材。"),
         "scenery": ("场景", "Scenery", "树和岩石挡住建造。草地和道路是地面，不进图鉴。"),
     }
     nav = []
@@ -784,7 +687,7 @@ a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
 {"".join(blocks)}
 </main>
 <footer>
-  <p>头像是序列帧左上角第 0 帧，或建筑的俯视图，透明边已裁掉。数值来自 data/units.json、data/enemies.json、data/buildings.json。攻击间隔是两次攻击之间的秒数。移速、射程、溅射和弹速是世界像素。</p>
+  <p>头像是序列帧左上角第 0 帧，或建筑的俯视图，透明边已裁掉。数值来自 data/units.json、data/enemies.json、data/buildings.json，对局由 scripts/balance.gd 加载同一份。攻速是每秒攻击次数。伤害是 max(1, round(attack × 100 / (100 + defense)))。移速、射程、溅射和弹速是世界单位。卡片上的小数最多显示 4 位。</p>
   <p>此页由 tools/build_codex.py 生成。改目录后重新运行脚本，再提交 docs/codex/。</p>
 </footer>
 </body>
@@ -822,26 +725,28 @@ def render_waves(rows: list) -> str:
         body.append(
             "<tr>"
             f"<td>第 {row['wave']} 波</td>"
-            f"<td>{row['n']}</td><td>{row['hp']}</td><td>{fmt_num(row['speed'])}</td>"
+            f"<td>{row['normal']}</td><td>{fmt_num(row['hp'])}</td><td>{fmt_num(row['speed'])}</td>"
             f"<td>{fmt_num(row['gap'])}</td><td>{row['fast']}</td>"
-            f"<td>{row['brute']}</td><td>{row['boss']}</td>"
+            f"<td>{row['elite']}</td><td>{row['boss']}</td>"
             "</tr>"
         )
     return (
         '<div class="table-wrap"><table>'
-        "<thead><tr><th>波次</th><th>普通</th><th>基准生命</th><th>普通移速</th>"
-        "<th>间隔</th><th>迅捷</th><th>蛮兵</th><th>首领</th></tr></thead>"
+        "<thead><tr><th>波次</th><th>普通</th><th>基准生命</th><th>基准移速</th>"
+        "<th>间隔</th><th>迅捷</th><th>精锐</th><th>首领</th></tr></thead>"
         f"<tbody>{''.join(body)}</tbody></table></div>"
-        '<p class="footnote">普通数量之外，迅捷、蛮兵和首领另外再加。移速是这一波普通尸潮的世界单位，其他敌人再乘自己的速度倍率。生命同理，被感染的村民还要再按 65% 截断。</p>'
+        '<p class="footnote">卡片上的生命和移速已经是第 1 波的世界单位。后面每一波按相对第 1 波的比例缩放：生命取 round(卡片生命 × 本波基准生命 / 第 1 波基准生命)，移速取卡片移速 × 本波基准移速 / 第 1 波基准移速。表里的基准移速还没有乘 WORLD_SCALE，它只用来算这个比例。被感染的村民是单独的 spear_infected，不再在普通僵尸上再乘 0.65。</p>'
     )
 
 
 def render_economy(economy: dict) -> str:
     return (
         '<p class="callout">清完一波：木材 '
-        f"{int(economy['wave_clear_wood'])} + 有人农场 × {int(economy['staffed_farm_wood'])}，"
+        f"{int(economy['wave_clear_wood'])} + 每座农场 × {fmt_num(economy['farm_wood'])}，"
         f"金币 +{int(economy['wave_clear_gold'])}。"
-        f"有人工坊使矛塔和火塔伤害 ×{fmt_num(economy['workshop_tower_damage'])}，不叠加。</p>"
+        "平底薪仍是 scripts/main.gd 里的 WAVE_CLEAR_WOOD 和 WAVE_CLEAR_GOLD。"
+        f"塔立着就会攻击。工坊把塔的攻击 ×{fmt_num(economy['workshop_tower_damage'])}，"
+        "先乘攻击再套伤害公式，不叠加，取还立着的最高一座。</p>"
     )
 
 
@@ -855,9 +760,21 @@ def esc(value) -> str:
     )
 
 
-def same_wave(left: dict, right: dict) -> bool:
-    keys = ("n", "hp", "speed", "gap", "fast", "brute", "boss")
-    return all(near(left[key], right[key]) for key in keys)
+def economy_from(main_gd: str, buildings: list) -> dict:
+    wood = read_const(main_gd, "WAVE_CLEAR_WOOD")
+    gold = read_const(main_gd, "WAVE_CLEAR_GOLD")
+    farm = next((entry for entry in buildings if entry.get("id") == "farm"), None)
+    workshop = next((entry for entry in buildings if entry.get("id") == "workshop"), None)
+    produces = (farm or {}).get("produces") or {}
+    bonus = (workshop or {}).get("bonus") or {}
+    if produces.get("rate") is None or bonus.get("tower_damage") is None:
+        die("farm.produces.rate and workshop.bonus.tower_damage are required")
+    return {
+        "wave_clear_wood": int(wood),
+        "wave_clear_gold": int(gold),
+        "farm_wood": produces["rate"],
+        "workshop_tower_damage": bonus["tower_damage"],
+    }
 
 
 def main() -> None:
@@ -868,38 +785,19 @@ def main() -> None:
     volumes = load_json(ROOT / "data" / "iso_volumes.json")
     main_gd = (ROOT / "scripts" / "main.gd").read_text(encoding="utf-8")
     building_gd = (ROOT / "scripts" / "building.gd").read_text(encoding="utf-8")
-    zombie_gd = (ROOT / "scripts" / "zombie.gd").read_text(encoding="utf-8")
-    iso_gd = (ROOT / "scripts" / "iso_volume.gd").read_text(encoding="utf-8")
+    balance_gd = (ROOT / "scripts" / "balance.gd").read_text(encoding="utf-8")
     locale = parse_locale((ROOT / "scripts" / "locale.gd").read_text(encoding="utf-8"))
 
-    scale = read_const(iso_gd, "WORLD_SCALE")
-    if not near(enemies_doc.get("world_scale"), scale):
-        die("enemies.json world_scale does not match IsoVolume.WORLD_SCALE")
-    tile = read_const(iso_gd, "TILE")
-    bite_match = re.search(r"_cooldown = ([\d.]+)", zombie_gd)
-    if not bite_match:
-        die("could not read the zombie bite cooldown")
-    bite = float(bite_match.group(1))
-    villager_speed = read_const(main_gd, "VILLAGER_SPEED")
-    wall_cap = read_const(main_gd, "WALL_CAP")
-    script_waves = parse_waves(main_gd)
-    mods = parse_kind_mod(main_gd)
-    stats = parse_building_stats(building_gd)
-    workshop_match = re.search(r"func tower_bonus\(\) -> float:.*?return ([\d.]+)", main_gd, re.S)
-    if not workshop_match:
-        die("could not read tower_bonus")
-    workshop = float(workshop_match.group(1))
-    economy = buildings_doc.get("economy") or {}
-    clear = re.search(r"wood \+= (\d+) \+ farms \* (\d+)\s*\n\s*gold \+= (\d+)", main_gd)
-    if not clear:
-        die("could not read the wave-clear reward")
-    if (
-        int(economy.get("wave_clear_wood", -1)) != int(clear.group(1))
-        or int(economy.get("staffed_farm_wood", -1)) != int(clear.group(2))
-        or int(economy.get("wave_clear_gold", -1)) != int(clear.group(3))
-        or not near(economy.get("workshop_tower_damage", 0), workshop)
-    ):
-        die("buildings.json economy does not match main.gd")
+    for name in ("data/units.json", "data/enemies.json", "data/buildings.json"):
+        if name not in balance_gd:
+            die(f"scripts/balance.gd no longer loads {name}")
+    if PEOPLE_VOLUME not in volumes:
+        die(f"iso_volumes.json is missing {PEOPLE_VOLUME}")
+    volumes_for_kind = volume_by_kind(building_gd)
+    spawned = spawned_unit_ids(main_gd)
+    if "villager" not in spawned:
+        die('main.gd no longer calls Balance.unit("villager")')
+    aliases = kind_aliases(balance_gd)
 
     units = units_doc.get("units")
     enemies = enemies_doc.get("enemies")
@@ -917,12 +815,17 @@ def main() -> None:
         die(f"enemies.json is missing {sorted(REQUIRED_ENEMIES - ids['enemies'])}")
     if not REQUIRED_BUILDINGS <= ids["buildings"]:
         die(f"buildings.json is missing {sorted(REQUIRED_BUILDINGS - ids['buildings'])}")
+    for kind, enemy_id in aliases.items():
+        if enemy_id not in ids["enemies"]:
+            die(f"Balance alias {kind} -> {enemy_id} is not an enemy id")
     json_waves = enemies_doc.get("waves")
-    if not isinstance(json_waves, list) or len(json_waves) != len(script_waves):
-        die("enemies.json waves do not match main.gd")
-    for index, (left, right) in enumerate(zip(json_waves, script_waves), start=1):
-        if not same_wave(left, right):
-            die(f"wave {index} does not match main.gd")
+    if not isinstance(json_waves, list) or len(json_waves) != 10:
+        die("enemies.json needs 10 waves")
+    for index, wave in enumerate(json_waves, start=1):
+        missing = [name for name in WAVE_FIELDS if name not in wave]
+        if missing:
+            die(f"wave {index} missing {', '.join(missing)}")
+    economy = economy_from(main_gd, buildings)
 
     if THUMBS.exists():
         shutil.rmtree(THUMBS)
@@ -933,29 +836,16 @@ def main() -> None:
         require_fields(entry, UNIT_FIELDS, entry.get("id", "unit"))
         if entry["faction"] != "ally":
             die(f"{entry['id']} faction should be ally")
-        if entry["status"] not in ("live", "configured"):
-            die(f"{entry['id']} needs status live or configured")
-        if entry["id"] in ("spearman", "engineer") and entry["status"] != "configured":
-            die(f"{entry['id']} is not spawned; status must stay configured until main.gd spawns it")
-        if entry["id"] == "villager" and entry["status"] != "live":
-            die("villager is spawned and must stay live")
-        spec = check_names_and_art(entry, characters, volumes, locale)
-        if "move_speed_authored" in entry:
-            expected = world_len(entry["move_speed_authored"], scale)
-            if not near(entry["move_speed"], expected):
-                die(f"{entry['id']} move_speed is not authored * WORLD_SCALE")
-        if entry["status"] == "live" and not near(entry.get("move_speed_authored"), villager_speed):
-            die("live villager move_speed_authored must match VILLAGER_SPEED")
+        spec = bind_entry(entry, characters, volumes, locale, PEOPLE_VOLUME)
         skins = make_character_thumbs(entry, spec)
-        unit_cards.append(unit_card(entry, skins))
+        unit_cards.append(unit_card(entry, skins, entry["id"] in spawned))
 
     enemy_cards = []
     for entry in enemies:
         require_fields(entry, ENEMY_FIELDS, entry.get("id", "enemy"))
         if not isinstance(entry["tags"], list) or not entry["tags"]:
             die(f"{entry['id']} needs tags")
-        spec = check_names_and_art(entry, characters, volumes, locale)
-        check_enemy(entry, json_waves[0], mods, scale, bite, tile)
+        spec = bind_entry(entry, characters, volumes, locale, PEOPLE_VOLUME)
         skins = make_character_thumbs(entry, spec)
         enemy_cards.append(enemy_card(entry, skins))
 
@@ -966,11 +856,11 @@ def main() -> None:
         if entry["category"] not in CATEGORIES:
             die(f"{entry['id']} category must be recruit, production, or defense")
         if entry["can_attack"]:
-            require_fields(entry, ATTACK_FIELDS, entry["id"])
-        check_names_and_art(entry, characters, volumes, locale)
-        if entry.get("role_key") not in locale:
-            die(f"{entry['id']} role_key is missing from locale.gd")
-        check_building(entry, stats, scale, wall_cap, workshop)
+            require_fields(entry, ("attack", "attack_speed", "attack_range"), entry["id"])
+        volume = volumes_for_kind.get(entry["kind"])
+        if volume is None:
+            die(f"{entry['id']} kind {entry['kind']} is missing from Building._volume_key")
+        bind_entry(entry, characters, volumes, locale, volume)
         res_path(entry["tex"])
         building_names.add(Path(entry["tex"]).name)
         building_cards.append(building_card(entry, locale))
@@ -989,7 +879,7 @@ def main() -> None:
             "buildings": building_cards,
             "scenery": scene_cards,
         },
-        "waves": wave_rows(json_waves, scale),
+        "waves": wave_rows(json_waves),
         "economy": economy,
     }
     OUT.mkdir(parents=True, exist_ok=True)

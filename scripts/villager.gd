@@ -2,7 +2,14 @@ class_name Villager
 extends Node2D
 
 var sex := "m"
+var unit_id := "villager"
 var speed := 108.0
+var hp := 1
+var max_hp := 1
+var defense := 0.0
+var attack := 0.0
+var attack_speed := 1.0
+var attack_range := 0.0
 var housed := false
 var refugee := false
 var infected := false
@@ -23,6 +30,17 @@ var _path: Array[Vector2i] = []
 var _path_i := 0
 var _held_job := false
 var anchored := false
+
+func configure(def: Dictionary) -> void:
+	unit_id = str(def.get("id", "villager"))
+	max_hp = maxi(int(round(float(def.get("hp", 1)))), 1)
+	hp = max_hp
+	defense = float(def.get("defense", 0.0))
+	attack = float(def.get("attack", 0.0))
+	attack_speed = float(def.get("attack_speed", 1.0))
+	attack_range = float(def.get("attack_range", 0.0))
+	if def.has("move_speed"):
+		speed = float(def.move_speed)
 
 func setup(p_skin: int, p_sex: String, p_speed: float) -> void:
 	sex = p_sex

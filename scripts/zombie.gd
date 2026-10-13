@@ -5,6 +5,10 @@ var hp := 1
 var max_hp := 1
 var speed := 72.0
 var bite := 1
+var defense := 0.0
+var attack_speed := 1.1111111111111112
+var attack_range := 128.0
+var xp_reward := 0
 var reward_wood := 2
 var reward_gold := 4
 var body_scale := 1.0
@@ -197,8 +201,9 @@ func _do_attack(delta: float) -> void:
 	_face(target_pos - global_position, delta, true)
 	_cooldown -= delta
 	if _cooldown <= 0.0:
-		_cooldown = 0.9
-		game.damage_cell(_attack, bite)
+		var rate := attack_speed if attack_speed > 0.0 else 1.0
+		_cooldown = 1.0 / rate
+		game.damage_cell(_attack, float(bite))
 
 func _separate(delta: float, forward: Vector2) -> void:
 	var push := Vector2.ZERO
