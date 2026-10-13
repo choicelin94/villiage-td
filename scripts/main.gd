@@ -2128,7 +2128,7 @@ func _face_check() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var people := _alive_villagers()
-	var spots: Array[Vector2i] = [Vector2i(6, 6), Vector2i(6, 7), Vector2i(7, 6), Vector2i(7, 7)]
+	var spots: Array[Vector2i] = [Vector2i(5, 3), Vector2i(14, 3), Vector2i(8, 3), Vector2i(11, 8)]
 	var dirs: Array[Vector2] = [
 		Vector2(160, 0),
 		Vector2(-160, 0),
@@ -2165,12 +2165,31 @@ func _face_check() -> void:
 	print("FACE_Z vel=", zdelta, " expect=", zexpect, " got=", zombie._facing, " frame=", zombie._frame_i)
 	if zdelta.length() < 8.0 or zombie._facing != zexpect:
 		ok = false
+	# The walk loop feeds a unit vector. Force the south row, then aim north,
+	# and require the row to follow that step without a pre-seeded long vector.
+	var turn: Villager = people[0]
+	turn._set_frame(2, 0)
+	turn._path.clear()
+	turn._path_i = 0
+	turn.global_position = cell_center(Vector2i(10, 6))
+	turn._goal = turn.global_position + Vector2(0, -220)
+	turn._retarget = 8.0
+	var turn0 := turn.global_position
+	await get_tree().create_timer(0.35).timeout
+	var turn_moved: Vector2 = turn.global_position - turn0
+	var turn_expect := 0
+	print("FACE_TURN moved=", turn_moved, " expect=", turn_expect, " got=", turn._facing, " frame=", turn._frame)
+	if turn_moved.y >= -4.0 or turn._facing != turn_expect or turn._frame == 0:
+		ok = false
 	print("FACE_OK ", ok)
 	camera.zoom = Vector2(1.8, 1.8)
 	camera.position = people[2].global_position + Vector2(40, -20)
 	_cam_user = true
 	await get_tree().process_frame
 	await _capture("/opt/cursor/artifacts/facing-walk.png")
+	camera.position = turn.global_position
+	await get_tree().process_frame
+	await _capture("/opt/cursor/artifacts/facing-north.png")
 	get_tree().quit(0 if ok else 1)
 
 func _demo_shot() -> void:

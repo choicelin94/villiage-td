@@ -67,7 +67,7 @@ func _ready() -> void:
 	_repath()
 
 func _face(vel: Vector2, delta: float, faster: bool) -> void:
-	if vel.length_squared() > 1.0:
+	if vel.length_squared() > 0.000001:
 		_facing = LpcFacing.row_for(vel)
 	_frame_t += delta
 	var step := 0.07 if faster else 0.1

@@ -149,7 +149,9 @@ func _walk(delta: float, game: Node) -> void:
 	_retarget = 0.0
 
 func _step_anim(vel: Vector2, delta: float) -> void:
-	if vel.length_squared() > 1.0:
+	# Callers pass a unit direction. A threshold of 1 px rejected those, so a
+	# villager kept the idle south row while the 4-direction path turned north.
+	if vel.length_squared() > 0.000001:
 		_facing = LpcFacing.row_for(vel)
 	_frame_t += delta
 	if _frame_t >= 0.09:
