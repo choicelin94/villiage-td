@@ -65,23 +65,28 @@
         "skins": [
           {
             "name": "wolf",
-            "thumb": "thumbs/villager__wolf.png"
+            "thumb": "thumbs/villager__wolf.png",
+            "primary": true
           },
           {
             "name": "penguin",
-            "thumb": "thumbs/villager__penguin.png"
+            "thumb": "thumbs/villager__penguin.png",
+            "primary": false
           },
           {
             "name": "raccoon",
-            "thumb": "thumbs/villager__raccoon.png"
+            "thumb": "thumbs/villager__raccoon.png",
+            "primary": false
           },
           {
             "name": "frog",
-            "thumb": "thumbs/villager__frog.png"
+            "thumb": "thumbs/villager__frog.png",
+            "primary": false
           },
           {
             "name": "skeleton",
-            "thumb": "thumbs/villager__skeleton.png"
+            "thumb": "thumbs/villager__skeleton.png",
+            "primary": false
           }
         ],
         "volume": "walker"
