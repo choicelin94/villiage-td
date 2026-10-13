@@ -26,6 +26,9 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "codex"
 THUMBS = OUT / "thumbs"
+# At this width and below, the left rail becomes a drawer. Desktop keeps the rail.
+# Phone stacking is a second, narrower query in CODEX_LAYOUT_CSS. Keep them in sync.
+NARROW_MQ = "(max-width: 1099px)"
 RESAMPLE = getattr(Image, "Resampling", Image).LANCZOS
 
 REQUIRED_UNITS = {"villager", "spearman", "engineer"}
@@ -379,12 +382,18 @@ def bind_entry(entry: dict, characters: dict, volumes: dict, locale: dict, volum
 def make_character_thumbs(entry: dict, spec: dict) -> list:
     frame = spec["frame"]
     skins = portrait_skins(entry, spec)
+    primary = entry.get("skin") or skins[0]
     made = []
     for skin in skins:
         dest = THUMBS / f"{entry['id']}__{skin}.png"
         portrait_from_sheet(res_path(sheet_for(spec, skin)), frame, dest)
-        made.append({"name": skin, "thumb": f"thumbs/{dest.name}"})
-    primary = entry.get("skin") or skins[0]
+        made.append(
+            {
+                "name": skin,
+                "thumb": f"thumbs/{dest.name}",
+                "primary": skin == primary,
+            }
+        )
     primary_src = THUMBS / f"{entry['id']}__{primary}.png"
     shutil.copyfile(primary_src, THUMBS / f"{entry['id']}.png")
     return made
@@ -613,6 +622,8 @@ def render_page(catalog: dict) -> str:
   --well: #1a261c;
   --chip: #2c382c;
   --shadow: 0 12px 28px rgba(0, 0, 0, .28);
+  --gutter: 16px;
+  --content-max: 1120px;
 }}
 @media (prefers-color-scheme: light) {{
   :root {{
@@ -634,27 +645,42 @@ def render_page(catalog: dict) -> str:
     --shadow: 0 10px 24px rgba(70, 50, 10, .08);
   }}
 }}
+@media (min-width: 768px) {{
+  :root {{ --gutter: 24px; --content-max: 1160px; }}
+}}
+@media (min-width: 1100px) {{
+  :root {{ --gutter: 32px; --content-max: 1200px; }}
+}}
 * {{ box-sizing: border-box; }}
 body {{
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.5 "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font: 16px/1.55 "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }}
 a {{ color: var(--gold); }}
-header.top, .codex-shell {{ width: min(1180px, calc(100% - 32px)); margin: 0 auto; }}
-header.top {{ padding: 28px 0 8px; }}
+header.top, .codex-shell, footer {{
+  width: min(var(--content-max), calc(100% - 2 * var(--gutter)));
+  margin-left: auto;
+  margin-right: auto;
+}}
+header.top {{ padding: 28px 0 12px; }}
 .kicker {{ margin: 0; color: var(--muted); letter-spacing: .08em; font-size: 13px; }}
 h1 {{ margin: 4px 0; font-size: clamp(32px, 5vw, 48px); line-height: 1.1; }}
 .summary {{ margin: 0 0 8px; color: var(--muted); }}
 nav {{ display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 8px; }}
 nav a {{
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   text-decoration: none;
   background: var(--chip);
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 6px 12px;
+  padding: 8px 16px;
 }}
 section {{ margin: 28px 0 36px; }}
 section > header h2 {{ margin: 0; font-size: 28px; }}
@@ -675,12 +701,13 @@ article {{
   aspect-ratio: 1;
   display: grid;
   place-items: center;
+  overflow: hidden;
 }}
-.portrait img {{ width: 88%; height: 88%; object-fit: contain; }}
-.skins {{ display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }}
-.skins img {{
-  width: 42px; height: 42px; object-fit: contain;
-  background: var(--well); border-radius: 8px; border: 1px solid var(--line);
+.portrait > img {{
+  grid-area: 1 / 1;
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
 }}
 h3 {{ margin: 10px 0 0; font-size: 22px; }}
 .en, .wid, .note {{ margin: 0; color: var(--muted); }}
@@ -710,8 +737,14 @@ tr + tr td, tr + tr th {{ border-top: 1px solid var(--line); }}
   margin-top: 14px; padding: 12px 14px; border-radius: 14px;
   background: var(--chip); border: 1px solid var(--line);
 }}
-footer {{ width: min(1120px, calc(100% - 32px)); margin: 0 auto 32px; color: var(--muted); font-size: 13px; }}
+footer {{ margin-bottom: 32px; color: var(--muted); font-size: 13px; }}
 a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
+@media (max-width: 767px) {{
+  header.top {{ padding: 18px 0 12px; }}
+  h1 {{ font-size: 34px; }}
+  .summary {{ font-size: 15px; }}
+  nav {{ margin-top: 14px; }}
+}}
 {codex_css}
 </style>
 </head>
@@ -761,26 +794,58 @@ def _stat_tiles(rows: list) -> str:
     return f'<dl class="card-stats">{"".join(tiles)}</dl>'
 
 
-def _detail_panel(item: dict, section: str, item_id: str) -> str:
-    skins = ""
-    if item["skins"]:
-        thumbs = "".join(
-            f'<img src="{esc(skin["thumb"])}" alt="{esc(item["name_zh"])} {esc(skin["name"])}">'
-            for skin in item["skins"]
+def _preview_html(item: dict) -> str:
+    """Large portrait, with a thumbnail list underneath when several skins exist.
+
+    The list is a sibling of the portrait, not a child, so the thumbs never sit
+    inside the preview well. Choosing one swaps the large image.
+    """
+    zh = item["name_zh"]
+    skins = item.get("skins") or []
+    if len(skins) < 2:
+        return (
+            '<div class="preview"><div class="portrait">'
+            f'<img src="{esc(item["portrait"])}" alt="{esc(zh)}头像">'
+            "</div></div>"
         )
-        skins = f'<div class="skins">{thumbs}</div>'
+    group = f"skin-{item['section']}-{item['id']}"
+    primary = next((index for index, skin in enumerate(skins) if skin.get("primary")), 0)
+    frames = []
+    options = []
+    for index, skin in enumerate(skins):
+        label = f"{zh} · {skin['name']}"
+        checked = " checked" if index == primary else ""
+        frames.append(
+            f'<img class="skin-frame" src="{esc(skin["thumb"])}" alt="{esc(label)}">'
+        )
+        options.append(
+            '<label class="skin-opt">'
+            f'<input type="radio" name="{esc(group)}"{checked} aria-label="{esc(label)}">'
+            f'<img src="{esc(skin["thumb"])}" alt="">'
+            "</label>"
+        )
+    return (
+        '<div class="preview">'
+        f'<div class="portrait">{"".join(frames)}</div>'
+        f'<div class="skins" role="radiogroup" aria-label="{esc(zh)}外观">'
+        f'{"".join(options)}</div></div>'
+    )
+
+
+def _detail_panel(item: dict, section: str, item_id: str) -> str:
     note = f'<p class="note">{esc(item["note"])}</p>' if item["note"] else ""
     anchor = _anchor(section, item_id)
     return (
         f'<article class="item-panel" id="{esc(anchor)}" data-item="{esc(section)}-{esc(item_id)}">'
         '<div class="detail">'
-        f'<div class="portrait"><img src="{esc(item["portrait"])}" alt="{esc(item["name_zh"])}头像">'
-        f"{skins}</div>"
+        f"{_preview_html(item)}"
         '<div class="detail-copy">'
+        '<div class="identity">'
         f'<h3>{esc(item["name_zh"])}</h3>'
         f'<p class="en">{esc(item["name_en"])}</p>'
         f'<p class="wid">{esc(item["id"])}</p>'
         f'<span class="badge {esc(item["badge_tone"])}">{esc(item["badge"])}</span>'
+        "</div>"
         f'{_stat_tiles(item["stats"])}'
         f"{note}</div></div></article>"
     )
@@ -832,6 +897,20 @@ def _icon_toggle(input_id: str, label: str, slug: str, kind: str, checked: str, 
     )
 
 
+def _skin_switch_css(catalog: dict) -> str:
+    count = 0
+    for items in catalog["sections"].values():
+        for item in items:
+            count = max(count, len(item.get("skins") or []))
+    lines = []
+    for index in range(1, count + 1):
+        lines.append(
+            ".preview:has(.skin-opt:nth-child(%d) input:checked) "
+            ".skin-frame:nth-child(%d) { display: block; }" % (index, index)
+        )
+    return "\n".join(lines)
+
+
 def _mark_anchor(anchor: str) -> str:
     return (
         f'.codex:has(#{anchor}:target) a[href="#{anchor}"] '
@@ -844,8 +923,11 @@ def build_codex_view(catalog: dict) -> tuple:
 
     Switching a module replaces the main column with every card or wave in
     that module. A level-2 link only sets the hash so the same page scrolls
-    to that entry.
+    to that entry. Below 1100px the rail is a drawer; below 768px each card
+    stacks in one column.
     """
+    if NARROW_MQ not in CODEX_LAYOUT_CSS:
+        die("layout CSS is missing the drawer breakpoint")
     _wave_columns()
     modules = []
     for key, title, blurb in CODEX_MODULES:
@@ -912,16 +994,21 @@ def build_codex_view(catalog: dict) -> tuple:
         '<div class="codex-shell">'
         '<label class="codex-backdrop" for="codex-drawer" aria-hidden="true"></label>'
         '<aside class="codex-aside" aria-label="图鉴目录">'
+        '<div class="drawer-bar">'
+        '<p class="rail-kicker">目录</p>'
+        '<label class="drawer-close" for="codex-drawer" title="关闭">'
+        f'<span class="sr">关闭</span>{glyph("close")}</label>'
+        "</div>"
         '<div class="rail-block"><p class="rail-kicker">模块</p>'
         f'<div class="mod-row">{"".join(module_btns)}</div></div>'
         '<div class="rail-block"><p class="rail-kicker">条目</p>'
         f'{"".join(item_navs)}</div>'
-        '<label class="drawer-close" for="codex-drawer" title="关闭">'
-        f'<span class="sr">关闭</span>{glyph("close")}</label>'
         "</aside>"
         '<div class="codex-main">'
+        '<div class="codex-toolbar">'
         '<label class="codex-drawer-btn" for="codex-drawer" title="目录">'
         f'<span class="sr">打开目录</span>{glyph("menu")}</label>'
+        "</div>"
         f'{"".join(sections)}'
         "</div></div>"
         "<script>"
@@ -930,7 +1017,8 @@ def build_codex_view(catalog: dict) -> tuple:
         "if (!root) return;"
         'var drawer = document.getElementById("codex-drawer");'
         "if (!drawer) return;"
-        'function narrow() { return window.matchMedia("(max-width: 860px)").matches; }'
+        f'var narrowQuery = window.matchMedia("{NARROW_MQ}");'
+        "function narrow() { return narrowQuery.matches; }"
         "function syncDrawer() {"
         'document.body.style.overflow = drawer.checked && narrow() ? "hidden" : "";'
         "if (drawer.checked && narrow()) {"
@@ -941,6 +1029,12 @@ def build_codex_view(catalog: dict) -> tuple:
         "}"
         "}"
         'drawer.addEventListener("change", syncDrawer);'
+        'if (narrowQuery.addEventListener) {'
+        'narrowQuery.addEventListener("change", function () {'
+        "if (!narrow()) drawer.checked = false;"
+        "syncDrawer();"
+        "});"
+        "}"
         'root.addEventListener("click", function (event) {'
         'var link = event.target.closest ? event.target.closest("a.item-link") : null;'
         "if (!link || !drawer.checked || !narrow()) return;"
@@ -955,20 +1049,20 @@ def build_codex_view(catalog: dict) -> tuple:
         "})();"
         "</script></div>"
     )
-    return shell, CODEX_LAYOUT_CSS + "\n" + "\n".join(rules) + "\n"
+    return shell, "\n".join((CODEX_LAYOUT_CSS, _skin_switch_css(catalog), "\n".join(rules), ""))
 
 
 CODEX_LAYOUT_CSS = """
 .codex { position: relative; }
 .codex-shell {
   display: grid; grid-template-columns: 252px minmax(0, 1fr);
-  gap: 18px; align-items: start; padding-bottom: 28px;
+  gap: 20px; align-items: start; padding-bottom: 28px;
 }
 .sr {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
-.codex-drawer, .mod-btn input {
+.codex-drawer, .mod-btn input, .skin-opt input {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
@@ -978,18 +1072,20 @@ CODEX_LAYOUT_CSS = """
   background: var(--card); border: 1px solid var(--line); border-radius: 18px;
   box-shadow: var(--shadow); padding: 12px;
 }
+.drawer-bar, .codex-toolbar { display: none; }
 .rail-kicker {
   margin: 0 0 6px; color: var(--muted); font-size: 12px; letter-spacing: .06em;
 }
 .rail-block + .rail-block { margin-top: 14px; }
 .mod-row { display: flex; gap: 4px; }
-.mod-btn, .item-link, .codex-drawer-btn, .drawer-close {
+.mod-btn, .item-link, .codex-drawer-btn, .drawer-close, .skin-opt {
   position: relative; cursor: pointer; user-select: none; color: var(--text);
 }
 .mod-btn {
-  flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  min-width: 0; padding: 6px 2px 5px; border-radius: 14px;
-  border: 1px solid transparent; background: var(--chip); font-size: 11px; line-height: 1.2;
+  flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; min-width: 0; min-height: 48px; padding: 6px 2px;
+  border-radius: 14px; border: 1px solid transparent; background: var(--chip);
+  font-size: 12px; line-height: 1.2;
 }
 .mod-btn svg, .codex-drawer-btn svg, .drawer-close svg {
   width: 22px; height: 22px; fill: none; stroke: currentColor;
@@ -999,7 +1095,7 @@ CODEX_LAYOUT_CSS = """
 .item-nav { display: none; flex-direction: column; gap: 4px; }
 .item-link {
   display: flex; align-items: center; gap: 8px;
-  padding: 4px 6px; border-radius: 12px; border: 1px solid transparent;
+  min-height: 44px; padding: 6px 8px; border-radius: 12px; border: 1px solid transparent;
   font-size: 14px; color: inherit; text-decoration: none;
 }
 .item-link img, .wave-mark {
@@ -1009,23 +1105,43 @@ CODEX_LAYOUT_CSS = """
 .wave-mark {
   display: grid; place-items: center; font-weight: 700; font-size: 13px;
 }
-.item-link:hover, .mod-btn:hover { border-color: var(--gold); }
-.mod-btn:focus-within, .codex-drawer-btn:focus-within, .drawer-close:focus-within {
+.item-link:hover, .mod-btn:hover, .skin-opt:hover { border-color: var(--gold); }
+.mod-btn:focus-within, .codex-drawer-btn:focus-within, .drawer-close:focus-within,
+.item-link:focus-visible, .skin-opt:focus-within {
   outline: 2px solid var(--gold); outline-offset: 2px;
 }
-.codex-drawer-btn, .drawer-close { display: none; }
-.codex-main { padding-bottom: calc(100vh - 8rem); }
+.codex-main { min-width: 0; padding-bottom: calc(100vh - 8rem); }
 .codex-section { display: none; margin: 0; }
-.codex-section > header h2 { margin: 0; font-size: 28px; }
-.codex-section > header p { margin: 6px 0 14px; color: var(--muted); }
+.codex-section > header h2 {
+  margin: 0; font-size: clamp(28px, 2.4vw, 36px); line-height: 1.15;
+}
+.codex-section > header p {
+  margin: 8px 0 16px; max-width: 68ch; color: var(--muted);
+}
+.codex .item-panel { padding: 16px; }
 .item-panel { scroll-margin-top: 16px; }
-.item-panel + .item-panel { margin-top: 14px; }
+.item-panel + .item-panel { margin-top: 16px; }
 .item-panel:target { box-shadow: inset 0 0 0 2px var(--gold), var(--shadow); }
 .detail {
-  display: grid; grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  display: grid; grid-template-columns: minmax(216px, 248px) minmax(0, 1fr);
   gap: 16px; align-items: start;
 }
-.detail .portrait { aspect-ratio: 1; }
+.preview { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.detail-copy { min-width: 0; }
+.identity h3 { margin: 0; }
+.identity .badge { margin-top: 8px; }
+.detail .portrait { aspect-ratio: 1; width: 100%; }
+.skin-frame { display: none; }
+.skins { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.skin-opt {
+  display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px;
+  margin: 0; padding: 0; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--well);
+}
+.skin-opt img { width: 30px; height: 30px; object-fit: contain; pointer-events: none; }
+.skin-opt:has(input:checked) {
+  border-color: var(--gold); box-shadow: inset 0 0 0 2px var(--gold);
+}
 dl.card-stats {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 10px; margin: 12px 0 0;
@@ -1037,41 +1153,56 @@ dl.card-stats {
 .stat-tile dt { font-size: 13px; font-weight: 650; }
 .stat-tile dd {
   margin: 2px 0 0; text-align: left; font-size: 22px; font-weight: 700;
+  line-height: 1.25; overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
 .stat-tile.is-zero dd, .stat-tile.is-zero .wave-num { color: var(--muted); font-weight: 600; }
 .wave-num { display: block; line-height: 1.15; }
 .stat-tile .hint { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; font-weight: 400; }
 .wave-scale {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   margin: 8px 0 0; color: var(--muted); font-size: 14px;
 }
 .scale-chip {
-  background: var(--well); color: var(--text); border-radius: 999px; padding: 2px 10px;
+  background: var(--well); color: var(--text); border-radius: 999px; padding: 4px 12px;
 }
-.wave-group { margin: 14px 0 0; }
+.wave-group { margin: 16px 0 0; }
 .wave-group h4 {
   margin: 0 0 8px; color: var(--muted); font-size: 13px; font-weight: 650; letter-spacing: .04em;
 }
-.codex .footnote, .codex .callout { margin-top: 14px; }
+.codex .footnote, .codex .callout { margin-top: 16px; }
 .codex-drawer:focus-visible ~ .codex-shell .codex-drawer-btn {
   outline: 2px solid var(--gold); outline-offset: 2px;
 }
 .codex-backdrop { display: none; }
-@media (min-width: 861px) {
-  .codex-drawer { display: none; }
-}
-@media (max-width: 860px) {
-  .codex-shell { grid-template-columns: 1fr; }
+@media (max-width: 1099px) {
+  body { overflow-x: clip; }
+  .codex-shell { grid-template-columns: 1fr; gap: 0; }
+  .codex-toolbar {
+    display: flex; align-items: center; position: sticky; top: 0; z-index: 30;
+    min-height: 64px;
+    margin: 0 calc(50% - 50vw) 20px;
+    padding: max(10px, env(safe-area-inset-top)) max(var(--gutter), env(safe-area-inset-right)) 10px max(var(--gutter), env(safe-area-inset-left));
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
   .codex-drawer-btn {
-    display: inline-grid; place-items: center; position: sticky; z-index: 30;
-    top: 12px; width: 44px; height: 44px; margin: 0 0 10px;
+    display: inline-grid; place-items: center; width: 48px; height: 48px;
     border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--text);
     box-shadow: var(--shadow);
   }
-  .item-panel { scroll-margin-top: 68px; }
+  .item-panel { scroll-margin-top: 88px; }
+  .drawer-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    position: sticky; top: 0; z-index: 2;
+    margin: -14px -14px 12px;
+    padding: max(12px, env(safe-area-inset-top)) 14px 10px;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+  }
+  .drawer-bar .rail-kicker { margin: 0; font-size: 13px; }
   .drawer-close {
-    display: grid; place-items: center; width: 36px; height: 36px; margin-left: auto;
+    display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px;
     border-radius: 12px; border: 1px solid var(--line); background: var(--chip);
   }
   .codex-drawer:checked ~ .codex-shell .codex-backdrop {
@@ -1080,19 +1211,58 @@ dl.card-stats {
   }
   .codex-aside {
     position: fixed; z-index: 41; top: 0; left: 0; right: auto;
-    width: min(320px, 88vw); height: 100vh; height: 100dvh; max-height: none;
+    width: min(22rem, calc(100vw - 48px)); height: 100vh; height: 100dvh; max-height: none;
     border-radius: 0 18px 18px 0;
     box-shadow: 16px 0 40px rgba(0, 0, 0, .22);
     transform: translateX(-105%); visibility: hidden;
     transition: transform .18s ease, visibility .18s ease;
     overscroll-behavior: contain;
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding: 14px 14px max(16px, env(safe-area-inset-bottom));
   }
   .codex-drawer:checked ~ .codex-shell .codex-aside {
     transform: translateX(0); visibility: visible;
   }
-  .detail { grid-template-columns: 1fr; }
-  .detail .portrait { max-width: 220px; }
+  .mod-row { flex-wrap: wrap; gap: 6px; }
+  .mod-btn { flex: 1 1 56px; min-width: 52px; min-height: 52px; }
+  .item-nav { gap: 6px; }
+  .item-link { min-height: 48px; padding: 8px 10px; }
+  .item-link img, .wave-mark { width: 36px; height: 36px; flex-basis: 36px; }
+}
+@media (min-width: 768px) and (max-width: 1099px) {
+  .detail { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); gap: 18px; }
+}
+@media (max-width: 767px) {
+  .codex-section > header { margin-bottom: 4px; }
+  .codex-section > header h2 { font-size: 26px; }
+  .codex-section > header p { margin: 8px 0 14px; font-size: 15px; }
+  .codex .item-panel { padding: 16px; }
+  .item-panel + .item-panel { margin-top: 18px; }
+  .detail {
+    grid-template-columns: 148px minmax(0, 1fr);
+    grid-template-areas:
+      "portrait identity"
+      "skins skins"
+      "stats stats"
+      "note note";
+    gap: 12px 14px;
+    align-items: center;
+  }
+  .preview, .detail-copy { display: contents; }
+  .detail .portrait { grid-area: portrait; width: 148px; }
+  .identity { grid-area: identity; min-width: 0; align-self: center; }
+  .skins { grid-area: skins; justify-content: flex-start; width: auto; gap: 10px; }
+  .detail .card-stats { grid-area: stats; margin: 0; }
+  .detail .note { grid-area: note; margin: 0; }
+  .skin-opt { width: 48px; height: 48px; flex-basis: 48px; }
+  .skin-opt img { width: 34px; height: 34px; }
+  dl.card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .stat-tile { padding: 12px; }
+  .stat-tile dd { font-size: clamp(16px, 4.8vw, 20px); }
+  .codex .note { font-size: 14px; line-height: 1.55; }
+  .wave-group h4 { margin-bottom: 8px; }
+}
+@media (min-width: 1100px) {
+  .codex-drawer { display: none; }
 }
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
@@ -1139,6 +1309,24 @@ def economy_from(main_gd: str, buildings: list) -> dict:
         "farm_wood": produces["rate"],
         "workshop_tower_damage": bonus["tower_damage"],
     }
+
+
+def _check_skin_switcher(html: str) -> None:
+    start = html.find('data-item="units-villager"')
+    end = html.find('data-item="units-spearman"')
+    if start < 0 or end < start:
+        die("villager card is missing from the codex page")
+    block = html[start:end]
+    if "<div class=\"portrait\">" not in block or "<div class=\"skins\"" not in block:
+        die("villager needs a portrait and a skin thumbnail list")
+    portrait = block.split('<div class="portrait">', 1)[1]
+    inside, _, after = portrait.partition("</div>")
+    if "skin-opt" in inside or "skin-frame" not in inside:
+        die("skin thumbnails must not sit inside the preview")
+    if not after.lstrip().startswith('<div class="skins"'):
+        die("skin thumbnail list must follow the preview")
+    if "max-width: 767px" not in html or NARROW_MQ not in html:
+        die("responsive breakpoints missing from the codex page")
 
 
 def main() -> None:
@@ -1251,7 +1439,9 @@ def main() -> None:
         json.dumps(catalog, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    (OUT / "index.html").write_text(render_page(catalog), encoding="utf-8")
+    page = render_page(catalog)
+    _check_skin_switcher(page)
+    (OUT / "index.html").write_text(page, encoding="utf-8")
     counts = catalog["counts"]
     total = sum(counts.values())
     print(
