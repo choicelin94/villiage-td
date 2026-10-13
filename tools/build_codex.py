@@ -133,6 +133,36 @@ TAG_ZH = {
 }
 PEOPLE_VOLUME = "walker"
 WAVE_FIELDS = ("hp", "speed", "gap", "normal", "fast", "elite", "boss")
+# Display groups for the codex wave panel. Keys must match WAVE_FIELDS.
+# Counts are how many of that kind spawn; hp/speed/gap are the wave's baselines.
+WAVE_GROUPS = (
+    (
+        "counts",
+        "本波出场",
+        (
+            ("normal", "普通", "普通僵尸"),
+            ("fast", "迅捷", "迅捷僵尸"),
+            ("elite", "精锐", "持枪精锐"),
+            ("boss", "首领", "本波首领"),
+        ),
+    ),
+    (
+        "scale",
+        "缩放基准",
+        (
+            ("hp", "基准生命", "和第 1 波的生命比"),
+            ("speed", "基准移速", "还没乘 WORLD_SCALE"),
+            ("gap", "间隔", "出怪间隔，秒"),
+        ),
+    ),
+)
+WAVE_FOOTNOTE = (
+    "卡片上的生命和移速已经是第 1 波的世界单位。后面每一波按相对第 1 波的比例缩放："
+    "生命取 round(卡片生命 × 本波基准生命 / 第 1 波基准生命)，"
+    "移速取卡片移速 × 本波基准移速 / 第 1 波基准移速。"
+    "这里的基准移速还没有乘 WORLD_SCALE，它只用来算这个比例。"
+    "被感染的村民是单独的 spear_infected，不再在普通僵尸上再乘 0.65。"
+)
 
 
 def die(message: str) -> None:
@@ -524,18 +554,20 @@ def wave_rows(waves: list) -> list:
 def render_page(catalog: dict) -> str:
     sections = {
         "units": ("友方单位", "Units", "村民会出场。矛兵和工匠已写入 Balance，对局还不会生成。"),
-        "enemies": ("敌人", "Enemies", "卡片是第 1 波的世界单位。后面的波次按相对第 1 波的比例缩放。"),
+        "enemies": ("敌人", "Enemies", "卡片是第 1 波的世界单位。波次说明在卡片下面，一次只看一波。"),
         "buildings": ("建筑", "Buildings", "塔立着就会攻击，不用派人。房屋立着就给床位，农场立着就产木材。"),
         "scenery": ("场景", "Scenery", "树和岩石挡住建造。草地和道路是地面，不进图鉴。"),
     }
     nav = []
     blocks = []
+    wave_css = ""
     for key, (zh, en, blurb) in sections.items():
         nav.append(f'<a href="#{key}">{esc(zh)}</a>')
         items = [render_card(item) for item in catalog["sections"][key]]
         extra = ""
         if key == "enemies":
-            extra = render_waves(catalog["waves"])
+            nav.append('<a href="#waves">波次</a>')
+            extra, wave_css = render_waves(catalog["waves"])
         if key == "buildings":
             extra = render_economy(catalog["economy"])
         blocks.append(
@@ -674,6 +706,7 @@ tr + tr td, tr + tr th {{ border-top: 1px solid var(--line); }}
 }}
 footer {{ width: min(1120px, calc(100% - 32px)); margin: 0 auto 32px; color: var(--muted); font-size: 13px; }}
 a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
+{wave_css}
 </style>
 </head>
 <body>
@@ -719,24 +752,331 @@ def render_card(item: dict) -> str:
     )
 
 
-def render_waves(rows: list) -> str:
-    body = []
-    for row in rows:
-        body.append(
-            "<tr>"
-            f"<td>第 {row['wave']} 波</td>"
-            f"<td>{row['normal']}</td><td>{fmt_num(row['hp'])}</td><td>{fmt_num(row['speed'])}</td>"
-            f"<td>{fmt_num(row['gap'])}</td><td>{row['fast']}</td>"
-            f"<td>{row['elite']}</td><td>{row['boss']}</td>"
-            "</tr>"
+def _wave_columns() -> list:
+    columns = []
+    seen = set()
+    for group, _title, cols in WAVE_GROUPS:
+        for key, label, hint in cols:
+            if key in seen:
+                die(f"duplicate wave column {key}")
+            seen.add(key)
+            columns.append((group, key, label, hint))
+    if seen != set(WAVE_FIELDS):
+        die(f"wave columns {sorted(seen)} do not match WAVE_FIELDS")
+    return columns
+
+
+def _wave_css(count: int) -> str:
+    show = []
+    selected = []
+    focused = []
+    for index in range(1, count + 1):
+        show.append(
+            f"#wave-pick-{index}:checked ~ .wave-panel[data-wave=\"{index}\"] {{ display: block; }}"
         )
+        selected.append(f"#wave-pick-{index}:checked ~ .wave-tabs label[for=\"wave-pick-{index}\"]")
+        focused.append(
+            f"#wave-pick-{index}:focus-visible ~ .wave-tabs label[for=\"wave-pick-{index}\"]"
+        )
+    hide = []
+    for _group, key, _label, _hint in _wave_columns():
+        hide.append(
+            f".waves:not(:has(#col-{key}:checked)) [data-col=\"{key}\"] {{ display: none; }}"
+        )
+    group_hide = []
+    for group, _title, cols in WAVE_GROUPS:
+        chain = "".join(f":not(:has(#col-{key}:checked))" for key, _label, _hint in cols)
+        group_hide.append(f".waves{chain} [data-group=\"{group}\"] {{ display: none; }}")
     return (
-        '<div class="table-wrap"><table>'
-        "<thead><tr><th>波次</th><th>普通</th><th>基准生命</th><th>基准移速</th>"
-        "<th>间隔</th><th>迅捷</th><th>精锐</th><th>首领</th></tr></thead>"
-        f"<tbody>{''.join(body)}</tbody></table></div>"
-        '<p class="footnote">卡片上的生命和移速已经是第 1 波的世界单位。后面每一波按相对第 1 波的比例缩放：生命取 round(卡片生命 × 本波基准生命 / 第 1 波基准生命)，移速取卡片移速 × 本波基准移速 / 第 1 波基准移速。表里的基准移速还没有乘 WORLD_SCALE，它只用来算这个比例。被感染的村民是单独的 spear_infected，不再在普通僵尸上再乘 0.65。</p>'
+        WAVE_PANEL_CSS
+        + "\n"
+        + "\n".join(show)
+        + "\n"
+        + ",\n".join(selected)
+        + " {\n"
+        "  background: var(--text);\n"
+        "  color: var(--bg);\n"
+        "  border-color: transparent;\n"
+        "  font-weight: 700;\n"
+        "}\n"
+        + ",\n".join(focused)
+        + " {\n"
+        "  outline: 2px solid var(--gold);\n"
+        "  outline-offset: 2px;\n"
+        "}\n"
+        + "\n".join(hide)
+        + "\n"
+        + "\n".join(group_hide)
+        + "\n"
+        ".waves:not(:has(#col-hp:checked)):not(:has(#col-speed:checked)) .wave-scale { display: none; }\n"
+        ".waves:not(:has(.wave-col input:checked)) .wave-empty { display: block; }\n"
+        ".waves:not(:has(.wave-col input:checked)) .wave-group { display: none; }\n"
     )
+
+
+def render_waves(rows: list) -> tuple:
+    """One tab per wave, plus a column picker that stays outside the tabs.
+
+    Rows come from data/enemies.json via wave_rows(). Column keys are WAVE_GROUPS,
+    checked against WAVE_FIELDS so the picker cannot drift from the match data.
+    """
+    if not rows:
+        die("waves are empty")
+    _wave_columns()
+    ref = rows[0]
+    ref_hp = float(ref["hp"]) or 1.0
+    ref_speed = float(ref["speed"]) or 1.0
+    picks = []
+    tabs = []
+    panels = []
+    for row in rows:
+        number = int(row["wave"])
+        checked = " checked" if number == int(rows[0]["wave"]) else ""
+        picks.append(
+            f'<input class="wave-pick" type="radio" name="wave-pick" '
+            f'id="wave-pick-{number}" aria-controls="wave-panel-{number}"{checked}>'
+        )
+        tabs.append(f'<label for="wave-pick-{number}">第 {number} 波</label>')
+        hp_ratio = float(row["hp"]) / ref_hp
+        speed_ratio = float(row["speed"]) / ref_speed
+        groups = []
+        for group, title, cols in WAVE_GROUPS:
+            stats = []
+            for key, label, hint in cols:
+                value = row[key]
+                mark = ""
+                if group == "counts":
+                    mark = " is-present" if int(value) > 0 else " is-zero"
+                stats.append(
+                    f'<div class="wave-stat{mark}" data-col="{esc(key)}">'
+                    f"<dt>{esc(label)}</dt>"
+                    f"<dd><span class=\"wave-num\">{esc(fmt_num(value))}</span>"
+                    f'<span class="hint">{esc(hint)}</span></dd></div>'
+                )
+            groups.append(
+                f'<section class="wave-group" data-group="{esc(group)}">'
+                f"<h4>{esc(title)}</h4>"
+                f'<dl class="wave-stats">{"".join(stats)}</dl></section>'
+            )
+        panels.append(
+            f'<article class="wave-panel" id="wave-panel-{number}" data-wave="{number}">'
+            f"<h3>第 {number} 波</h3>"
+            f'<p class="wave-scale"><span class="wave-scale-label">相对第 1 波</span>'
+            f'<span data-col="hp">生命 ×{esc(fmt_num(hp_ratio))}</span>'
+            f'<span data-col="speed">移速 ×{esc(fmt_num(speed_ratio))}</span></p>'
+            f'<p class="wave-empty">可选栏里的字段都已隐藏。勾选右侧项目即可显示。</p>'
+            f'{"".join(groups)}</article>'
+        )
+    sidebar = []
+    for group, title, cols in WAVE_GROUPS:
+        sidebar.append(f'<p class="wave-aside-kicker">{esc(title)}</p>')
+        for key, label, _hint in cols:
+            sidebar.append(
+                f'<label class="wave-col" for="col-{esc(key)}">'
+                f'<input type="checkbox" id="col-{esc(key)}" checked> '
+                f"<span>{esc(label)}</span></label>"
+            )
+    html = (
+        '<div class="waves" id="waves" data-waves>'
+        '<input class="wave-drawer" type="checkbox" id="wave-drawer" aria-label="打开可选栏">'
+        '<div class="waves-head"><div class="waves-title">'
+        "<h3>波次说明</h3>"
+        '<p class="waves-lead">一次只看一波。可选栏决定显示哪些字段，换波次时不会收起。</p>'
+        "</div>"
+        '<label class="waves-drawer-btn" for="wave-drawer">可选栏</label></div>'
+        '<label class="wave-backdrop" for="wave-drawer" aria-hidden="true"></label>'
+        '<div class="waves-layout"><div class="waves-main">'
+        '<fieldset class="wave-switch">'
+        '<legend class="sr">选择波次</legend>'
+        f'{"".join(picks)}'
+        f'<div class="wave-tabs">{"".join(tabs)}</div>'
+        f'{"".join(panels)}'
+        "</fieldset></div>"
+        '<aside class="wave-aside" id="wave-columns" aria-label="可选栏">'
+        '<div class="wave-aside-bar"><h3>可选栏</h3>'
+        '<label class="wave-aside-close" for="wave-drawer">关闭</label></div>'
+        "<p>勾选后每一波都显示。换到别的波次，这一栏还在。</p>"
+        f'{"".join(sidebar)}'
+        "</aside></div>"
+        f'<p class="footnote">{esc(WAVE_FOOTNOTE)}</p>'
+        "<script>"
+        "(function () {"
+        'var root = document.getElementById("waves");'
+        "if (!root) return;"
+        'var cols = root.querySelectorAll(".wave-col input");'
+        'var key = "codex-wave-columns";'
+        "try {"
+        'var saved = JSON.parse(localStorage.getItem(key) || "null");'
+        'if (saved && typeof saved === "object") {'
+        "cols.forEach(function (input) {"
+        "if (Object.prototype.hasOwnProperty.call(saved, input.id)) input.checked = !!saved[input.id];"
+        "});"
+        "}"
+        "} catch (e) {}"
+        "function store() {"
+        "var state = {};"
+        "cols.forEach(function (input) { state[input.id] = input.checked; });"
+        "try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) {}"
+        "}"
+        'cols.forEach(function (input) { input.addEventListener("change", store); });'
+        'var drawer = document.getElementById("wave-drawer");'
+        "if (!drawer) return;"
+        "function narrow() { return window.matchMedia(\"(max-width: 860px)\").matches; }"
+        "function syncDrawer() {"
+        "document.body.style.overflow = drawer.checked && narrow() ? \"hidden\" : \"\";"
+        "if (drawer.checked && narrow()) {"
+        'var first = root.querySelector(".wave-col input");'
+        "if (first) first.focus();"
+        "}"
+        "}"
+        'drawer.addEventListener("change", syncDrawer);'
+        'document.addEventListener("keydown", function (event) {'
+        "if (event.key === \"Escape\" && drawer.checked) {"
+        "drawer.checked = false;"
+        "syncDrawer();"
+        "drawer.focus();"
+        "}"
+        "});"
+        "})();"
+        "</script></div>"
+    )
+    return html, _wave_css(len(rows))
+
+
+WAVE_PANEL_CSS = """
+.waves { margin-top: 28px; scroll-margin-top: 16px; position: relative; }
+.waves-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px;
+}
+.waves-title { min-width: 0; }
+.waves h3 { margin: 0; font-size: 22px; }
+.waves-lead { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.waves-drawer-btn, .wave-aside-close {
+  display: none;
+  align-items: center; justify-content: center;
+  min-height: 40px; padding: 8px 14px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 650;
+  cursor: pointer; user-select: none;
+}
+.wave-drawer:focus-visible ~ .waves-head .waves-drawer-btn,
+.wave-aside-close:focus-visible {
+  outline: 2px solid var(--gold); outline-offset: 2px;
+}
+.wave-backdrop { display: none; }
+.wave-drawer, .sr, .wave-pick {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.waves-layout {
+  display: grid; grid-template-columns: minmax(0, 1fr) 232px;
+  gap: 16px; align-items: start;
+}
+.wave-switch { border: 0; margin: 0; padding: 0; min-width: 0; min-inline-size: 0; }
+.wave-tabs {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(4.8em, 1fr));
+  gap: 6px; margin: 0 0 12px; padding: 6px;
+  background: var(--chip); border: 1px solid var(--line); border-radius: 16px;
+}
+.wave-tabs label {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 40px; padding: 6px 8px; border-radius: 999px;
+  border: 1px solid transparent; cursor: pointer; user-select: none;
+  font-size: 14px; line-height: 1.2; text-align: center;
+}
+.wave-tabs label:hover { background: var(--card); }
+.wave-panel { display: none; padding: 16px 16px 14px; }
+.wave-panel h3 { font-size: 28px; line-height: 1.15; }
+.wave-scale {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+  margin: 8px 0 14px; color: var(--muted); font-size: 14px;
+}
+.wave-scale span[data-col] {
+  background: var(--well); color: var(--text);
+  border-radius: 999px; padding: 2px 10px;
+}
+.wave-empty { display: none; margin: 0 0 8px; color: var(--muted); }
+.wave-group + .wave-group { margin-top: 14px; }
+.wave-group h4 {
+  margin: 0 0 8px; color: var(--muted); font-size: 13px; font-weight: 650;
+  letter-spacing: .04em;
+}
+dl.wave-stats {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px; margin: 0;
+}
+.wave-stat {
+  background: var(--well); border-radius: 14px; padding: 10px 12px; min-width: 0;
+}
+.wave-stat.is-present { box-shadow: inset 0 0 0 1px var(--gold); }
+.wave-stat dt { font-size: 14px; font-weight: 650; }
+.wave-stat dd {
+  display: flex; flex-direction: column; align-items: flex-start;
+  margin: 2px 0 0; text-align: left;
+}
+.wave-num {
+  font-size: 28px; font-weight: 700; line-height: 1.15;
+  font-variant-numeric: tabular-nums; color: var(--text);
+}
+.wave-stat.is-zero .wave-num { color: var(--muted); font-weight: 600; }
+.wave-stat .hint {
+  margin-top: 2px; color: var(--muted); font-size: 12px; font-weight: 400; line-height: 1.3;
+}
+.wave-aside {
+  position: sticky; top: 16px; align-self: start;
+  max-height: calc(100vh - 32px); overflow: auto;
+  background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: var(--shadow); padding: 14px 14px 10px;
+}
+.wave-aside-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wave-aside h3 { font-size: 18px; }
+.wave-aside > p { margin: 6px 0 8px; color: var(--muted); font-size: 13px; }
+.wave-aside-kicker {
+  margin: 12px 0 2px; color: var(--muted); font-size: 12px; letter-spacing: .04em;
+}
+.wave-col {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 40px; margin: 0; padding: 4px 6px; border-radius: 10px;
+  cursor: pointer; font-size: 15px;
+}
+.wave-col:hover { background: var(--chip); }
+.wave-col input { width: 18px; height: 18px; margin: 0; accent-color: var(--gold); }
+.waves .footnote { margin: 14px 0 0; }
+@media (min-width: 861px) {
+  .wave-drawer { display: none; }
+}
+@media (max-width: 860px) {
+  .waves-drawer-btn { display: inline-flex; }
+  .wave-aside-close { display: inline-flex; }
+  .waves-layout { grid-template-columns: 1fr; }
+  .wave-drawer:checked ~ .waves-head .waves-drawer-btn {
+    background: var(--text); color: var(--bg); border-color: transparent;
+  }
+  .wave-backdrop { display: none; }
+  .wave-drawer:checked ~ .wave-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 40;
+    background: rgba(20, 26, 20, .45);
+  }
+  .wave-aside {
+    position: fixed; z-index: 41; top: 0; right: 0;
+    height: 100vh; height: 100dvh; max-height: none;
+    width: min(300px, 86vw); border-radius: 18px 0 0 18px;
+    box-shadow: -16px 0 40px rgba(0, 0, 0, .22);
+    transform: translateX(105%); visibility: hidden;
+    transition: transform .18s ease, visibility .18s ease;
+    overscroll-behavior: contain;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .wave-drawer:checked ~ .waves-layout .wave-aside {
+    transform: translateX(0); visibility: visible;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wave-aside { transition: none; }
+}
+"""
 
 
 def render_economy(economy: dict) -> str:
