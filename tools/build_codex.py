@@ -864,7 +864,7 @@ def render_waves(rows: list) -> tuple:
             f'<p class="wave-scale"><span class="wave-scale-label">相对第 1 波</span>'
             f'<span data-col="hp">生命 ×{esc(fmt_num(hp_ratio))}</span>'
             f'<span data-col="speed">移速 ×{esc(fmt_num(speed_ratio))}</span></p>'
-            f'<p class="wave-empty">可选栏里的字段都已隐藏。勾选右侧项目即可显示。</p>'
+            f'<p class="wave-empty">可选栏里的字段都已隐藏。勾选左侧项目即可显示。</p>'
             f'{"".join(groups)}</article>'
         )
     sidebar = []
@@ -879,25 +879,27 @@ def render_waves(rows: list) -> tuple:
     html = (
         '<div class="waves" id="waves" data-waves>'
         '<input class="wave-drawer" type="checkbox" id="wave-drawer" aria-label="打开可选栏">'
-        '<div class="waves-head"><div class="waves-title">'
+        '<div class="waves-head">'
+        '<label class="waves-drawer-btn" for="wave-drawer">可选栏</label>'
+        '<div class="waves-title">'
         "<h3>波次说明</h3>"
-        '<p class="waves-lead">一次只看一波。可选栏决定显示哪些字段，换波次时不会收起。</p>'
-        "</div>"
-        '<label class="waves-drawer-btn" for="wave-drawer">可选栏</label></div>'
+        '<p class="waves-lead">一次只看一波。左侧可选栏决定显示哪些字段，换波次时不会收起。</p>'
+        "</div></div>"
         '<label class="wave-backdrop" for="wave-drawer" aria-hidden="true"></label>'
-        '<div class="waves-layout"><div class="waves-main">'
-        '<fieldset class="wave-switch">'
-        '<legend class="sr">选择波次</legend>'
-        f'{"".join(picks)}'
-        f'<div class="wave-tabs">{"".join(tabs)}</div>'
-        f'{"".join(panels)}'
-        "</fieldset></div>"
+        '<div class="waves-layout">'
         '<aside class="wave-aside" id="wave-columns" aria-label="可选栏">'
         '<div class="wave-aside-bar"><h3>可选栏</h3>'
         '<label class="wave-aside-close" for="wave-drawer">关闭</label></div>'
         "<p>勾选后每一波都显示。换到别的波次，这一栏还在。</p>"
         f'{"".join(sidebar)}'
-        "</aside></div>"
+        "</aside>"
+        '<div class="waves-main">'
+        '<fieldset class="wave-switch">'
+        '<legend class="sr">选择波次</legend>'
+        f'{"".join(picks)}'
+        f'<div class="wave-tabs">{"".join(tabs)}</div>'
+        f'{"".join(panels)}'
+        "</fieldset></div></div>"
         f'<p class="footnote">{esc(WAVE_FOOTNOTE)}</p>'
         "<script>"
         "(function () {"
@@ -946,7 +948,7 @@ def render_waves(rows: list) -> tuple:
 WAVE_PANEL_CSS = """
 .waves { margin-top: 28px; scroll-margin-top: 16px; position: relative; }
 .waves-head {
-  display: flex; align-items: flex-start; justify-content: space-between;
+  display: flex; align-items: flex-start; justify-content: flex-start;
   gap: 12px; margin-bottom: 12px;
 }
 .waves-title { min-width: 0; }
@@ -971,7 +973,7 @@ WAVE_PANEL_CSS = """
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 .waves-layout {
-  display: grid; grid-template-columns: minmax(0, 1fr) 232px;
+  display: grid; grid-template-columns: 232px minmax(0, 1fr);
   gap: 16px; align-items: start;
 }
 .wave-switch { border: 0; margin: 0; padding: 0; min-width: 0; min-inline-size: 0; }
@@ -1060,11 +1062,11 @@ dl.wave-stats {
     background: rgba(20, 26, 20, .45);
   }
   .wave-aside {
-    position: fixed; z-index: 41; top: 0; right: 0;
+    position: fixed; z-index: 41; top: 0; left: 0; right: auto;
     height: 100vh; height: 100dvh; max-height: none;
-    width: min(300px, 86vw); border-radius: 18px 0 0 18px;
-    box-shadow: -16px 0 40px rgba(0, 0, 0, .22);
-    transform: translateX(105%); visibility: hidden;
+    width: min(300px, 86vw); border-radius: 0 18px 18px 0;
+    box-shadow: 16px 0 40px rgba(0, 0, 0, .22);
+    transform: translateX(-105%); visibility: hidden;
     transition: transform .18s ease, visibility .18s ease;
     overscroll-behavior: contain;
     padding-bottom: max(16px, env(safe-area-inset-bottom));
