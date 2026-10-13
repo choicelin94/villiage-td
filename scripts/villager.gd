@@ -11,51 +11,45 @@ var claim_left := -1.0
 var job: Building = null
 var selected := false
 
-var _tex: Texture2D
-var _sprite: Sprite2D
-var _atlas: AtlasTexture
+var _actor: SpineActor
+var _skin := 0
 var _goal := Vector2.ZERO
 var _retarget := 0.0
 var _facing := 2
 var _frame := 0
 var _frame_t := 0.0
+var _steps := 0
 var _path: Array[Vector2i] = []
 var _path_i := 0
 var _held_job := false
 var anchored := false
 
-func setup(p_tex: Texture2D, p_sex: String, p_speed: float) -> void:
+func setup(p_skin: int, p_sex: String, p_speed: float) -> void:
 	sex = p_sex
 	speed = p_speed
-	_tex = p_tex
+	_skin = p_skin
 
 func _ready() -> void:
 	add_to_group("villagers")
 	add_to_group("iso")
-	_atlas = AtlasTexture.new()
-	_atlas.atlas = _tex
-	_sprite = Sprite2D.new()
-	_sprite.texture = _atlas
-	_sprite.centered = false
-	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_sprite.position = Vector2(-LpcFacing.FRAME * 0.5, -LpcFacing.FRAME + 6.0)
-	_sprite.z_as_relative = true
-	_sprite.z_index = 0
-	add_child(_sprite)
+	_actor = SpineActor.new()
+	_actor.kind = "villager"
+	_actor.skin = _skin
+	add_child(_actor)
 	_set_frame(2, 0)
 	_goal = global_position
 	_retarget = randf_range(0.2, 1.0)
 
 func face_texture() -> AtlasTexture:
-	var atlas := AtlasTexture.new()
-	atlas.atlas = _tex
-	atlas.region = LpcFacing.region(0, 2)
-	return atlas
+	if _actor:
+		return _actor.portrait()
+	return AtlasTexture.new()
 
 func get_iso_volume() -> IsoVolume:
 	var vol := IsoVolume.from_feet(global_position)
 	vol.node = self
-	vol.screen_rect = IsoVolume.sprite_rect(_sprite) if _sprite else Rect2(global_position, Vector2(8, 8))
+	var body := _actor.sprite() if _actor else null
+	vol.screen_rect = IsoVolume.sprite_rect(body) if body else Rect2(global_position, Vector2(8, 8))
 	return vol
 
 func _process(delta: float) -> void:
@@ -126,8 +120,10 @@ func _walk(delta: float, game: Node) -> void:
 			_path_i += 1
 			if _path_i >= _path.size():
 				_retarget = 0.0
+			_hold_idle(delta)
 			return
 		_retarget = 0.0
+		_hold_idle(delta)
 		return
 	var dir := vel.normalized()
 	var step_speed := speed * (1.15 if panic else 0.72)
@@ -147,6 +143,7 @@ func _walk(delta: float, game: Node) -> void:
 	_path.clear()
 	_path_i = 0
 	_retarget = 0.0
+	_hold_idle(delta)
 
 func _step_anim(vel: Vector2, delta: float) -> void:
 	# Callers pass a unit direction. A threshold of 1 px rejected those, so a
@@ -154,18 +151,31 @@ func _step_anim(vel: Vector2, delta: float) -> void:
 	if vel.length_squared() > 0.000001:
 		_facing = LpcFacing.row_for(vel)
 	_frame_t += delta
+	_steps += 1
+	var count := 6
+	if _actor:
+		count = maxi(_actor.clip_count("move"), 1)
 	if _frame_t >= 0.09:
 		_frame_t = 0.0
-		_frame = (_frame + 1) % LpcFacing.COLS
-	_set_frame(_facing, _frame)
+		_frame = (_frame + 1) % count
+	if _actor:
+		_actor.show_frame("move", _frame, _facing)
 
 func _set_frame(row: int, frame: int) -> void:
 	_facing = row
 	_frame = frame
-	if _atlas == null:
+	if _actor:
+		_actor.show_frame("idle", frame, row)
+
+func _hold_idle(delta: float) -> void:
+	if _actor == null:
 		return
-	_sprite.flip_h = false
-	_atlas.region = LpcFacing.region(frame, row)
+	_frame_t += delta
+	var count := maxi(_actor.clip_count("idle"), 1)
+	if _frame_t >= 0.1:
+		_frame_t = 0.0
+		_frame = (_frame + 1) % count
+	_actor.show_frame("idle", _frame, _facing)
 
 func _leave(delta: float) -> void:
 	var game := _game()
@@ -211,5 +221,5 @@ func _draw() -> void:
 		col = Color(1, 1, 1, 1)
 	draw_arc(Vector2(0, -8), 22 if selected else 16, 0, TAU, 24, col, 2.0 if selected else 1.4)
 	if refugee and claim_left > 0.0:
-		var bar_y := -float(LpcFacing.FRAME) - 8.0
+		var bar_y := _actor.bar_y() if _actor else -120.0
 		draw_line(Vector2(-14, bar_y), Vector2(-14 + 28.0 * clampf(claim_left / 6.5, 0, 1), bar_y), Color(1, 0.9, 0.3), 3.0)

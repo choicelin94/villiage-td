@@ -6,13 +6,17 @@ A top-down tower defense game on a map about four times the previous area. Zombi
 
 **引擎 / Engine:** Godot 4.7 (GDScript)  
 **玩法切片 / Slice:** 20×20 正方形俯视地图，村落建筑 + 有上限的木墙 + 两种炮塔，村民派工，难民，10 波。  
-**美术 / Art:** 建筑用 Kenney Fantasy Town Kit 2.0（CC0）。村民是穿好衣服的 LPC 男女（身体 + 衣服 + 头发），僵尸是同一套 LPC 体型。行走时按屏幕上的速度选择朝向，脸会跟着移动方向转，不会一直背对镜头。许可证是 CC-BY-SA 3.0（T 恤图层是 OGA-BY 3.0）。详见 [CREDITS.md](CREDITS.md)。 Buildings are Kenney Fantasy Town Kit 2.0 (CC0). Villagers are clothed LPC men and women (body, clothes, and hair). Zombies are the matching LPC body and head. Walk frames follow screen-space velocity, so a character faces the way they move. The character images are CC-BY-SA 3.0. The t-shirt layer is OGA-BY 3.0. See [CREDITS.md](CREDITS.md).
+**美术 / Art:** 建筑用 Kenney Fantasy Town Kit 2.0（CC0）。村民是 LAYERLAB 的 Cute Adventurers 七个皮肤（Spine 4.3 导出的序列帧：待机、跑、倒下、死亡）。怪物是两套手绘哥布林：持矛的是普通尸潮和被感染的村民，持枪的是蛮力和首领。朝向跟屏幕上的速度走，侧面的序列不会倒着播。这两套图都不是 CC0 / CC-BY。Spine 运行时没有打进网页包。详见 [CREDITS.md](CREDITS.md)。 Buildings are Kenney Fantasy Town Kit 2.0 (CC0). Villagers are the seven LAYERLAB Cute Adventurers skins, played from the Spine 4.3 frame export (idle, run, down, death). Monsters are two hand-drawn goblins: the spear goblin is the horde and an infected villager, and the gun goblin is a brute or the boss. Facing follows screen-space velocity, and the side-view cycles are not played backwards. Neither character pack is CC0 or CC-BY. The Spine runtime is not in the web build. See [CREDITS.md](CREDITS.md).
 
 ## 在线试玩 / Play in the browser
 
 单线程网页导出在 [`docs/`](docs/)（关闭了线程，GitHub Pages 不需要 COOP/COEP）。界面默认是简体中文，右上角的「中文」按钮可以改成英文，游戏里同一处不会同时显示两种语言。文字用 Noto Sans SC（OFL）。第一次打开大约要下 47 MB（引擎加字体），请等加载条走完。手机用双指缩放、单指拖动。电脑在开始和离开图标旁边有 `+` / `-`。第一次打开时，镜头对准地图正中的一半（把 20×20 看成 4×4 块，对准中间 2×2 块），手机比电脑更近一些。
 
 The single-threaded web export is in [`docs/`](docs/) (threads off, so GitHub Pages does not need COOP/COEP headers). The game starts in Simplified Chinese. The button at the top right switches the whole interface to English, and each label shows one language at a time. Text uses Noto Sans SC (OFL). The first visit downloads about 47 MB (engine plus font). Wait for the loading bar. Phones pinch to zoom and drag to pan. A computer also has `+` and `-` next to the start and leave icons. The first view centers the middle half of the map (the center 2×2 of a 4×4 split of the 20×20 grid). A phone starts closer than a computer.
+
+网页导出没有打开 GDExtension（`extensions_support` 仍是关的）。官方 spine-godot 4.3 / Godot 4.7.2 的包里有 wasm，但 Spine Runtimes License（2025-04-05）要求集成方持有 Spine Editor 许可证，或者每个玩家自己持有。这个项目没有那份许可证，所以运行时不进仓库，也不进 Pages。页面上的人是同一套 Spine 动画导出的序列帧，脚仍落在原来的椭圆上。本机如果把官方 `bin/` 放进工程，村民会改走 SpineSprite。
+
+The web export leaves GDExtension off (`extensions_support` stays false). The official spine-godot 4.3 build for Godot 4.7.2 includes wasm, but the Spine Runtimes License (2025-04-05) allows shipping that runtime only when the integrator has a Spine Editor license, or every player has one. This project has neither, so the runtime is not in the repo and not on Pages. Characters on the page are the frame sequences exported from those Spine animations, and their feet still sit on the same ellipse. If the official `bin/` folder is added locally, villagers switch to SpineSprite.
 
 发布地址 / public URL, after Pages is turned on:
 

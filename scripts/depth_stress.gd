@@ -319,12 +319,6 @@ func _prop(cell: Vector2i, path: String, key: String) -> void:
 	_quiet(node)
 
 func _build_people() -> void:
-	var texs: Array[Texture2D] = [
-		load("res://assets/people/man_brown.png"),
-		load("res://assets/people/woman.png"),
-		load("res://assets/people/man_blue.png"),
-		load("res://assets/people/man_old.png"),
-	]
 	var props: Array = []
 	for node in get_tree().get_nodes_in_group("iso"):
 		if node.has_method("get_iso_volume"):
@@ -335,7 +329,7 @@ func _build_people() -> void:
 		_bases.append(base)
 		var v := Villager.new()
 		v.position = base
-		v.setup(texs[i % texs.size()], "f" if i % 2 == 1 else "m", 108.0)
+		v.setup(i % 7, "f" if i % 2 == 1 else "m", 108.0)
 		v.anchored = true
 		add_child(v)
 		_quiet(v)
