@@ -1,0 +1,57 @@
+{
+  "_comment": "Speeds and attack_range are final world units, already multiplied by IsoVolume.WORLD_SCALE (1.2708197158225134). Do not scale them again. attack_speed is attacks per second. hp, defense, and attack are points. Only the generic villager is spawned today. Spearman and engineer are the agreed knight and robot roles for a later recruit pass. Contact still infects a villager in one touch; their attack stats are not spent yet.",
+  "units": [
+    {
+      "id": "villager",
+      "display_key": "unit.villager",
+      "faction": "ally",
+      "role": "worker",
+      "skin": "wolf",
+      "skins": ["wolf", "penguin", "raccoon", "frog", "skeleton"],
+      "character": "villager",
+      "hp": 36,
+      "defense": 0,
+      "attack": 4,
+      "attack_speed": 0.8,
+      "move_speed": 137.24852930883145,
+      "attack_range": 45.74950976961048,
+      "cost": { "wood": 0, "gold": 0 },
+      "train_time": 0,
+      "notes": "Cosmetic pool for the auto villagers. move_speed is the old 108 * WORLD_SCALE. Wander still uses 0.72x of it and panic 1.15x, in villager.gd."
+    },
+    {
+      "id": "spearman",
+      "display_key": "unit.spearman",
+      "faction": "ally",
+      "role": "melee",
+      "skin": "knight",
+      "character": "villager",
+      "hp": 80,
+      "defense": 4,
+      "attack": 12,
+      "attack_speed": 1.0,
+      "move_speed": 114.37377442402621,
+      "attack_range": 60.99934635948064,
+      "cost": { "wood": 0, "gold": 40 },
+      "train_time": 8.0,
+      "notes": "Knight sheet (villager_3). move_speed and attack_range are 90 and 48 times WORLD_SCALE. Not spawned until recruitment is wired."
+    },
+    {
+      "id": "engineer",
+      "display_key": "unit.engineer",
+      "faction": "ally",
+      "role": "support",
+      "skin": "robot",
+      "character": "villager",
+      "hp": 60,
+      "defense": 2,
+      "attack": 7,
+      "attack_speed": 0.8,
+      "move_speed": 127.08197158225134,
+      "attack_range": 53.37442806454556,
+      "cost": { "wood": 10, "gold": 30 },
+      "train_time": 10.0,
+      "notes": "Robot sheet (villager_5). Faster repair comes later. move_speed and attack_range are 100 and 42 times WORLD_SCALE."
+    }
+  ]
+}

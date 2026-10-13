@@ -12,36 +12,11 @@ const DIRS: Array[Vector2i] = [
 ]
 const START_WOOD := 100
 const START_GOLD := 70
-const WALL_CAP := 28
-const HOUSE_BEDS := 4
-const TOTAL_WAVES := 10
-const ZOMBIE_SPEED := 72.0 * IsoVolume.WORLD_SCALE
-const VILLAGER_SPEED := 108.0 * IsoVolume.WORLD_SCALE
 const CLAIM_TIME := 6.5
 const REFUGEES_PER_WAVE := 2
 const INFECT_RADIUS := 38.0 * IsoVolume.WORLD_SCALE
-
-const WAVES: Array[Dictionary] = [
-	{"n": 5, "hp": 34, "speed": 72.0, "gap": 0.9, "fast": 0, "brute": 0, "boss": 0},
-	{"n": 7, "hp": 44, "speed": 74.0, "gap": 0.78, "fast": 2, "brute": 0, "boss": 0},
-	{"n": 8, "hp": 54, "speed": 74.0, "gap": 0.7, "fast": 2, "brute": 1, "boss": 0},
-	{"n": 8, "hp": 66, "speed": 76.0, "gap": 0.64, "fast": 3, "brute": 1, "boss": 0},
-	{"n": 9, "hp": 78, "speed": 76.0, "gap": 0.58, "fast": 3, "brute": 2, "boss": 0},
-	{"n": 9, "hp": 90, "speed": 78.0, "gap": 0.54, "fast": 3, "brute": 2, "boss": 0},
-	{"n": 10, "hp": 102, "speed": 78.0, "gap": 0.5, "fast": 4, "brute": 2, "boss": 0},
-	{"n": 10, "hp": 114, "speed": 78.0, "gap": 0.48, "fast": 4, "brute": 3, "boss": 0},
-	{"n": 11, "hp": 126, "speed": 80.0, "gap": 0.46, "fast": 4, "brute": 3, "boss": 0},
-	{"n": 8, "hp": 130, "speed": 76.0, "gap": 0.5, "fast": 3, "brute": 2, "boss": 1},
-]
-
-const KIND_MOD := {
-	"normal": {"hp": 1.0, "speed": 1.0, "scale": 1.05, "dmg": 1, "wood": 2, "gold": 4, "mod": Color(1, 1, 1)},
-	"fast": {"hp": 0.7, "speed": 1.35, "scale": 0.95, "dmg": 1, "wood": 1, "gold": 5, "mod": Color(0.82, 1, 0.78)},
-	"brute": {"hp": 2.2, "speed": 0.7, "scale": 1.3, "dmg": 2, "wood": 3, "gold": 9, "mod": Color(0.72, 0.86, 0.68)},
-	"boss": {"hp": 4.2, "speed": 0.6, "scale": 1.6, "dmg": 3, "wood": 8, "gold": 30, "mod": Color(0.62, 0.82, 0.55)},
-}
-
-const SKIN_COUNT := 7
+const WAVE_CLEAR_WOOD := 8
+const WAVE_CLEAR_GOLD := 14
 
 var wood := START_WOOD
 var gold := START_GOLD
@@ -125,6 +100,10 @@ func _ready() -> void:
 		hud._layout()
 	_refresh_beds()
 	_refresh_hud()
+	if OS.get_environment("TD_BALANCE") == "1":
+		var code := _balance_probe()
+		get_tree().quit(code)
+		return
 	if (_selftest or OS.get_environment("TD_DEMO") == "1") and OS.get_environment("TD_NONE") != "1":
 		_scripted_defense()
 	if _selftest:
@@ -354,8 +333,12 @@ func _spawn_starter_people() -> void:
 func _make_villager(cell: Vector2i, sex: String, as_refugee: bool) -> Villager:
 	var v := Villager.new()
 	v.position = cell_center(cell)
-	v.setup(_skin_i % SKIN_COUNT, sex, VILLAGER_SPEED)
+	var def := Balance.unit("villager")
+	var pool: Array = Balance.villager_skin_pool()
+	var skin_name := str(pool[_skin_i % pool.size()])
 	_skin_i += 1
+	v.configure(def)
+	v.setup(Balance.skin_index("villager", skin_name), sex, float(def.get("move_speed", 0.0)))
 	v.refugee = as_refugee
 	v.claim_left = CLAIM_TIME if as_refugee else -1.0
 	actors.add_child(v)
@@ -613,7 +596,7 @@ func safe_point() -> Vector2:
 	var best_d := INF
 	for cell in buildings:
 		var building: Building = buildings[cell]
-		if building.kind == Building.Kind.HOUSE and building.has_staff():
+		if building.kind == Building.Kind.HOUSE:
 			var d := heart.distance_squared_to(building.global_position)
 			if d < best_d:
 				best_d = d
@@ -658,26 +641,28 @@ func route_from(start: Vector2i) -> Dictionary:
 func can_attack_cell(cell: Vector2i) -> bool:
 	return buildings.has(cell)
 
-func damage_cell(cell: Vector2i, amount: int) -> void:
+func damage_cell(cell: Vector2i, attack: float) -> void:
 	if phase == "win" or phase == "lose":
 		return
 	if not buildings.has(cell):
 		return
 	var building: Building = buildings[cell]
-	_popup(building.global_position + Vector2(0, -40), "-%d" % amount, Color(1, 0.8, 0.45))
-	if building.hurt(amount):
+	var dealt := Balance.damage(attack, building.defense)
+	_popup(building.global_position + Vector2(0, -40), "-%d" % dealt, Color(1, 0.8, 0.45))
+	if building.hurt(dealt):
 		_remove_building(cell, false)
 
-func apply_hit(at: Vector2, damage: int, splash: float, is_fire: bool, target: Node2D) -> void:
+func apply_hit(at: Vector2, attack: float, splash: float, is_fire: bool, target: Node2D) -> void:
 	if is_fire or splash > 0.0:
 		fx.add_child(_burst(at, splash if splash > 0.0 else 28.0, Color(1, 0.45, 0.1)))
 		for z in _living_zombies():
 			if z.global_position.distance_to(at) <= splash:
-				z.hurt(damage)
+				z.hurt(Balance.damage(attack, z.defense))
 	else:
 		fx.add_child(_burst(at, 14.0, Color(0.95, 0.9, 0.7)))
 		if is_instance_valid(target) and target is Zombie and not (target as Zombie).dying:
-			(target as Zombie).hurt(damage)
+			var zombie := target as Zombie
+			zombie.hurt(Balance.damage(attack, zombie.defense))
 		else:
 			var nearest: Zombie = null
 			var best := 26.0
@@ -687,7 +672,7 @@ func apply_hit(at: Vector2, damage: int, splash: float, is_fire: bool, target: N
 					best = d
 					nearest = z
 			if nearest:
-				nearest.hurt(damage)
+				nearest.hurt(Balance.damage(attack, nearest.defense))
 
 func on_zombie_killed(z: Zombie) -> void:
 	if phase == "lose":
@@ -698,18 +683,21 @@ func on_zombie_killed(z: Zombie) -> void:
 	_refresh_hud()
 
 func tower_bonus() -> float:
+	var best := 1.0
 	for cell in buildings:
 		var building: Building = buildings[cell]
-		if building.kind == Building.Kind.WORKSHOP and building.has_staff():
-			return 1.25
-	return 1.0
+		if building.kind != Building.Kind.WORKSHOP:
+			continue
+		var bonus: Dictionary = Balance.building_by_kind("WORKSHOP").get("bonus", {})
+		best = maxf(best, float(bonus.get("tower_damage", 1.0)))
+	return best
 
 func _try_start_wave() -> void:
 	if phase != "prep":
 		return
-	if wave_number >= TOTAL_WAVES:
+	if wave_number >= _wave_count():
 		return
-	var spec: Dictionary = WAVES[wave_number]
+	var spec: Dictionary = Balance.waves()[wave_number]
 	wave_number += 1
 	phase = "combat"
 	spawn_gap = float(spec.gap)
@@ -720,15 +708,15 @@ func _try_start_wave() -> void:
 
 func _compose_wave(spec: Dictionary) -> Array[String]:
 	var list: Array[String] = []
-	for _i in int(spec.n):
-		list.append("normal")
-	for _i in int(spec.fast):
-		list.append("fast")
-	for _i in int(spec.brute):
-		list.append("brute")
+	for _i in int(spec.get("normal", spec.get("n", 0))):
+		list.append("spear_normal")
+	for _i in int(spec.get("fast", 0)):
+		list.append("spear_fast")
+	for _i in int(spec.get("elite", spec.get("brute", 0))):
+		list.append("shooter_elite")
 	list.shuffle()
-	for _i in int(spec.boss):
-		list.append("boss")
+	for _i in int(spec.get("boss", 0)):
+		list.append("shooter_boss")
 	return list
 
 func _tick_spawns(delta: float) -> void:
@@ -741,8 +729,8 @@ func _tick_spawns(delta: float) -> void:
 		_on_wave_cleared()
 
 func _spawn_zombie(kind: String, turned: bool, at: Vector2) -> void:
-	var spec: Dictionary = WAVES[maxi(wave_number, 1) - 1]
-	var mod: Dictionary = KIND_MOD[kind]
+	var id := "spear_infected" if turned else kind
+	var stat := Balance.scaled_enemy(id, maxi(wave_number, 1) - 1)
 	var z := Zombie.new()
 	if turned:
 		z.position = at
@@ -751,22 +739,19 @@ func _spawn_zombie(kind: String, turned: bool, at: Vector2) -> void:
 		var cell := SPAWNS[spawn_cursor % SPAWNS.size()]
 		spawn_cursor += 1
 		z.position = cell_center(cell)
-	var hp := maxi(int(round(float(spec.hp) * float(mod.hp))), 1)
-	if turned:
-		hp = maxi(int(hp * 0.65), 12)
-	# Spear goblins are the horde. Brutes and the boss are the gun goblin, so
-	# the two monster packs stay distinct from each other and from villagers.
-	var visual := "shooter" if kind == "brute" or kind == "boss" else "spear"
-	z.setup(hp, float(spec.speed) * float(mod.speed) * IsoVolume.WORLD_SCALE, float(mod.scale), int(mod.dmg), int(mod.wood), int(mod.gold), kind, Color.WHITE, visual)
+	z.setup(int(stat.hp), float(stat.move_speed), float(stat.scale), int(round(float(stat.attack))), int(stat.wood_reward), int(stat.gold_reward), id, Color.WHITE, str(stat.character))
+	z.defense = float(stat.defense)
+	z.attack_speed = float(stat.attack_speed)
+	z.attack_range = float(stat.attack_range)
+	z.xp_reward = int(stat.xp_reward)
 	actors.add_child(z)
 
 func _on_wave_cleared() -> void:
 	if phase != "combat":
 		return
-	var farms := _staffed_count(Building.Kind.FARM)
-	wood += 8 + farms * 6
-	gold += 14
-	if wave_number >= TOTAL_WAVES:
+	wood += WAVE_CLEAR_WOOD + _farm_wave_wood()
+	gold += WAVE_CLEAR_GOLD
+	if wave_number >= _wave_count():
 		_finish(true)
 		return
 	phase = "prep"
@@ -903,15 +888,17 @@ func _try_place(kind: int, cell: Vector2i) -> bool:
 	if reason != "":
 		hud.flash(reason)
 		return false
-	var stats: Dictionary = Building.STATS[kind]
-	if kind == Building.Kind.WALL and _count_kind(Building.Kind.WALL) >= WALL_CAP:
-		hud.flash(Locale.format("flash.wall_cap", [WALL_CAP]))
+	var stats: Dictionary = Balance.building_by_kind(Building.kind_key(kind as Building.Kind))
+	var cost: Dictionary = stats.get("cost", {})
+	var cap := _wall_cap()
+	if kind == Building.Kind.WALL and _count_kind(Building.Kind.WALL) >= cap:
+		hud.flash(Locale.format("flash.wall_cap", [cap]))
 		return false
-	if wood < int(stats.wood) or gold < int(stats.gold):
+	if wood < int(cost.get("wood", 0)) or gold < int(cost.get("gold", 0)):
 		hud.flash(Locale.text("flash.need_res"))
 		return false
-	wood -= int(stats.wood)
-	gold -= int(stats.gold)
+	wood -= int(cost.get("wood", 0))
+	gold -= int(cost.get("gold", 0))
 	_place_free(kind, cell)
 	_refresh_hud()
 	return true
@@ -937,9 +924,10 @@ func _remove_building(cell: Vector2i, refund: bool) -> void:
 	if person != null and is_instance_valid(person):
 		person.job = null
 	if refund:
-		var stats: Dictionary = Building.STATS[building.kind]
-		var rw := int(stats.wood) / 2
-		var rg := int(stats.gold) / 2
+		var stats: Dictionary = Balance.building_by_kind(Building.kind_key(building.kind))
+		var cost: Dictionary = stats.get("cost", {})
+		var rw := int(cost.get("wood", 0)) / 2
+		var rg := int(cost.get("gold", 0)) / 2
 		wood += rw
 		gold += rg
 		_popup(building.global_position, Locale.format("popup.sold", [rw, rg]), Color(0.85, 0.95, 0.7))
@@ -1003,8 +991,8 @@ func _refresh_beds() -> void:
 	var beds := 0
 	for cell in buildings:
 		var building: Building = buildings[cell]
-		if building.kind == Building.Kind.HOUSE and building.has_staff():
-			beds += HOUSE_BEDS
+		if building.kind == Building.Kind.HOUSE:
+			beds += _house_beds()
 	var people := _alive_villagers()
 	for v in people:
 		v.housed = false
@@ -1125,11 +1113,11 @@ func _refresh_hud() -> void:
 	if hud == null:
 		return
 	var shown := wave_number
-	if phase == "prep" and wave_number > 0 and wave_number < TOTAL_WAVES:
+	if phase == "prep" and wave_number > 0 and wave_number < _wave_count():
 		shown = wave_number + 1
 	elif phase == "win":
-		shown = TOTAL_WAVES
-	var label := "%d/%d" % [shown, TOTAL_WAVES]
+		shown = _wave_count()
+	var label := "%d/%d" % [shown, _wave_count()]
 	var claim := 0.0
 	for v in _alive_villagers():
 		if v.refugee and v.claim_left > claim:
@@ -1138,22 +1126,94 @@ func _refresh_hud() -> void:
 	for v in _alive_villagers():
 		if v.housed:
 			housed += 1
-	hud.refresh(wood, gold, _alive_villagers().size(), housed, _bed_cap(), _count_kind(Building.Kind.WALL), WALL_CAP, label, phase, claim)
+	hud.refresh(wood, gold, _alive_villagers().size(), housed, _bed_cap(), _count_kind(Building.Kind.WALL), _wall_cap(), label, phase, claim)
+
+func _balance_probe() -> int:
+	var failed := false
+	var units := Balance.unit_ids()
+	var enemies := Balance.enemy_ids()
+	var buildings_ids := Balance.building_ids()
+	if units.size() < 3 or enemies.size() < 5 or buildings_ids.size() < 6 or Balance.waves().size() != 10:
+		failed = true
+	var spear_def := Balance.building_by_kind("SPEAR")
+	var range_expect := 460.0 * IsoVolume.WORLD_SCALE
+	if absf(float(spear_def.get("attack_range", 0.0)) - range_expect) > 0.05:
+		failed = true
+	var cd := 1.0 / float(spear_def.get("attack_speed", 1.0))
+	if absf(cd - 0.64) > 0.0001:
+		failed = true
+	if Balance.damage(24.0, 0.0) != 24 or Balance.damage(22.5, 0.0) != 23 or Balance.damage(1.0, 6.0) != 1 or Balance.damage(3.0, 6.0) != 3:
+		failed = true
+	if int(Balance.scaled_enemy("spear_normal", 0).hp) != 34:
+		failed = true
+	if int(Balance.scaled_enemy("spear_fast", 1).hp) != 31:
+		failed = true
+	if int(Balance.scaled_enemy("shooter_boss", 9).hp) != 546:
+		failed = true
+	if int(Balance.scaled_enemy("spear_infected", 0).hp) != 22:
+		failed = true
+	var villager_def := Balance.unit("villager")
+	if absf(float(villager_def.get("move_speed", 0.0)) - 108.0 * IsoVolume.WORLD_SCALE) > 0.05:
+		failed = true
+	if Balance.skin_index("villager", "knight") != 3 or Balance.skin_index("villager", "robot") != 5:
+		failed = true
+	for person in _alive_villagers():
+		if person.unit_id != "villager" or person._skin == 3 or person._skin == 5:
+			failed = true
+		if absf(person.speed - float(villager_def.move_speed)) > 0.05:
+			failed = true
+	if _bed_cap() != 8 or absf(tower_bonus() - 1.25) > 0.001 or _farm_wave_wood() != 6 or _wall_cap() != 28:
+		failed = true
+	var spear: Building = buildings[Vector2i(7, 12)]
+	if spear.has_staff() or not spear.is_defense() or spear.max_hp != 200 or absf(spear.defense - 6.0) > 0.001:
+		failed = true
+	var dummy := Zombie.new()
+	dummy.position = spear.position + Vector2(40, 0)
+	dummy.setup(30, 0.0, 1.0, 1, 0, 0, "probe", Color.WHITE, "spear")
+	actors.add_child(dummy)
+	spear.cooldown = 0.0
+	spear._process(0.016)
+	var shots := 0
+	for child in fx.get_children():
+		if child is Projectile:
+			shots += 1
+	if shots < 1:
+		failed = true
+	var normal := Balance.scaled_enemy("spear_normal", 0)
+	print("BALANCE units=", units, " enemies=", enemies, " buildings=", buildings_ids)
+	print("BALANCE dmg=", Balance.damage(24.0, 0.0), "/", Balance.damage(22.5, 0.0), " beds=", _bed_cap(), " bonus=", tower_bonus(), " shots=", shots, " boss=", Balance.scaled_enemy("shooter_boss", 9).hp, " normal_hp=", normal.hp)
+	print("BALANCE_OK" if not failed else "BALANCE_FAIL")
+	return 0 if not failed else 1
+
+func _wave_count() -> int:
+	var n := Balance.waves().size()
+	return n if n > 0 else 10
+
+func _wall_cap() -> int:
+	var cap := int(Balance.building_by_kind("WALL").get("place_cap", 28))
+	return cap if cap > 0 else 28
+
+func _house_beds() -> int:
+	var beds := int(Balance.building_by_kind("HOUSE").get("beds", 4))
+	return beds if beds > 0 else 4
+
+func _farm_wave_wood() -> int:
+	var wood_bonus := 0
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		if building.kind != Building.Kind.FARM:
+			continue
+		var produces = Balance.building_by_kind("FARM").get("produces", null)
+		if produces is Dictionary:
+			wood_bonus += int(produces.get("rate", 0))
+	return wood_bonus
 
 func _bed_cap() -> int:
 	var n := 0
 	for cell in buildings:
 		var building: Building = buildings[cell]
-		if building.kind == Building.Kind.HOUSE and building.has_staff():
-			n += HOUSE_BEDS
-	return n
-
-func _staffed_count(kind: int) -> int:
-	var n := 0
-	for cell in buildings:
-		var building: Building = buildings[cell]
-		if building.kind == kind and building.has_staff():
-			n += 1
+		if building.kind == Building.Kind.HOUSE:
+			n += _house_beds()
 	return n
 
 func _count_kind(kind: int) -> int:
@@ -1678,7 +1738,7 @@ func _scripted_defense() -> void:
 			Vector2i(5, 6), Vector2i(6, 6), Vector2i(7, 6), Vector2i(8, 6), Vector2i(12, 6), Vector2i(13, 6), Vector2i(14, 6), Vector2i(15, 6),
 		]
 		for cell in extra:
-			if _count_kind(Building.Kind.WALL) >= WALL_CAP:
+			if _count_kind(Building.Kind.WALL) >= _wall_cap():
 				break
 			_try_place(Building.Kind.WALL, cell)
 	var route: Dictionary = route_from(SPAWNS[2])

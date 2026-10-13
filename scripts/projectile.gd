@@ -2,7 +2,7 @@ class_name Projectile
 extends Node2D
 
 var velocity := Vector2.ZERO
-var damage := 1
+var attack := 1.0
 var splash := 0.0
 var aim := Vector2.ZERO
 var target: Node2D
@@ -10,11 +10,11 @@ var life := 2.2
 var fired := false
 var is_fire := false
 
-func setup(from: Vector2, p_aim: Vector2, p_target: Node2D, p_damage: int, p_splash: float, speed: float, p_fire: bool) -> void:
+func setup(from: Vector2, p_aim: Vector2, p_target: Node2D, p_attack: float, p_splash: float, speed: float, p_fire: bool) -> void:
 	global_position = from
 	aim = p_aim
 	target = p_target
-	damage = p_damage
+	attack = p_attack
 	splash = p_splash
 	is_fire = p_fire
 	var dir := aim - from
@@ -53,7 +53,7 @@ func _impact() -> void:
 	var game := get_tree().get_first_node_in_group("game")
 	if game:
 		var alive: Node2D = target if is_instance_valid(target) else null
-		game.apply_hit(global_position, damage, splash, is_fire, alive)
+		game.apply_hit(global_position, attack, splash, is_fire, alive)
 	queue_free()
 
 func _draw() -> void:

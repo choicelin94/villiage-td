@@ -398,14 +398,15 @@ func _fill_ground() -> void:
 	]
 	for item in options:
 		var kind := int(item[0])
-		var stats: Dictionary = Building.STATS[kind]
+		var stats: Dictionary = Balance.building_by_kind(Building.kind_key(kind as Building.Kind))
+		var price: Dictionary = stats.get("cost", {})
 		var cost := ""
-		if int(stats.wood) > 0:
-			cost += Locale.format("cost.wood", [int(stats.wood)])
-		if int(stats.gold) > 0:
+		if int(price.get("wood", 0)) > 0:
+			cost += Locale.format("cost.wood", [int(price.wood)])
+		if int(price.get("gold", 0)) > 0:
 			if cost != "":
 				cost += "  "
-			cost += Locale.format("cost.gold", [int(stats.gold)])
+			cost += Locale.format("cost.gold", [int(price.gold)])
 		var btn := Button.new()
 		btn.theme = _theme
 		btn.custom_minimum_size = Vector2(0, 72)
