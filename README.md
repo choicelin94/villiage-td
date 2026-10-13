@@ -22,7 +22,7 @@ The web export leaves GDExtension off (`extensions_support` stays false). The of
 
 **https://choicelin94.github.io/villiage-td/**
 
-线上页面来自 `main` 的 `/docs`。地图是正面俯视的正方形格子。房屋和木墙是同一套 CC0 模型从南边俯视渲染的，树和岩石仍用原来的图。前后仍由体积决定：人的落点是一块椭圆，树干、岩石和房子各用自己的凸多边形或椭圆。整块椭圆到了占地北侧，人才被挡住。空心的农场和木墙用一块盖住内部的凸多边形，椭圆不能走进去，人与人之间也保持椭圆不相交。选中线跟着物件的深度。
+线上页面是 `main` 里的 `docs/`，由 GitHub Actions 发布。地图是正面俯视的正方形格子。房屋和木墙是同一套 CC0 模型从南边俯视渲染的，树和岩石仍用原来的图。前后仍由体积决定：人的落点是一块椭圆，树干、岩石和房子各用自己的凸多边形或椭圆。整块椭圆到了占地北侧，人才被挡住。空心的农场和木墙用一块盖住内部的凸多边形，椭圆不能走进去，人与人之间也保持椭圆不相交。选中线跟着物件的深度。
 
 排序仍是两段。每件东西先按椭圆或多边形算出紧的包围盒。屏幕上的盒子先扫一遍，对不上的对子直接丢掉。盒子在东西、南北或高度上已经分开的，用包围盒就能定前后。只有盒子真的叠在一起，才问整块是不是在北侧。房屋、木墙、树和岩石的结果会留着，人挪动了才重算涉及到的对子。景深试验页：
 
@@ -32,9 +32,13 @@ The web export leaves GDExtension off (`extensions_support` stays false). The of
 
 **https://choicelin94.github.io/villiage-td/stress/**
 
-游戏里右上角的「景深」打开试验页。若要先预览这一支，在 **Settings → Pages → Deploy from a branch** 里把 Branch 改成 `cursor/convex-footprints-4d8f`，Folder 仍是 **`/docs`**，看完再改回 `main`。
+图鉴列出当前的友方单位、敌人和建筑，也带上挡路的树和岩石。头像从现有序列帧和建筑图裁出，数值来自 `data/units.json`、`data/enemies.json`、`data/buildings.json`，和对局里的 Balance 是同一份。矛兵和工匠已经写进 Balance，对局还不会生成。资源约定见 [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md)。改完目录后运行 `python3 tools/build_codex.py`，再提交 `docs/codex/`。
 
-The live site serves `/docs` from `main`. The map is a square top-down grid. Houses and walls are CC0 models rendered from the south. Trees and rocks keep their previous pictures. Depth still comes from volumes: a person stands on an oval, and each tree, rock, and building has its own convex polygon or ellipse. The whole oval has to sit north of a footprint before that object covers the person. The open farm and wall use one convex polygon over the interior. An oval cannot enter a footprint, and walkers keep their ovals apart. Selection lines use that depth.
+**https://choicelin94.github.io/villiage-td/codex/**
+
+游戏里右上角的「景深」打开试验页。推到 `main` 时，Actions 先跑图鉴生成器，再把 `docs/` 发布到 Pages。仓库需要把 Pages 的 Source 设成 **GitHub Actions**，见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。网页包里的 wasm 仍是本地用 Godot 导出后提交的。
+
+The live site is the `docs/` directory on `main`, published by GitHub Actions. The map is a square top-down grid. Houses and walls are CC0 models rendered from the south. Trees and rocks keep their previous pictures. Depth still comes from volumes: a person stands on an oval, and each tree, rock, and building has its own convex polygon or ellipse. The whole oval has to sit north of a footprint before that object covers the person. The open farm and wall use one convex polygon over the interior. An oval cannot enter a footprint, and walkers keep their ovals apart. Selection lines use that depth.
 
 The sort stays two-phase. Each footprint first becomes a tight box around its ellipse or polygon. A sweep drops pairs whose screen boxes miss. Pairs whose boxes already separate in x, y, or height take their order from the box. Only a real overlap asks whether one footprint is entirely to the north. Houses, walls, trees, and rocks keep that result; a pair is redone when someone in it moves. The depth lab is at:
 
@@ -44,7 +48,17 @@ The stress page spawns many moving people and times the old sort against the two
 
 **https://choicelin94.github.io/villiage-td/stress/**
 
-The in-game **Depth** button opens the lab. To preview this branch, set **Settings → Pages → Deploy from a branch** to `cursor/convex-footprints-4d8f` and folder **`/docs`**, then switch the branch back to `main`.
+The codex lists the current ally units, enemies, and buildings, plus the trees and rocks that block building. Portraits are cropped from the existing sheets and building pictures. Stats come from `data/units.json`, `data/enemies.json`, and `data/buildings.json`, the same files Balance loads in a match. Spearman and engineer are in that catalog and are not spawned yet. The resource rules are in [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md). After a catalog edit, run `python3 tools/build_codex.py` and commit `docs/codex/`.
+
+**https://choicelin94.github.io/villiage-td/codex/**
+
+The in-game **Depth** button opens the lab. A push to `main` runs the codex generator, then publishes `docs/` to Pages. The repository has to set the Pages source to **GitHub Actions**. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The game wasm is still exported locally with Godot and committed.
+
+## 架构与维护 / Architecture and upkeep
+
+配置在 `data/`，图在 `assets/`，玩法在 `scripts/`。对局通过 `scripts/balance.gd` 读取单位、敌人和建筑 JSON。怎么改、改完要跑什么、还有哪些数仍写在脚本里（占地后备表、清波底薪），见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。每条资源的字段和 id 见 [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md)。
+
+Balance and catalogs live in `data/`. Art lives in `assets/`. Behavior lives in `scripts/`. A match loads the unit, enemy, and building JSON through `scripts/balance.gd`. What to edit, which leftovers are still script constants (the footprint fallback and the flat wave payout), and how publishing works are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Field rules are in [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md).
 
 本地先看网页包 / preview the export locally:
 

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>图鉴 · 部落村落塔防</title>
+<meta name="description" content="部落村落塔防的友方单位、敌人和建筑图鉴。">
+<link rel="icon" href="thumbs/villager.png">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #141a14;
+  --card: #222c22;
+  --line: #3d4d39;
+  --text: #f4f0e4;
+  --muted: #b7b39a;
+  --gold: #e6c56a;
+  --live-bg: #1e6b45;
+  --live-ink: #e7fff1;
+  --soon-bg: #8a5a16;
+  --soon-ink: #fff3d8;
+  --scene-bg: #24506a;
+  --scene-ink: #e7f6ff;
+  --well: #1a261c;
+  --chip: #2c382c;
+  --shadow: 0 12px 28px rgba(0, 0, 0, .28);
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f4f0e6;
+    --card: #fffdf8;
+    --line: #e2d6c0;
+    --text: #1d2418;
+    --muted: #5c6556;
+    --gold: #8a5a12;
+    --live-bg: #d9f5e4;
+    --live-ink: #145c38;
+    --soon-bg: #fff1d6;
+    --soon-ink: #7a4e0d;
+    --scene-bg: #d9edf8;
+    --scene-ink: #18445c;
+    --well: #e5f0df;
+    --chip: #f6efe2;
+    --shadow: 0 10px 24px rgba(70, 50, 10, .08);
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+}
+a { color: var(--gold); }
+header.top, main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+header.top { padding: 28px 0 8px; }
+.kicker { margin: 0; color: var(--muted); letter-spacing: .08em; font-size: 13px; }
+h1 { margin: 4px 0; font-size: clamp(32px, 5vw, 48px); line-height: 1.1; }
+.summary { margin: 0 0 8px; color: var(--muted); }
+nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 8px; }
+nav a {
+  text-decoration: none;
+  background: var(--chip);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+section { margin: 28px 0 36px; }
+section > header h2 { margin: 0; font-size: 28px; }
+section > header h2 span { color: var(--muted); font-size: 16px; font-weight: 500; }
+section > header p { margin: 6px 0 14px; color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+article {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 12px;
+  min-width: 0;
+}
+.portrait {
+  background: radial-gradient(circle at 50% 78%, #3e5c3c, var(--well) 68%);
+  border-radius: 14px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+.portrait img { width: 88%; height: 88%; object-fit: contain; }
+.skins { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.skins img {
+  width: 42px; height: 42px; object-fit: contain;
+  background: var(--well); border-radius: 8px; border: 1px solid var(--line);
+}
+h3 { margin: 10px 0 0; font-size: 22px; }
+.en, .wid, .note { margin: 0; color: var(--muted); }
+.wid { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+.badge {
+  display: inline-block; margin-top: 8px; border-radius: 999px;
+  padding: 2px 8px; font-size: 12px; font-weight: 650;
+}
+.badge.live { background: var(--live-bg); color: var(--live-ink); }
+.badge.soon { background: var(--soon-bg); color: var(--soon-ink); }
+.badge.scene { background: var(--scene-bg); color: var(--scene-ink); }
+dl {
+  display: grid; grid-template-columns: auto 1fr; gap: 3px 12px;
+  margin: 10px 0 0; font-size: 14px;
+}
+dt { color: var(--muted); }
+dd { margin: 0; text-align: right; }
+.note { margin-top: 8px; font-size: 13px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 8px 10px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 600; }
+tr + tr td, tr + tr th { border-top: 1px solid var(--line); }
+.callout, .footnote { color: var(--muted); font-size: 14px; }
+.callout {
+  margin-top: 14px; padding: 12px 14px; border-radius: 14px;
+  background: var(--chip); border: 1px solid var(--line);
+}
+footer { width: min(1120px, calc(100% - 32px)); margin: 0 auto 32px; color: var(--muted); font-size: 13px; }
+a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <p class="kicker">部落村落塔防</p>
+  <h1>图鉴</h1>
+  <p class="summary">3 个友方 · 5 个敌人 · 6 座建筑 · 4 个场景，共 18 张。</p>
+  <nav><a href="#units">友方单位</a><a href="#enemies">敌人</a><a href="#buildings">建筑</a><a href="#scenery">场景</a><a href="../">返回游戏</a></nav>
+</header>
+<main>
+<section id="units"><header><h2>友方单位 <span>Units</span></h2><p>村民会出场。矛兵和工匠已写入 Balance，对局还不会生成。</p></header><div class="grid"><article><div class="portrait"><img src="thumbs/villager.png" alt="村民头像"></div><div class="skins"><img src="thumbs/villager__wolf.png" alt="村民 wolf"><img src="thumbs/villager__penguin.png" alt="村民 penguin"><img src="thumbs/villager__raccoon.png" alt="村民 raccoon"><img src="thumbs/villager__frog.png" alt="村民 frog"><img src="thumbs/villager__skeleton.png" alt="村民 skeleton"></div><h3>村民</h3><p class="en">Villager</p><p class="wid">villager</p><span class="badge live">已出场</span><dl><dt>职责</dt><dd>劳工 · worker</dd><dt>生命</dt><dd>36</dd><dt>防御</dt><dd>0</dd><dt>攻击</dt><dd>4</dd><dt>攻速</dt><dd>0.8 次/秒</dd><dt>移速</dt><dd>137.2485</dd><dt>射程</dt><dd>45.7495</dd><dt>费用</dt><dd>无</dd><dt>训练</dt><dd>—</dd><dt>形象</dt><dd>villager</dd><dt>体积</dt><dd>walker</dd></dl><p class="note">Cosmetic pool for the auto villagers. move_speed is the old 108 * WORLD_SCALE. Wander still uses 0.72x of it and panic 1.15x, in villager.gd.</p></article><article><div class="portrait"><img src="thumbs/spearman.png" alt="矛兵头像"></div><h3>矛兵</h3><p class="en">Spearman</p><p class="wid">spearman</p><span class="badge soon">配置已有 · 尚未出场</span><dl><dt>职责</dt><dd>近战 · melee</dd><dt>生命</dt><dd>80</dd><dt>防御</dt><dd>4</dd><dt>攻击</dt><dd>12</dd><dt>攻速</dt><dd>1 次/秒</dd><dt>移速</dt><dd>114.3738</dd><dt>射程</dt><dd>60.9993</dd><dt>费用</dt><dd>40 金</dd><dt>训练</dt><dd>8 秒</dd><dt>形象</dt><dd>villager</dd><dt>体积</dt><dd>walker</dd></dl><p class="note">Knight sheet (villager_3). move_speed and attack_range are 90 and 48 times WORLD_SCALE. Not spawned until recruitment is wired.</p></article><article><div class="portrait"><img src="thumbs/engineer.png" alt="工匠头像"></div><h3>工匠</h3><p class="en">Engineer</p><p class="wid">engineer</p><span class="badge soon">配置已有 · 尚未出场</span><dl><dt>职责</dt><dd>支援 · support</dd><dt>生命</dt><dd>60</dd><dt>防御</dt><dd>2</dd><dt>攻击</dt><dd>7</dd><dt>攻速</dt><dd>0.8 次/秒</dd><dt>移速</dt><dd>127.082</dd><dt>射程</dt><dd>53.3744</dd><dt>费用</dt><dd>10 木 + 30 金</dd><dt>训练</dt><dd>10 秒</dd><dt>形象</dt><dd>villager</dd><dt>体积</dt><dd>walker</dd></dl><p class="note">Robot sheet (villager_5). Faster repair comes later. move_speed and attack_range are 100 and 42 times WORLD_SCALE.</p></article></div></section><section id="enemies"><header><h2>敌人 <span>Enemies</span></h2><p>卡片是第 1 波的世界单位。后面的波次按相对第 1 波的比例缩放。</p></header><div class="grid"><article><div class="portrait"><img src="thumbs/spear_normal.png" alt="持矛僵尸头像"></div><h3>持矛僵尸</h3><p class="en">Spear zombie</p><p class="wid">spear_normal</p><span class="badge live">已出场</span><dl><dt>生命</dt><dd>34（第 1 波）</dd><dt>防御</dt><dd>0</dd><dt>攻击</dt><dd>1</dd><dt>攻速</dt><dd>1.1111 次/秒</dd><dt>移速</dt><dd>91.499（第 1 波）</dd><dt>射程</dt><dd>128</dd><dt>体型</dt><dd>×1.05</dd><dt>赏金</dt><dd>4 金</dd><dt>木材</dt><dd>2 木</dd><dt>标签</dt><dd>普通</dd><dt>形象</dt><dd>spear</dd><dt>体积</dt><dd>walker</dd></dl><p class="note">Old kind normal. Horde spear goblin.</p></article><article><div class="portrait"><img src="thumbs/spear_fast.png" alt="迅捷僵尸头像"></div><h3>迅捷僵尸</h3><p class="en">Fast zombie</p><p class="wid">spear_fast</p><span class="badge live">已出场</span><dl><dt>生命</dt><dd>23.8（第 1 波）</dd><dt>防御</dt><dd>0</dd><dt>攻击</dt><dd>1</dd><dt>攻速</dt><dd>1.1111 次/秒</dd><dt>移速</dt><dd>123.5237（第 1 波）</dd><dt>射程</dt><dd>128</dd><dt>体型</dt><dd>×0.95</dd><dt>赏金</dt><dd>5 金</dd><dt>木材</dt><dd>1 木</dd><dt>标签</dt><dd>迅捷</dd><dt>形象</dt><dd>spear</dd><dt>体积</dt><dd>walker</dd></dl><p class="note">Old kind fast. hp is 34 * 0.7, move_speed is 72 * 1.35 * WORLD_SCALE.</p></article><article><div class="portrait"><img src="thumbs/spear_infected.png" alt="被感染的村民头像"></div><h3>被感染的村民</h3><p class="en">Infected villager</p><p class="wid">spear_infected</p><span class="badge live">已出场</span><dl><dt>生命</dt><dd>22.1（第 1 波）</dd><dt>防御</dt><dd>0</dd><dt>攻击</dt><dd>1</dd><dt>攻速</dt><dd>1.1111 次/秒</dd><dt>移速</dt><dd>91.499（第 1 波）</dd><dt>射程</dt><dd>128</dd><dt>体型</dt><dd>×1.05</dd><dt>赏金</dt><dd>4 金</dd><dt>木材</dt><dd>2 木</dd><dt>标签</dt><dd>感染</dd><dt>形象</dt><dd>spear</dd><dt>体积</dt><dd>walker</dd></dl><p class="note">A villager who was just infected. hp is 34 * 0.65, which replaces the old extra 0.65 multiplier on the normal kind.</p></article><article><div class="portrait"><img src="thumbs/shooter_elite.png" alt="持枪壮汉头像"></div><h3>持枪壮汉</h3><p class="en">Gun brute</p><p class="wid">shooter_elite</p><span class="badge live">已出场</span><dl><dt>生命</dt><dd>74.8（第 1 波）</dd><dt>防御</dt><dd>0</dd><dt>攻击</dt><dd>2</dd><dt>攻速</dt><dd>1.1111 次/秒</dd><dt>移速</dt><dd>64.0493（第 1 波）</dd><dt>射程</dt><dd>128</dd><dt>体型</dt><dd>×1.3</dd><dt>赏金</dt><dd>9 金</dd><dt>木材</dt><dd>3 木</dd><dt>标签</dt><dd>精锐</dd><dt>形象</dt><dd>shooter</dd><dt>体积</dt><dd>walker</dd></dl><p class="note">Old kind brute. Gun goblin, still walks up and bites. hp is 34 * 2.2.</p></article><article><div class="portrait"><img src="thumbs/shooter_boss.png" alt="持枪首领头像"></div><h3>持枪首领</h3><p class="en">Gun boss</p><p class="wid">shooter_boss</p><span class="badge live">已出场</span><dl><dt>生命</dt><dd>142.8（第 1 波）</dd><dt>防御</dt><dd>0</dd><dt>攻击</dt><dd>3</dd><dt>攻速</dt><dd>1.1111 次/秒</dd><dt>移速</dt><dd>54.8994（第 1 波）</dd><dt>射程</dt><dd>128</dd><dt>体型</dt><dd>×1.6</dd><dt>赏金</dt><dd>30 金</dd><dt>木材</dt><dd>8 木</dd><dt>标签</dt><dd>首领</dd><dt>形象</dt><dd>shooter</dd><dt>体积</dt><dd>walker</dd></dl><p class="note">Old kind boss. Gun goblin, still melee. hp is 34 * 4.2.</p></article></div><div class="table-wrap"><table><thead><tr><th>波次</th><th>普通</th><th>基准生命</th><th>基准移速</th><th>间隔</th><th>迅捷</th><th>精锐</th><th>首领</th></tr></thead><tbody><tr><td>第 1 波</td><td>5</td><td>34</td><td>72</td><td>0.9</td><td>0</td><td>0</td><td>0</td></tr><tr><td>第 2 波</td><td>7</td><td>44</td><td>74</td><td>0.78</td><td>2</td><td>0</td><td>0</td></tr><tr><td>第 3 波</td><td>8</td><td>54</td><td>74</td><td>0.7</td><td>2</td><td>1</td><td>0</td></tr><tr><td>第 4 波</td><td>8</td><td>66</td><td>76</td><td>0.64</td><td>3</td><td>1</td><td>0</td></tr><tr><td>第 5 波</td><td>9</td><td>78</td><td>76</td><td>0.58</td><td>3</td><td>2</td><td>0</td></tr><tr><td>第 6 波</td><td>9</td><td>90</td><td>78</td><td>0.54</td><td>3</td><td>2</td><td>0</td></tr><tr><td>第 7 波</td><td>10</td><td>102</td><td>78</td><td>0.5</td><td>4</td><td>2</td><td>0</td></tr><tr><td>第 8 波</td><td>10</td><td>114</td><td>78</td><td>0.48</td><td>4</td><td>3</td><td>0</td></tr><tr><td>第 9 波</td><td>11</td><td>126</td><td>80</td><td>0.46</td><td>4</td><td>3</td><td>0</td></tr><tr><td>第 10 波</td><td>8</td><td>130</td><td>76</td><td>0.5</td><td>3</td><td>2</td><td>1</td></tr></tbody></table></div><p class="footnote">卡片上的生命和移速已经是第 1 波的世界单位。后面每一波按相对第 1 波的比例缩放：生命取 round(卡片生命 × 本波基准生命 / 第 1 波基准生命)，移速取卡片移速 × 本波基准移速 / 第 1 波基准移速。表里的基准移速还没有乘 WORLD_SCALE，它只用来算这个比例。被感染的村民是单独的 spear_infected，不再在普通僵尸上再乘 0.65。</p></section><section id="buildings"><header><h2>建筑 <span>Buildings</span></h2><p>塔立着就会攻击，不用派人。房屋立着就给床位，农场立着就产木材。</p></header><div class="grid"><article><div class="portrait"><img src="thumbs/wall.png" alt="木墙头像"></div><h3>木墙</h3><p class="en">Wall</p><p class="wid">wall</p><span class="badge live">已出场</span><dl><dt>类别</dt><dd>挡路 · 防御</dd><dt>种类</dt><dd>WALL</dd><dt>生命</dt><dd>170</dd><dt>防御</dt><dd>8</dd><dt>费用</dt><dd>18 木</dd><dt>上限</dt><dd>28</dd><dt>体积</dt><dd>wall</dd></dl><p class="note">Blocks movement. No attack.</p></article><article><div class="portrait"><img src="thumbs/spear_tower.png" alt="矛塔头像"></div><h3>矛塔</h3><p class="en">Spear</p><p class="wid">spear_tower</p><span class="badge live">已出场</span><dl><dt>类别</dt><dd>穿刺 · 防御</dd><dt>种类</dt><dd>SPEAR</dd><dt>生命</dt><dd>200</dd><dt>防御</dt><dd>6</dd><dt>费用</dt><dd>24 木 + 40 金</dd><dt>攻击</dt><dd>24</dd><dt>攻速</dt><dd>1.5625 次/秒</dd><dt>射程</dt><dd>584.5771</dd><dt>溅射</dt><dd>0</dd><dt>弹速</dt><dd>889.5738</dd><dt>体积</dt><dd>spear</dd></dl><p class="note">Single-target spear. Range and shot speed are 460 and 700 times WORLD_SCALE.</p></article><article><div class="portrait"><img src="thumbs/fire_tower.png" alt="火塔头像"></div><h3>火塔</h3><p class="en">Fire</p><p class="wid">fire_tower</p><span class="badge live">已出场</span><dl><dt>类别</dt><dd>溅射 · 防御</dd><dt>种类</dt><dd>FIRE</dd><dt>生命</dt><dd>160</dd><dt>防御</dt><dd>4</dd><dt>费用</dt><dd>16 木 + 64 金</dd><dt>攻击</dt><dd>18</dd><dt>攻速</dt><dd>0.9524 次/秒</dd><dt>射程</dt><dd>533.7443</dd><dt>溅射</dt><dd>152.4984</dd><dt>弹速</dt><dd>482.9115</dd><dt>体积</dt><dd>fire</dd></dl><p class="note">Splash fire. Range, splash, and shot speed are 420, 120, and 380 times WORLD_SCALE.</p></article><article><div class="portrait"><img src="thumbs/house.png" alt="房屋头像"></div><h3>房屋</h3><p class="en">House</p><p class="wid">house</p><span class="badge live">已出场</span><dl><dt>类别</dt><dd>床位 · 招募</dd><dt>种类</dt><dd>HOUSE</dd><dt>生命</dt><dd>120</dd><dt>防御</dt><dd>3</dd><dt>费用</dt><dd>22 木</dd><dt>床位</dt><dd>4</dd><dt>可招募</dt><dd>村民、工匠、矛兵</dd><dt>体积</dt><dd>house</dd></dl><p class="note">Grants beds while it stands. recruits is a later train list, not a spawn button yet.</p></article><article><div class="portrait"><img src="thumbs/farm.png" alt="农场头像"></div><h3>农场</h3><p class="en">Farm</p><p class="wid">farm</p><span class="badge live">已出场</span><dl><dt>类别</dt><dd>产木材 · 生产</dd><dt>种类</dt><dd>FARM</dd><dt>生命</dt><dd>80</dd><dt>防御</dt><dd>2</dd><dt>费用</dt><dd>16 木 + 12 金</dd><dt>产出</dt><dd>每波 +6 木</dd><dt>体积</dt><dd>farm</dd></dl><p class="note">rate is extra wood added once per cleared wave, on top of the flat wave payout.</p></article><article><div class="portrait"><img src="thumbs/workshop.png" alt="工坊头像"></div><h3>工坊</h3><p class="en">Workshop</p><p class="wid">workshop</p><span class="badge live">已出场</span><dl><dt>类别</dt><dd>强化塔 · 生产</dd><dt>种类</dt><dd>WORKSHOP</dd><dt>生命</dt><dd>100</dd><dt>防御</dt><dd>3</dd><dt>费用</dt><dd>20 木 + 28 金</dd><dt>加成</dt><dd>塔攻击 ×1.25</dd><dt>体积</dt><dd>workshop</dd></dl><p class="note">tower_damage multiplies tower attack before defense. Bonuses do not stack; the highest standing workshop wins.</p></article></div><p class="callout">清完一波：木材 8 + 每座农场 × 6，金币 +14。平底薪仍是 scripts/main.gd 里的 WAVE_CLEAR_WOOD 和 WAVE_CLEAR_GOLD。塔立着就会攻击。工坊把塔的攻击 ×1.25，先乘攻击再套伤害公式，不叠加，取还立着的最高一座。</p></section><section id="scenery"><header><h2>场景 <span>Scenery</span></h2><p>树和岩石挡住建造。草地和道路是地面，不进图鉴。</p></header><div class="grid"><article><div class="portrait"><img src="thumbs/tree.png" alt="树头像"></div><h3>树</h3><p class="en">Tree</p><p class="wid">tree</p><span class="badge scene">挡建造</span><dl><dt>体积</dt><dd>tree</dd><dt>贴图</dt><dd>tree.png</dd><dt>建造</dt><dd>不能</dd></dl><p class="note">已出场。树干落地的那一块椭圆挡建造。树冠不参与碰撞。</p></article><article><div class="portrait"><img src="thumbs/tree_b.png" alt="树 · 变体 B头像"></div><h3>树 · 变体 B</h3><p class="en">Tree B</p><p class="wid">tree_b</p><span class="badge scene">挡建造</span><dl><dt>体积</dt><dd>tree</dd><dt>贴图</dt><dd>tree_b.png</dd><dt>建造</dt><dd>不能</dd></dl><p class="note">已出场。贴图变体，体积键仍是 tree。</p></article><article><div class="portrait"><img src="thumbs/tree_c.png" alt="树 · 变体 C头像"></div><h3>树 · 变体 C</h3><p class="en">Tree C</p><p class="wid">tree_c</p><span class="badge scene">挡建造</span><dl><dt>体积</dt><dd>tree</dd><dt>贴图</dt><dd>tree_c.png</dd><dt>建造</dt><dd>不能</dd></dl><p class="note">已出场。贴图变体，体积键仍是 tree。</p></article><article><div class="portrait"><img src="thumbs/rock.png" alt="岩石头像"></div><h3>岩石</h3><p class="en">Rock</p><p class="wid">rock</p><span class="badge scene">挡建造</span><dl><dt>体积</dt><dd>rock</dd><dt>贴图</dt><dd>rock.png</dd><dt>建造</dt><dd>不能</dd></dl><p class="note">已出场。椭圆体积挡建造。</p></article></div></section>
+</main>
+<footer>
+  <p>头像是序列帧左上角第 0 帧，或建筑的俯视图，透明边已裁掉。数值来自 data/units.json、data/enemies.json、data/buildings.json，对局由 scripts/balance.gd 加载同一份。攻速是每秒攻击次数。伤害是 max(1, round(attack × 100 / (100 + defense)))。移速、射程、溅射和弹速是世界单位。卡片上的小数最多显示 4 位。</p>
+  <p>此页由 tools/build_codex.py 生成。改目录后重新运行脚本，再提交 docs/codex/。</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,1023 @@
+{
+  "counts": {
+    "units": 3,
+    "enemies": 5,
+    "buildings": 6,
+    "scenery": 4
+  },
+  "sections": {
+    "units": [
+      {
+        "id": "villager",
+        "section": "units",
+        "name_zh": "村民",
+        "name_en": "Villager",
+        "portrait": "thumbs/villager.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "职责",
+            "v": "劳工 · worker"
+          },
+          {
+            "k": "生命",
+            "v": "36"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "4"
+          },
+          {
+            "k": "攻速",
+            "v": "0.8 次/秒"
+          },
+          {
+            "k": "移速",
+            "v": "137.2485"
+          },
+          {
+            "k": "射程",
+            "v": "45.7495"
+          },
+          {
+            "k": "费用",
+            "v": "无"
+          },
+          {
+            "k": "训练",
+            "v": "—"
+          },
+          {
+            "k": "形象",
+            "v": "villager"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "Cosmetic pool for the auto villagers. move_speed is the old 108 * WORLD_SCALE. Wander still uses 0.72x of it and panic 1.15x, in villager.gd.",
+        "skins": [
+          {
+            "name": "wolf",
+            "thumb": "thumbs/villager__wolf.png"
+          },
+          {
+            "name": "penguin",
+            "thumb": "thumbs/villager__penguin.png"
+          },
+          {
+            "name": "raccoon",
+            "thumb": "thumbs/villager__raccoon.png"
+          },
+          {
+            "name": "frog",
+            "thumb": "thumbs/villager__frog.png"
+          },
+          {
+            "name": "skeleton",
+            "thumb": "thumbs/villager__skeleton.png"
+          }
+        ],
+        "volume": "walker"
+      },
+      {
+        "id": "spearman",
+        "section": "units",
+        "name_zh": "矛兵",
+        "name_en": "Spearman",
+        "portrait": "thumbs/spearman.png",
+        "badge": "配置已有 · 尚未出场",
+        "badge_tone": "soon",
+        "stats": [
+          {
+            "k": "职责",
+            "v": "近战 · melee"
+          },
+          {
+            "k": "生命",
+            "v": "80"
+          },
+          {
+            "k": "防御",
+            "v": "4"
+          },
+          {
+            "k": "攻击",
+            "v": "12"
+          },
+          {
+            "k": "攻速",
+            "v": "1 次/秒"
+          },
+          {
+            "k": "移速",
+            "v": "114.3738"
+          },
+          {
+            "k": "射程",
+            "v": "60.9993"
+          },
+          {
+            "k": "费用",
+            "v": "40 金"
+          },
+          {
+            "k": "训练",
+            "v": "8 秒"
+          },
+          {
+            "k": "形象",
+            "v": "villager"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "Knight sheet (villager_3). move_speed and attack_range are 90 and 48 times WORLD_SCALE. Not spawned until recruitment is wired.",
+        "skins": [],
+        "volume": "walker"
+      },
+      {
+        "id": "engineer",
+        "section": "units",
+        "name_zh": "工匠",
+        "name_en": "Engineer",
+        "portrait": "thumbs/engineer.png",
+        "badge": "配置已有 · 尚未出场",
+        "badge_tone": "soon",
+        "stats": [
+          {
+            "k": "职责",
+            "v": "支援 · support"
+          },
+          {
+            "k": "生命",
+            "v": "60"
+          },
+          {
+            "k": "防御",
+            "v": "2"
+          },
+          {
+            "k": "攻击",
+            "v": "7"
+          },
+          {
+            "k": "攻速",
+            "v": "0.8 次/秒"
+          },
+          {
+            "k": "移速",
+            "v": "127.082"
+          },
+          {
+            "k": "射程",
+            "v": "53.3744"
+          },
+          {
+            "k": "费用",
+            "v": "10 木 + 30 金"
+          },
+          {
+            "k": "训练",
+            "v": "10 秒"
+          },
+          {
+            "k": "形象",
+            "v": "villager"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "Robot sheet (villager_5). Faster repair comes later. move_speed and attack_range are 100 and 42 times WORLD_SCALE.",
+        "skins": [],
+        "volume": "walker"
+      }
+    ],
+    "enemies": [
+      {
+        "id": "spear_normal",
+        "section": "enemies",
+        "name_zh": "持矛僵尸",
+        "name_en": "Spear zombie",
+        "portrait": "thumbs/spear_normal.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "生命",
+            "v": "34（第 1 波）"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "1"
+          },
+          {
+            "k": "攻速",
+            "v": "1.1111 次/秒"
+          },
+          {
+            "k": "移速",
+            "v": "91.499（第 1 波）"
+          },
+          {
+            "k": "射程",
+            "v": "128"
+          },
+          {
+            "k": "体型",
+            "v": "×1.05"
+          },
+          {
+            "k": "赏金",
+            "v": "4 金"
+          },
+          {
+            "k": "木材",
+            "v": "2 木"
+          },
+          {
+            "k": "标签",
+            "v": "普通"
+          },
+          {
+            "k": "形象",
+            "v": "spear"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "Old kind normal. Horde spear goblin.",
+        "skins": [],
+        "volume": "walker"
+      },
+      {
+        "id": "spear_fast",
+        "section": "enemies",
+        "name_zh": "迅捷僵尸",
+        "name_en": "Fast zombie",
+        "portrait": "thumbs/spear_fast.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "生命",
+            "v": "23.8（第 1 波）"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "1"
+          },
+          {
+            "k": "攻速",
+            "v": "1.1111 次/秒"
+          },
+          {
+            "k": "移速",
+            "v": "123.5237（第 1 波）"
+          },
+          {
+            "k": "射程",
+            "v": "128"
+          },
+          {
+            "k": "体型",
+            "v": "×0.95"
+          },
+          {
+            "k": "赏金",
+            "v": "5 金"
+          },
+          {
+            "k": "木材",
+            "v": "1 木"
+          },
+          {
+            "k": "标签",
+            "v": "迅捷"
+          },
+          {
+            "k": "形象",
+            "v": "spear"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "Old kind fast. hp is 34 * 0.7, move_speed is 72 * 1.35 * WORLD_SCALE.",
+        "skins": [],
+        "volume": "walker"
+      },
+      {
+        "id": "spear_infected",
+        "section": "enemies",
+        "name_zh": "被感染的村民",
+        "name_en": "Infected villager",
+        "portrait": "thumbs/spear_infected.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "生命",
+            "v": "22.1（第 1 波）"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "1"
+          },
+          {
+            "k": "攻速",
+            "v": "1.1111 次/秒"
+          },
+          {
+            "k": "移速",
+            "v": "91.499（第 1 波）"
+          },
+          {
+            "k": "射程",
+            "v": "128"
+          },
+          {
+            "k": "体型",
+            "v": "×1.05"
+          },
+          {
+            "k": "赏金",
+            "v": "4 金"
+          },
+          {
+            "k": "木材",
+            "v": "2 木"
+          },
+          {
+            "k": "标签",
+            "v": "感染"
+          },
+          {
+            "k": "形象",
+            "v": "spear"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "A villager who was just infected. hp is 34 * 0.65, which replaces the old extra 0.65 multiplier on the normal kind.",
+        "skins": [],
+        "volume": "walker"
+      },
+      {
+        "id": "shooter_elite",
+        "section": "enemies",
+        "name_zh": "持枪壮汉",
+        "name_en": "Gun brute",
+        "portrait": "thumbs/shooter_elite.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "生命",
+            "v": "74.8（第 1 波）"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "2"
+          },
+          {
+            "k": "攻速",
+            "v": "1.1111 次/秒"
+          },
+          {
+            "k": "移速",
+            "v": "64.0493（第 1 波）"
+          },
+          {
+            "k": "射程",
+            "v": "128"
+          },
+          {
+            "k": "体型",
+            "v": "×1.3"
+          },
+          {
+            "k": "赏金",
+            "v": "9 金"
+          },
+          {
+            "k": "木材",
+            "v": "3 木"
+          },
+          {
+            "k": "标签",
+            "v": "精锐"
+          },
+          {
+            "k": "形象",
+            "v": "shooter"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "Old kind brute. Gun goblin, still walks up and bites. hp is 34 * 2.2.",
+        "skins": [],
+        "volume": "walker"
+      },
+      {
+        "id": "shooter_boss",
+        "section": "enemies",
+        "name_zh": "持枪首领",
+        "name_en": "Gun boss",
+        "portrait": "thumbs/shooter_boss.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "生命",
+            "v": "142.8（第 1 波）"
+          },
+          {
+            "k": "防御",
+            "v": "0"
+          },
+          {
+            "k": "攻击",
+            "v": "3"
+          },
+          {
+            "k": "攻速",
+            "v": "1.1111 次/秒"
+          },
+          {
+            "k": "移速",
+            "v": "54.8994（第 1 波）"
+          },
+          {
+            "k": "射程",
+            "v": "128"
+          },
+          {
+            "k": "体型",
+            "v": "×1.6"
+          },
+          {
+            "k": "赏金",
+            "v": "30 金"
+          },
+          {
+            "k": "木材",
+            "v": "8 木"
+          },
+          {
+            "k": "标签",
+            "v": "首领"
+          },
+          {
+            "k": "形象",
+            "v": "shooter"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "Old kind boss. Gun goblin, still melee. hp is 34 * 4.2.",
+        "skins": [],
+        "volume": "walker"
+      }
+    ],
+    "buildings": [
+      {
+        "id": "wall",
+        "section": "buildings",
+        "name_zh": "木墙",
+        "name_en": "Wall",
+        "portrait": "thumbs/wall.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "挡路 · 防御"
+          },
+          {
+            "k": "种类",
+            "v": "WALL"
+          },
+          {
+            "k": "生命",
+            "v": "170"
+          },
+          {
+            "k": "防御",
+            "v": "8"
+          },
+          {
+            "k": "费用",
+            "v": "18 木"
+          },
+          {
+            "k": "上限",
+            "v": "28"
+          },
+          {
+            "k": "体积",
+            "v": "wall"
+          }
+        ],
+        "note": "Blocks movement. No attack.",
+        "skins": [],
+        "volume": "wall"
+      },
+      {
+        "id": "spear_tower",
+        "section": "buildings",
+        "name_zh": "矛塔",
+        "name_en": "Spear",
+        "portrait": "thumbs/spear_tower.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "穿刺 · 防御"
+          },
+          {
+            "k": "种类",
+            "v": "SPEAR"
+          },
+          {
+            "k": "生命",
+            "v": "200"
+          },
+          {
+            "k": "防御",
+            "v": "6"
+          },
+          {
+            "k": "费用",
+            "v": "24 木 + 40 金"
+          },
+          {
+            "k": "攻击",
+            "v": "24"
+          },
+          {
+            "k": "攻速",
+            "v": "1.5625 次/秒"
+          },
+          {
+            "k": "射程",
+            "v": "584.5771"
+          },
+          {
+            "k": "溅射",
+            "v": "0"
+          },
+          {
+            "k": "弹速",
+            "v": "889.5738"
+          },
+          {
+            "k": "体积",
+            "v": "spear"
+          }
+        ],
+        "note": "Single-target spear. Range and shot speed are 460 and 700 times WORLD_SCALE.",
+        "skins": [],
+        "volume": "spear"
+      },
+      {
+        "id": "fire_tower",
+        "section": "buildings",
+        "name_zh": "火塔",
+        "name_en": "Fire",
+        "portrait": "thumbs/fire_tower.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "溅射 · 防御"
+          },
+          {
+            "k": "种类",
+            "v": "FIRE"
+          },
+          {
+            "k": "生命",
+            "v": "160"
+          },
+          {
+            "k": "防御",
+            "v": "4"
+          },
+          {
+            "k": "费用",
+            "v": "16 木 + 64 金"
+          },
+          {
+            "k": "攻击",
+            "v": "18"
+          },
+          {
+            "k": "攻速",
+            "v": "0.9524 次/秒"
+          },
+          {
+            "k": "射程",
+            "v": "533.7443"
+          },
+          {
+            "k": "溅射",
+            "v": "152.4984"
+          },
+          {
+            "k": "弹速",
+            "v": "482.9115"
+          },
+          {
+            "k": "体积",
+            "v": "fire"
+          }
+        ],
+        "note": "Splash fire. Range, splash, and shot speed are 420, 120, and 380 times WORLD_SCALE.",
+        "skins": [],
+        "volume": "fire"
+      },
+      {
+        "id": "house",
+        "section": "buildings",
+        "name_zh": "房屋",
+        "name_en": "House",
+        "portrait": "thumbs/house.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "床位 · 招募"
+          },
+          {
+            "k": "种类",
+            "v": "HOUSE"
+          },
+          {
+            "k": "生命",
+            "v": "120"
+          },
+          {
+            "k": "防御",
+            "v": "3"
+          },
+          {
+            "k": "费用",
+            "v": "22 木"
+          },
+          {
+            "k": "床位",
+            "v": "4"
+          },
+          {
+            "k": "可招募",
+            "v": "村民、工匠、矛兵"
+          },
+          {
+            "k": "体积",
+            "v": "house"
+          }
+        ],
+        "note": "Grants beds while it stands. recruits is a later train list, not a spawn button yet.",
+        "skins": [],
+        "volume": "house"
+      },
+      {
+        "id": "farm",
+        "section": "buildings",
+        "name_zh": "农场",
+        "name_en": "Farm",
+        "portrait": "thumbs/farm.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "产木材 · 生产"
+          },
+          {
+            "k": "种类",
+            "v": "FARM"
+          },
+          {
+            "k": "生命",
+            "v": "80"
+          },
+          {
+            "k": "防御",
+            "v": "2"
+          },
+          {
+            "k": "费用",
+            "v": "16 木 + 12 金"
+          },
+          {
+            "k": "产出",
+            "v": "每波 +6 木"
+          },
+          {
+            "k": "体积",
+            "v": "farm"
+          }
+        ],
+        "note": "rate is extra wood added once per cleared wave, on top of the flat wave payout.",
+        "skins": [],
+        "volume": "farm"
+      },
+      {
+        "id": "workshop",
+        "section": "buildings",
+        "name_zh": "工坊",
+        "name_en": "Workshop",
+        "portrait": "thumbs/workshop.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "强化塔 · 生产"
+          },
+          {
+            "k": "种类",
+            "v": "WORKSHOP"
+          },
+          {
+            "k": "生命",
+            "v": "100"
+          },
+          {
+            "k": "防御",
+            "v": "3"
+          },
+          {
+            "k": "费用",
+            "v": "20 木 + 28 金"
+          },
+          {
+            "k": "加成",
+            "v": "塔攻击 ×1.25"
+          },
+          {
+            "k": "体积",
+            "v": "workshop"
+          }
+        ],
+        "note": "tower_damage multiplies tower attack before defense. Bonuses do not stack; the highest standing workshop wins.",
+        "skins": [],
+        "volume": "workshop"
+      }
+    ],
+    "scenery": [
+      {
+        "id": "tree",
+        "section": "scenery",
+        "name_zh": "树",
+        "name_en": "Tree",
+        "portrait": "thumbs/tree.png",
+        "badge": "挡建造",
+        "badge_tone": "scene",
+        "stats": [
+          {
+            "k": "体积",
+            "v": "tree"
+          },
+          {
+            "k": "贴图",
+            "v": "tree.png"
+          },
+          {
+            "k": "建造",
+            "v": "不能"
+          }
+        ],
+        "note": "已出场。树干落地的那一块椭圆挡建造。树冠不参与碰撞。",
+        "skins": [],
+        "volume": "tree"
+      },
+      {
+        "id": "tree_b",
+        "section": "scenery",
+        "name_zh": "树 · 变体 B",
+        "name_en": "Tree B",
+        "portrait": "thumbs/tree_b.png",
+        "badge": "挡建造",
+        "badge_tone": "scene",
+        "stats": [
+          {
+            "k": "体积",
+            "v": "tree"
+          },
+          {
+            "k": "贴图",
+            "v": "tree_b.png"
+          },
+          {
+            "k": "建造",
+            "v": "不能"
+          }
+        ],
+        "note": "已出场。贴图变体，体积键仍是 tree。",
+        "skins": [],
+        "volume": "tree"
+      },
+      {
+        "id": "tree_c",
+        "section": "scenery",
+        "name_zh": "树 · 变体 C",
+        "name_en": "Tree C",
+        "portrait": "thumbs/tree_c.png",
+        "badge": "挡建造",
+        "badge_tone": "scene",
+        "stats": [
+          {
+            "k": "体积",
+            "v": "tree"
+          },
+          {
+            "k": "贴图",
+            "v": "tree_c.png"
+          },
+          {
+            "k": "建造",
+            "v": "不能"
+          }
+        ],
+        "note": "已出场。贴图变体，体积键仍是 tree。",
+        "skins": [],
+        "volume": "tree"
+      },
+      {
+        "id": "rock",
+        "section": "scenery",
+        "name_zh": "岩石",
+        "name_en": "Rock",
+        "portrait": "thumbs/rock.png",
+        "badge": "挡建造",
+        "badge_tone": "scene",
+        "stats": [
+          {
+            "k": "体积",
+            "v": "rock"
+          },
+          {
+            "k": "贴图",
+            "v": "rock.png"
+          },
+          {
+            "k": "建造",
+            "v": "不能"
+          }
+        ],
+        "note": "已出场。椭圆体积挡建造。",
+        "skins": [],
+        "volume": "rock"
+      }
+    ]
+  },
+  "waves": [
+    {
+      "wave": 1,
+      "normal": 5,
+      "hp": 34,
+      "speed": 72.0,
+      "gap": 0.9,
+      "fast": 0,
+      "elite": 0,
+      "boss": 0
+    },
+    {
+      "wave": 2,
+      "normal": 7,
+      "hp": 44,
+      "speed": 74.0,
+      "gap": 0.78,
+      "fast": 2,
+      "elite": 0,
+      "boss": 0
+    },
+    {
+      "wave": 3,
+      "normal": 8,
+      "hp": 54,
+      "speed": 74.0,
+      "gap": 0.7,
+      "fast": 2,
+      "elite": 1,
+      "boss": 0
+    },
+    {
+      "wave": 4,
+      "normal": 8,
+      "hp": 66,
+      "speed": 76.0,
+      "gap": 0.64,
+      "fast": 3,
+      "elite": 1,
+      "boss": 0
+    },
+    {
+      "wave": 5,
+      "normal": 9,
+      "hp": 78,
+      "speed": 76.0,
+      "gap": 0.58,
+      "fast": 3,
+      "elite": 2,
+      "boss": 0
+    },
+    {
+      "wave": 6,
+      "normal": 9,
+      "hp": 90,
+      "speed": 78.0,
+      "gap": 0.54,
+      "fast": 3,
+      "elite": 2,
+      "boss": 0
+    },
+    {
+      "wave": 7,
+      "normal": 10,
+      "hp": 102,
+      "speed": 78.0,
+      "gap": 0.5,
+      "fast": 4,
+      "elite": 2,
+      "boss": 0
+    },
+    {
+      "wave": 8,
+      "normal": 10,
+      "hp": 114,
+      "speed": 78.0,
+      "gap": 0.48,
+      "fast": 4,
+      "elite": 3,
+      "boss": 0
+    },
+    {
+      "wave": 9,
+      "normal": 11,
+      "hp": 126,
+      "speed": 80.0,
+      "gap": 0.46,
+      "fast": 4,
+      "elite": 3,
+      "boss": 0
+    },
+    {
+      "wave": 10,
+      "normal": 8,
+      "hp": 130,
+      "speed": 76.0,
+      "gap": 0.5,
+      "fast": 3,
+      "elite": 2,
+      "boss": 1
+    }
+  ],
+  "economy": {
+    "wave_clear_wood": 8,
+    "wave_clear_gold": 14,
+    "farm_wood": 6,
+    "workshop_tower_damage": 1.25
+  }
+}
