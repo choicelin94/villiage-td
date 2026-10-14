@@ -1,19 +1,16 @@
 extends Node2D
 
-const COLS := 20
-const ROWS := 20
-
 var _font: Font
 var _theme: Theme
 var _state: Dictionary = {}
 var _tab := "diff"
-var _map_mode := "spawn"
-var _build_kind := "HOUSE"
-var _unit_kind := "villager"
 var _title: Label
 var _status: Label
 var _body: VBoxContainer
 var _scroll: ScrollContainer
+var _popup: PanelContainer
+var _popup_col: VBoxContainer
+var _popup_cell := Vector2i(-1, -1)
 
 func _ready() -> void:
 	_font = load("res://assets/fonts/NotoSansSC-Regular.otf")
@@ -36,16 +33,92 @@ func _bench_probe() -> void:
 	await get_tree().process_frame
 	var save := find_child("SaveButton", true, false)
 	var map := find_child("TabMap", true, false)
+	var board := find_child("MapBoard", true, false)
+	var popup := find_child("PlacePopup", true, false)
 	var no_lab := find_child("LabModeButton", true, false) == null
 	var no_stress := find_child("StressModeButton", true, false) == null
 	var title_ok := _title != null and _title.text == Locale.text("bench.title")
-	var roster_ok := Balance.starter_units().size() >= 5 and Balance.spawns().size() >= 5
-	var passed := save != null and map != null and no_lab and no_stress and title_ok and roster_ok
-	print("BENCH_OK ", passed, " save=", save != null, " map=", map != null, " lab=", no_lab, " stress=", no_stress, " title=", _title.text if _title else "", " roster=", Balance.starter_units().size(), " spawns=", Balance.spawns().size())
+	var roster_ok := Balance.starter_units().size() >= 5 and Balance.spawns().size() >= 3 and Balance.spawn_rects().size() >= 1
+	var layout_ok := _probe_layout()
+	var thumb_ok := _probe_thumbs()
+	var edit_ok := board != null and board.has_method("probe_edits") and bool(board.probe_edits())
+	var mask: Color = MapPlan.SPAWN_MASK
+	var mask_ok := mask.r > 0.75 and mask.g < 0.35 and mask.b < 0.35 and mask.a > 0.35 and mask.a < 0.8
+	_hide_popup()
+	var passed := save != null and map != null and board != null and popup != null and no_lab and no_stress and title_ok and roster_ok and layout_ok and thumb_ok and edit_ok and mask_ok
+	print("BENCH_OK ", passed, " save=", save != null, " map=", map != null, " board=", board != null, " popup=", popup != null, " lab=", no_lab, " stress=", no_stress, " title=", _title.text if _title else "", " roster=", Balance.starter_units().size(), " spawns=", Balance.spawns().size(), " layout=", layout_ok, " thumbs=", thumb_ok, " edit=", edit_ok, " mask=", mask_ok)
+	get_window().size = Vector2i(1100, 1400)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if _scroll and board is Control:
+		_scroll.ensure_control_visible(board)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var image := get_viewport().get_texture().get_image()
+	if image and not image.is_empty():
+		image.save_png("/tmp/bench-map.png")
+		var reds := 0
+		var run := 0
+		var longest := 0
+		for y in range(0, image.get_height(), 2):
+			run = 0
+			for x in range(0, image.get_width(), 2):
+				var pixel := image.get_pixel(x, y)
+				if pixel.r > 0.5 and pixel.r > pixel.g + 0.22 and pixel.r > pixel.b + 0.22:
+					reds += 1
+					run += 1
+					if run > longest:
+						longest = run
+				else:
+					run = 0
+		print("BENCH_SHOT ", image.get_width(), " ", image.get_height(), " reds=", reds, " run=", longest)
+		if reds < 8 or longest < 24:
+			passed = false
 	get_tree().quit(0 if passed else 1)
+
+func _probe_layout() -> bool:
+	var north := MapPlan.cells_of_rect(MapPlan.rect_from_middle(Vector2i(10, 0)))
+	var west := MapPlan.cells_of_rect(MapPlan.rect_from_middle(Vector2i(0, 8)))
+	var south := MapPlan.rect_from_middle(Vector2i(4, 19))
+	var east := MapPlan.cells_of_rect(MapPlan.rect_from_middle(Vector2i(19, 3)))
+	var corner := MapPlan.rect_from_middle(Vector2i(0, 0)).is_empty() and MapPlan.rect_from_middle(Vector2i(19, 19)).is_empty()
+	var legacy := MapPlan.cells_from_rects(MapPlan.rects_from_cells([[8, 0], [9, 0], [10, 0], [11, 0], [12, 0]]))
+	var legacy_set := {}
+	for item in legacy:
+		legacy_set["%d,%d" % [int(item[0]), int(item[1])]] = true
+	var legacy_ok := legacy_set.size() == 5
+	for x in [8, 9, 10, 11, 12]:
+		if not legacy_set.has("%d,0" % x):
+			legacy_ok = false
+	var north_ok := north.size() == 3 and north[0] == Vector2i(9, 0) and north[1] == Vector2i(10, 0) and north[2] == Vector2i(11, 0)
+	var west_ok := west.size() == 3 and west[0] == Vector2i(0, 7) and west[1] == Vector2i(0, 8) and west[2] == Vector2i(0, 9)
+	var south_ok := str(south.get("edge", "")) == "south"
+	var east_ok := east.size() == 3 and east[1] == Vector2i(19, 3)
+	var ok := north_ok and west_ok and south_ok and east_ok and corner and legacy_ok
+	print("BENCH_LAYOUT north=", north_ok, " west=", west_ok, " south=", south_ok, " east=", east_ok, " corner=", corner, " legacy=", legacy_ok, " legacy_n=", legacy_set.size())
+	return ok
+
+func _probe_thumbs() -> bool:
+	var ok := true
+	for id in ["Thumb_unit_villager", "Thumb_unit_spearman", "Thumb_unit_gunner", "Thumb_unit_engineer", "Thumb_build_HOUSE", "Thumb_build_WALL", "Thumb_build_LUMBER", "Thumb_prop_tree", "Thumb_prop_rock"]:
+		if find_child(id, true, false) == null:
+			print("BENCH_THUMB missing ", id)
+			ok = false
+	var tree := find_child("Thumb_prop_tree", true, false)
+	if tree == null or not tree.has_method("_get_drag_data"):
+		return false
+	var data = tree._get_drag_data(Vector2.ZERO)
+	if not (data is Dictionary) or str(data.get("layer", "")) != "prop" or str(data.get("id", "")) != "tree":
+		print("BENCH_DRAG ", data)
+		return false
+	return ok
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_ESCAPE:
+		if _popup and _popup.visible:
+			_hide_popup()
+			get_viewport().set_input_as_handled()
+			return
 		_back_to_game()
 
 func _build_chrome() -> void:
@@ -105,6 +178,29 @@ func _build_chrome() -> void:
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_body.add_theme_constant_override("separation", 8)
 	_scroll.add_child(_body)
+	_build_popup(layer)
+
+func _build_popup(layer: CanvasLayer) -> void:
+	_popup = PanelContainer.new()
+	_popup.name = "PlacePopup"
+	_popup.visible = false
+	_popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	_popup.z_index = 40
+	_popup.custom_minimum_size = Vector2(390, 360)
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.1, 0.14, 0.11, 0.98)
+	box.border_color = Color(0.9, 0.78, 0.4)
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(12)
+	box.content_margin_left = 10
+	box.content_margin_right = 10
+	box.content_margin_top = 8
+	box.content_margin_bottom = 8
+	_popup.add_theme_stylebox_override("panel", box)
+	layer.add_child(_popup)
+	_popup_col = VBoxContainer.new()
+	_popup_col.add_theme_constant_override("separation", 6)
+	_popup.add_child(_popup_col)
 
 func _tab_button(tabs: HBoxContainer, tab: String, key: String, node_name: String = "") -> void:
 	var btn := _button(node_name if node_name != "" else "Tab" + tab, Locale.text(key))
@@ -113,6 +209,7 @@ func _tab_button(tabs: HBoxContainer, tab: String, key: String, node_name: Strin
 
 func _show_tab(tab: String = "diff") -> void:
 	_tab = tab
+	_hide_popup()
 	if _title:
 		_title.text = Locale.text("bench.title")
 	for child in _body.get_children():
@@ -200,134 +297,106 @@ func _remove_roster(index: int) -> void:
 
 func _fill_map() -> void:
 	_note(Locale.text("bench.map_help"))
-	var modes := HBoxContainer.new()
-	modes.add_theme_constant_override("separation", 6)
-	_body.add_child(modes)
-	for pair in [["spawn", "bench.mode.spawn"], ["build", "bench.mode.build"], ["unit", "bench.mode.unit"]]:
-		var btn := _button("", Locale.text(str(pair[1])))
-		if _map_mode == str(pair[0]):
-			btn.modulate = Color(1, 0.95, 0.7)
-		btn.pressed.connect(_set_map_mode.bind(str(pair[0])))
-		modes.add_child(btn)
-	if _map_mode == "build":
-		var kinds := OptionButton.new()
-		kinds.theme = _theme
-		for kind_name in ["WALL", "SPEAR", "FIRE", "HOUSE", "FARM", "WORKSHOP", "LUMBER", "SPEAR_BARRACKS", "GUN_BARRACKS"]:
-			kinds.add_item(kind_name)
-			kinds.set_item_metadata(kinds.item_count - 1, kind_name)
-			if kind_name == _build_kind:
-				kinds.select(kinds.item_count - 1)
-		kinds.item_selected.connect(func(idx: int) -> void: _build_kind = str(kinds.get_item_metadata(idx)))
-		_body.add_child(kinds)
-	elif _map_mode == "unit":
-		var units := OptionButton.new()
-		units.theme = _theme
-		for id in ["villager", "spearman", "gunner", "engineer"]:
-			units.add_item(id)
-			units.set_item_metadata(units.item_count - 1, id)
-			if id == _unit_kind:
-				units.select(units.item_count - 1)
-		units.item_selected.connect(func(idx: int) -> void: _unit_kind = str(units.get_item_metadata(idx)))
-		_body.add_child(units)
+	_body.add_child(_label(Locale.text("bench.palette.units")))
+	_body.add_child(_palette_row(MapPlan.unit_palette()))
+	_body.add_child(_label(Locale.text("bench.palette.builds")))
+	_body.add_child(_palette_row(MapPlan.build_palette()))
+	_body.add_child(_label(Locale.text("bench.palette.props")))
+	_body.add_child(_palette_row(MapPlan.prop_palette()))
+	var board := MapBoard.new()
+	board.name = "MapBoard"
+	board.setup(_state, _font)
+	board.place_requested.connect(_open_place_popup)
+	board.hint_changed.connect(_show_hint)
+	board.changed.connect(_hide_popup)
+	_body.add_child(board)
+
+func _palette_row(items: Array) -> ScrollContainer:
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(0, 112)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	scroll.add_child(row)
+	for spec in items:
+		if spec is Dictionary:
+			row.add_child(_make_thumb(spec, false))
+	return scroll
+
+func _make_thumb(spec: Dictionary, click_places: bool) -> CubeThumb:
+	var thumb := CubeThumb.new()
+	if not click_places:
+		thumb.name = "Thumb_%s_%s" % [str(spec.get("layer", "")), str(spec.get("id", ""))]
+	thumb.layer = str(spec.get("layer", ""))
+	thumb.item_id = str(spec.get("id", ""))
+	thumb.volume_key = str(spec.get("volume", "walker"))
+	thumb.tint = spec.get("tint", Color.WHITE)
+	thumb.label_key = str(spec.get("label", ""))
+	thumb.click_places = click_places
+	return thumb
+
+func _open_place_popup(cell: Vector2i, at: Vector2) -> void:
+	if _popup == null or _popup_col == null:
+		return
+	_popup_cell = cell
+	for child in _popup_col.get_children():
+		child.queue_free()
+	var title := _label(Locale.format("bench.pick_title", [cell.x, cell.y]))
+	title.add_theme_font_size_override("font_size", 20)
+	_popup_col.add_child(title)
+	var help := _label(Locale.text("bench.pick_help"))
+	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	help.custom_minimum_size = Vector2(360, 0)
+	_popup_col.add_child(help)
+	var close := _button("PlaceClose", Locale.text("bench.pick_close"))
+	close.pressed.connect(_hide_popup)
+	_popup_col.add_child(close)
+	_popup_col.add_child(_label(Locale.text("bench.palette.units")))
+	_popup_col.add_child(_popup_grid(MapPlan.unit_palette()))
+	_popup_col.add_child(_label(Locale.text("bench.palette.builds")))
+	_popup_col.add_child(_popup_grid(MapPlan.build_palette()))
+	_popup.visible = true
+	_popup.global_position = at + Vector2(12, 12)
+	_clamp_popup()
+
+func _popup_grid(items: Array) -> GridContainer:
 	var grid := GridContainer.new()
-	grid.columns = COLS
-	grid.add_theme_constant_override("h_separation", 2)
-	grid.add_theme_constant_override("v_separation", 2)
-	_body.add_child(grid)
-	for y in ROWS:
-		for x in COLS:
-			var btn := Button.new()
-			btn.theme = _theme
-			btn.custom_minimum_size = Vector2(22, 22)
-			btn.focus_mode = Control.FOCUS_NONE
-			btn.text = _cell_mark(x, y)
-			_style_button(btn)
-			btn.modulate = _cell_color(x, y)
-			btn.pressed.connect(_tap_cell.bind(x, y))
-			grid.add_child(btn)
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	for spec in items:
+		if not (spec is Dictionary):
+			continue
+		var thumb := _make_thumb(spec, true)
+		thumb.chosen.connect(_place_from_popup)
+		grid.add_child(thumb)
+	return grid
 
-func _set_map_mode(mode: String) -> void:
-	_map_mode = mode
-	_show_tab("map")
+func _place_from_popup(payload: Dictionary) -> void:
+	var board := find_child("MapBoard", true, false)
+	if board and board.has_method("place_payload") and board.place_payload(payload, _popup_cell):
+		_hide_popup()
 
-func _cell_mark(x: int, y: int) -> String:
-	if _spawn_at(x, y):
-		return "敌"
-	if _building_at(x, y) != "":
-		return "建"
-	if _unit_at(x, y) != "":
-		return "人"
-	return ""
+func _hide_popup() -> void:
+	if _popup:
+		_popup.visible = false
 
-func _cell_color(x: int, y: int) -> Color:
-	if _spawn_at(x, y):
-		return Color(1, 0.45, 0.4)
-	if _building_at(x, y) != "":
-		return Color(0.95, 0.78, 0.4)
-	if _unit_at(x, y) != "":
-		return Color(0.55, 0.85, 1)
-	if x == 0 or y == 0 or x == COLS - 1 or y == ROWS - 1:
-		return Color(0.35, 0.4, 0.32)
-	return Color(0.75, 0.82, 0.62)
+func _clamp_popup() -> void:
+	if _popup == null:
+		return
+	var view := get_viewport_rect().size
+	var sz := _popup.size
+	if sz.x < 8.0:
+		sz = _popup.custom_minimum_size
+	var pos := _popup.global_position
+	pos.x = clampf(pos.x, 8.0, maxf(8.0, view.x - sz.x - 8.0))
+	pos.y = clampf(pos.y, 8.0, maxf(8.0, view.y - sz.y - 8.0))
+	_popup.global_position = pos
 
-func _tap_cell(x: int, y: int) -> void:
-	if _map_mode == "spawn":
-		if _spawn_at(x, y):
-			_remove_pair(_state.spawns, x, y)
-		else:
-			(_state.spawns as Array).append([x, y])
-	elif _map_mode == "build":
-		if x == 0 or y == 0 or x == COLS - 1 or y == ROWS - 1:
-			return
-		if _building_at(x, y) != "":
-			_remove_cell_entry(_state.starter_buildings, x, y)
-		else:
-			(_state.starter_buildings as Array).append({"kind": _build_kind, "cell": [x, y]})
-	else:
-		if x == 0 or y == 0 or x == COLS - 1 or y == ROWS - 1:
-			return
-		if _unit_at(x, y) != "":
-			_remove_cell_entry(_state.starter_units, x, y)
-		else:
-			(_state.starter_units as Array).append({"unit": _unit_kind, "cell": [x, y], "sex": "m"})
-	_show_tab("map")
-
-func _spawn_at(x: int, y: int) -> bool:
-	return _pair_in(_state.get("spawns", []), x, y)
-
-func _building_at(x: int, y: int) -> String:
-	return _entry_at(_state.get("starter_buildings", []), x, y, "kind")
-
-func _unit_at(x: int, y: int) -> String:
-	return _entry_at(_state.get("starter_units", []), x, y, "unit")
-
-func _pair_in(rows: Array, x: int, y: int) -> bool:
-	for item in rows:
-		if item is Array and item.size() >= 2 and int(item[0]) == x and int(item[1]) == y:
-			return true
-	return false
-
-func _entry_at(rows: Array, x: int, y: int, key: String) -> String:
-	for item in rows:
-		if item is Dictionary:
-			var cell = item.get("cell", [])
-			if cell is Array and cell.size() >= 2 and int(cell[0]) == x and int(cell[1]) == y:
-				return str(item.get(key, ""))
-	return ""
-
-func _remove_pair(rows: Array, x: int, y: int) -> void:
-	for i in range(rows.size() - 1, -1, -1):
-		var item = rows[i]
-		if item is Array and item.size() >= 2 and int(item[0]) == x and int(item[1]) == y:
-			rows.remove_at(i)
-
-func _remove_cell_entry(rows: Array, x: int, y: int) -> void:
-	for i in range(rows.size() - 1, -1, -1):
-		var item = rows[i]
-		if item is Dictionary:
-			var cell = item.get("cell", [])
-			if cell is Array and cell.size() >= 2 and int(cell[0]) == x and int(cell[1]) == y:
-				rows.remove_at(i)
+func _show_hint(text: String) -> void:
+	if _status:
+		_status.text = text
 
 func _fill_stats() -> void:
 	_note("击杀只掉金币。木坊产量 = 每名村民产量 × 驻守村民，按间隔跳。")
@@ -419,6 +488,11 @@ func _write_path(path: Array, value) -> void:
 		node[int(leaf)] = value
 
 func _save() -> void:
+	var rects: Array = _state.get("spawn_rects", []) if _state.get("spawn_rects", []) is Array else []
+	_state["spawn_rects"] = MapPlan.clean_rects(rects)
+	if (_state["spawn_rects"] as Array).is_empty():
+		_state["spawn_rects"] = MapPlan.default_rects()
+	_state["spawns"] = MapPlan.cells_from_rects(_state["spawn_rects"])
 	Balance.save_editor_state(_state)
 	_state = Balance.editor_state()
 	if _status:

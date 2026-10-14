@@ -455,7 +455,90 @@ dl.card-stats {
 <script>
 (function () {
   var KEY = "vtd.setup";
-  var PAGE_VERSION = 1;
+  var PAGE_VERSION = 2;
+  function rectsFromCells(raw) {
+    var COLS = 20, ROWS = 20;
+    var cells = {};
+    (raw || []).forEach(function (item) {
+      if (!item || item.length < 2) return;
+      cells[item[0] + "," + item[1]] = true;
+    });
+    function has(x, y) { return cells[x + "," + y]; }
+    function middleOk(limit, index) { return index >= 1 && index <= limit - 2; }
+    function edgeRects(edge, horizontal) {
+      var limit = horizontal ? COLS : ROWS;
+      var indexes = [];
+      for (var i = 0; i < limit; i++) {
+        var x = horizontal ? i : (edge === "west" ? 0 : COLS - 1);
+        var y = horizontal ? (edge === "north" ? 0 : ROWS - 1) : i;
+        if (has(x, y)) indexes.push(i);
+      }
+      var rects = [];
+      var s = 0;
+      while (s < indexes.length) {
+        var e = s;
+        while (e + 1 < indexes.length && indexes[e + 1] === indexes[e] + 1) e++;
+        var start = indexes[s], endv = indexes[e];
+        var body = false;
+        for (var k = start; k <= endv; k++) if (k !== 0 && k !== limit - 1) body = true;
+        if (body) {
+          var mids = [];
+          var length = endv - start + 1;
+          if (length >= 3) {
+            var cursor = start;
+            while (cursor + 2 <= endv) {
+              var middle = cursor + 1;
+              if (middleOk(limit, middle)) mids.push(middle);
+              cursor += 3;
+            }
+            var all = true;
+            for (var n = start; n <= endv; n++) {
+              var hit = false;
+              for (var m = 0; m < mids.length; m++) if (Math.abs(n - mids[m]) <= 1) hit = true;
+              if (!hit) all = false;
+            }
+            if (!all) {
+              var tail = endv - 1;
+              if (middleOk(limit, tail) && mids.indexOf(tail) < 0) mids.push(tail);
+            }
+          } else {
+            var centroid = (start + endv) / 2;
+            var best = -1, bestD = 9999;
+            for (var mid = 1; mid <= limit - 2; mid++) {
+              if (mid - 1 > start || mid + 1 < endv) continue;
+              var dist = Math.abs(mid - centroid);
+              if (dist < bestD) { bestD = dist; best = mid; }
+            }
+            if (best >= 0) mids.push(best);
+          }
+          mids.forEach(function (mid) {
+            var mx = horizontal ? mid : (edge === "west" ? 0 : COLS - 1);
+            var my = horizontal ? (edge === "north" ? 0 : ROWS - 1) : mid;
+            rects.push({ edge: edge, middle: [mx, my], length: 3, width: 1 });
+          });
+        }
+        s = e + 1;
+      }
+      return rects;
+    }
+    return edgeRects("north", true).concat(edgeRects("south", true), edgeRects("west", false), edgeRects("east", false));
+  }
+  function cellsFromRects(rects) {
+    var out = [], seen = {};
+    (rects || []).forEach(function (rect) {
+      var m = rect.middle || [0, 0];
+      var born = (rect.edge === "north" || rect.edge === "south")
+        ? [[m[0] - 1, m[1]], [m[0], m[1]], [m[0] + 1, m[1]]]
+        : [[m[0], m[1] - 1], [m[0], m[1]], [m[0], m[1] + 1]];
+      born.forEach(function (c) {
+        var key = c[0] + "," + c[1];
+        if (seen[key]) return;
+        seen[key] = true;
+        out.push(c);
+      });
+    });
+    return out;
+  }
   var note = document.getElementById("codex-refresh-note");
   var pending = sessionStorage.getItem("vtd.refreshNote");
   if (pending) {
@@ -477,6 +560,14 @@ dl.card-stats {
         if (localVersion < remoteVersion) {
           var base = remote.setup && typeof remote.setup === "object" ? remote.setup : {};
           var merged = Object.assign({}, base, local || {});
+          if (localVersion < 2 && local && Array.isArray(local.spawns) && !Array.isArray(local.spawn_rects)) {
+            var derived = rectsFromCells(local.spawns);
+            if (derived.length) {
+              merged.spawn_rects = derived;
+              merged.spawns = cellsFromRects(derived);
+            }
+          }
+          if (!Array.isArray(merged.starter_props)) merged.starter_props = [];
           merged.config_version = remoteVersion;
           localStorage.setItem(KEY, JSON.stringify(merged));
           sessionStorage.setItem("vtd.refreshNote", "配置已从版本 " + localVersion + " 更新到 " + remoteVersion);
