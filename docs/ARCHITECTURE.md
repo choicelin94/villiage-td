@@ -11,7 +11,7 @@ This is the maintainer map. Field and id rules are in [ASSET_STANDARD.md](ASSET_
 | `data/` | 配置。平衡、形象目录、占地。只有 JSON。 | 图、脚本、生成的网页 |
 | `assets/` | 资源。角色序列帧、建筑和景物 PNG、字体、可选 Spine。 | 数值、玩法 |
 | `scripts/` | 行为。波次怎么刷、塔怎么打、人怎么走。平衡从 `data/` 读。 | 新的图片文件 |
-| `scenes/` | 入口场景：主游戏、景深试验、压力页。 | 平衡表 |
+| `scenes/` | 入口场景：主游戏、工作台，以及仍可深链的景深试验和压力页。 | 平衡表 |
 | `docs/` | 已经能打开的静态站：游戏网页包、图鉴、试验页跳转。 | 手改过的图鉴 HTML |
 | `tools/` | 从 `data/` 和 `assets/` 生成图鉴的脚本。 | 运行时逻辑 |
 
@@ -34,18 +34,20 @@ scenes/main.tscn
     scripts/spine_actor.gd 读 data/characters.json，播序列帧
     scripts/iso_volume.gd  读 data/iso_volumes.json，算占地
     scripts/depth_solver.gd 两段排序
-scenes/depth_lab.tscn      景深试验。网页深链 docs/depth-lab/，游戏里从工作台进入
-scenes/depth_stress.tscn   压力页。网页深链 docs/stress/，游戏里从工作台进入
-scenes/workbench.tscn      工作台，把上面两页收成一个入口
+scenes/depth_lab.tscn      景深试验。只留网页深链 docs/depth-lab/，工作台不再进入
+scenes/depth_stress.tscn   压力页。只留网页深链 docs/stress/，工作台不再进入
+scenes/workbench.tscn      工作台。编辑难度、数值、初始地图、刷怪点和开局人口，写入 user://setup.json
 ```
 
-`Balance` 在启动时加载 `data/units.json`、`data/enemies.json`、`data/buildings.json`。伤害是 `max(1, round(attack * 100 / (100 + defense)))`。工坊的 `tower_damage` 先乘在攻击上，再对每个目标套一次这个公式。村民被感染仍是接触，不走这个公式。
+`Balance` 在启动时加载 `data/units.json`、`data/enemies.json`、`data/buildings.json`，再叠 `data/setup.json` 和本机 `user://setup.json`。伤害是 `max(1, round(attack * 100 / (100 + defense)))`。工坊的 `tower_damage` 先乘在攻击上，再对每个目标套一次这个公式。村民被感染仍是接触，不走这个公式。击杀只加 `gold_reward`，`wood_reward` 读入后强制为 0。
 
-塔、农场、房屋、工坊立着就工作，不用先派人。房屋立着就给床位；有人躲在里面才占 1 个床，头顶才有绿点。农场按 `produces.rate` 在清波时加木材。工坊加成不叠加，取还立着的最高一座。`attack_speed` 是每秒攻击次数，冷却是 `1 / attack_speed`。
+塔立着就攻击，不用先派人。房屋的 `beds` / `provides.slots` 是村民空缺。矛兵营、枪兵营、工坊分别提供矛兵、枪兵、工兵空缺。木坊按驻守村民产木，`staff_slots` 默认 4，空坊为 0。农场按 `produces.rate` 在清波时加木材。工坊加成不叠加，取还立着的最高一座。`attack_speed` 是每秒攻击次数，冷却是 `1 / attack_speed`。
+
+本机配置带 `config_version`。打开图鉴或图鉴页点「刷新」时，若本地版本低于出厂 `data/setup.json`，先补上出厂字段并升版本，再刷新图鉴。图鉴不编辑数值。锁敌默认在 `setup.json` 的 `combat`：`target_hold` 1.2 秒、`switch_margin` 0.72、`repath` 0.6 秒、`stuck` 0.9 秒、`wander_hold` 2.4 秒、`panic_hold` 1.3 秒。清波入驻默认 `settlement.chance` 0.65、`max_per_wave` 3。
 
 `project.godot` 的主场景是 `scenes/main.tscn`，渲染器是 GL Compatibility。网页导出关闭了线程和 GDExtension。字体是 `assets/fonts/NotoSansSC-Regular.otf`。
 
-`Balance` loads `data/units.json`, `data/enemies.json`, and `data/buildings.json` at startup. Damage is `max(1, round(attack * 100 / (100 + defense)))`. A workshop's `tower_damage` multiplies attack first, then the formula runs once per target. Villager infection is still contact. Towers, farms, houses, and the workshop work while they stand. `attack_speed` is attacks per second.
+`Balance` loads `data/units.json`, `data/enemies.json`, and `data/buildings.json`, then overlays `data/setup.json` and `user://setup.json`. Damage is `max(1, round(attack * 100 / (100 + defense)))`. A workshop's `tower_damage` multiplies attack first, then the formula runs once per target. Villager infection is still contact. Kills add gold only. Towers attack while they stand. The lumber mill produces wood from stationed villagers. `attack_speed` is attacks per second. A codex refresh upgrades a local config whose `config_version` is behind the shipped file, then reloads the page.
 
 玩家看到的三页静态入口都在 `docs/`：
 
@@ -65,6 +67,7 @@ scenes/workbench.tscn      工作台，把上面两页收成一个入口
 | `data/units.json` | 会。`scripts/balance.gd` | 会 |
 | `data/enemies.json` | 会。`scripts/balance.gd`，含波次表 | 会 |
 | `data/buildings.json` | 会。`scripts/balance.gd` | 会 |
+| `data/setup.json` | 会。难度、清波入驻、锁敌、经济、刷怪点、开局人口。`config_version` 给出厂版本 | 会。刷新时用来比对本地配置 |
 | `data/characters.json` | 会。`spine_actor.gd`。`Balance` 只用它把皮肤名换成图序号 | 会。用来裁第 0 帧 |
 | `data/iso_volumes.json` | 会。`iso_volume.gd` 读到就用 | 会。核对体积键还在 |
 | `assets/characters/*.png` | 会。路径写在 `characters.json` | 会 |
@@ -81,9 +84,9 @@ scenes/workbench.tscn      工作台，把上面两页收成一个入口
 | 真源 | 另一份 | 状态 |
 | --- | --- | --- |
 | `data/iso_volumes.json` | `scripts/iso_volume.gd` 的 `TABLE` | JSON 读得到就用 JSON。`TABLE` 只在文件缺失或解析失败时顶上，两边要保持一样。 |
-| `scripts/main.gd` 的 `WAVE_CLEAR_WOOD`（8）和 `WAVE_CLEAR_GOLD`（14） | 没有对应 JSON | 清波底薪仍是这两个常量。农场每波木材是 `buildings.json` 里 `farm.produces.rate`。 |
-| `units.json` 里村民的 `attack` / `attack_speed` / `attack_range` | 对局还没花 | 感染仍是碰到就变。这些攻击数值已经在 Balance 里，还没有挥出去。 |
-| `units.json` 的 `spearman`、`engineer` | `main.gd` 只调用 `Balance.unit("villager")` | 配置已有。房屋的 `recruits` 列了他们，还不是训练按钮。 |
+| `scripts/main.gd` 的 `WAVE_CLEAR_WOOD`（8）和 `WAVE_CLEAR_GOLD`（14） | `data/setup.json` 的 `economy` | 对局读 setup，常量只在缺字段时兜底。农场每波木材仍是 `farm.produces.rate`。木坊产木在 `lumber_mill.produces`。 |
+| `units.json` 里村民的 `attack` / `attack_speed` / `attack_range` | 村民仍不挥砍 | 感染仍是碰到就变。矛兵、枪兵、工兵会用自己的攻击。 |
+| `units.json` 的 `spearman`、`gunner`、`engineer` | `main.gd` 在开局登记 `Balance.unit(...)`，清波按空缺生成 | 不是训练按钮，也不是把村民转化过去。 |
 | `docs/index.html` | Godot 重新导出会盖掉手改 | 游戏页不再手写左上角链接。问号菜单在 `scripts/hud.gd`。 |
 
 波次表里的 `speed` 是缩放用的作者值，还没乘 `WORLD_SCALE`。卡片上的 `move_speed` 已经是第 1 波的世界单位。后面的波次用 `move_speed * wave.speed / waves[0].speed`，不要把表里的 `speed` 再乘一次比例之外的东西。
@@ -93,7 +96,7 @@ scenes/workbench.tscn      工作台，把上面两页收成一个入口
 1. 图放进 `assets/`。不要给已经在用的文件改名。
 2. 形象、占地、平衡分别写入 `data/characters.json`、`data/iso_volumes.json`、`data/units.json` 或 `enemies.json` 或 `buildings.json`。字段见资源标准。改占地时把 `iso_volume.gd` 的 `TABLE` 后备一起改。
 3. 文案写入 `scripts/locale.gd` 的 `display_key`。JSON 不需要再抄一份 `name`。
-4. 新的建筑 `kind` 才改 `Building.Kind`、`_volume_key` 和放置逻辑。矛兵和工匠已经在 `units.json` 里；要让他们出场，就在 `main.gd` 里调用 `Balance.unit("spearman")` 或 `Balance.unit("engineer")`。
+4. 新的建筑 `kind` 才改 `Building.Kind`、`_volume_key` 和放置逻辑。矛兵、枪兵、工兵已经由 `main.gd` 调用 `Balance.unit(...)`，并在清波按空缺入驻。
 5. 运行 `python3 tools/build_codex.py`。
 6. 提交 `data/`、`assets/`、`scripts/` 和 `docs/codex/`。
 7. 推到 `main` 后，Actions 发布网页。见下一节。

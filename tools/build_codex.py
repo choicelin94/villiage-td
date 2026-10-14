@@ -31,7 +31,7 @@ THUMBS = OUT / "thumbs"
 NARROW_MQ = "(max-width: 1099px)"
 RESAMPLE = getattr(Image, "Resampling", Image).LANCZOS
 
-REQUIRED_UNITS = {"villager", "spearman", "engineer"}
+REQUIRED_UNITS = {"villager", "spearman", "engineer", "gunner"}
 REQUIRED_ENEMIES = {
     "spear_normal",
     "spear_fast",
@@ -46,6 +46,9 @@ REQUIRED_BUILDINGS = {
     "house",
     "farm",
     "workshop",
+    "lumber_mill",
+    "spear_barracks",
+    "gun_barracks",
 }
 UNIT_FIELDS = (
     "id",
@@ -121,7 +124,7 @@ SCENERY_LABELS = {
         "已出场。椭圆体积挡建造。",
     ),
 }
-ROLE_ZH = {"worker": "劳工", "melee": "近战", "support": "支援"}
+ROLE_ZH = {"worker": "劳工", "melee": "近战", "support": "工兵", "ranged": "远程"}
 CATEGORY_ZH = {"recruit": "招募", "production": "生产", "defense": "防御"}
 TAG_ZH = {
     "normal": "普通",
@@ -168,9 +171,9 @@ WAVE_FOOTNOTE = (
 )
 # Level-1 modules. Scenery stays its own module: those cards are props, not buildings.
 CODEX_MODULES = (
-    ("units", "角色", "村民会出场。矛兵和工匠已写入 Balance，对局还不会生成。"),
-    ("enemies", "敌人", "卡片是第 1 波的世界单位。后面的波次在「波次」模块里按比例缩放。"),
-    ("buildings", "建筑", "塔立着就会攻击，不用派人。房屋立着就给床位，农场立着就产木材。"),
+    ("units", "角色", "村民、矛兵、枪兵和工兵都会出场。空缺由房屋、兵营和工坊决定，清波后按概率补上，不是把村民转成兵。"),
+    ("enemies", "敌人", "卡片是第 1 波的世界单位。后面的波次在「波次」模块里按比例缩放。击杀只掉金币。"),
+    ("buildings", "建筑", "塔立着就会攻击。房屋床位是村民空缺。矛兵营、枪兵营和工坊提供对应单位空缺。木坊按驻守村民产木材。"),
     ("scenery", "场景", "树和岩石挡住建造。草地和道路是地面，不进图鉴。"),
     ("waves", "波次", "十波都在这一页。点左侧条目，页面滚到那一波。"),
 )
@@ -491,9 +494,17 @@ def building_card(entry: dict, locale: dict) -> dict:
     if int(entry.get("beds") or 0) > 0:
         stats.append(stat("床位", str(int(entry["beds"]))))
     produces = entry.get("produces")
-    if isinstance(produces, dict) and produces.get("rate") is not None:
+    if isinstance(produces, dict) and produces.get("mode") == "staff":
+        resource = {"wood": "木", "gold": "金"}.get(str(produces.get("resource", "")), str(produces.get("resource", "")))
+        stats.append(stat("产出", f"每 {fmt_num(produces.get('interval', 0))} 秒，每名村民 +{fmt_num(produces.get('rate_per_villager', 0))} {resource}"))
+        stats.append(stat("驻守", str(int(entry.get("staff_slots") or 0))))
+    elif isinstance(produces, dict) and produces.get("rate") is not None:
         resource = {"wood": "木", "gold": "金"}.get(str(produces.get("resource", "")), str(produces.get("resource", "")))
         stats.append(stat("产出", f"每波 +{fmt_num(produces['rate'])} {resource}"))
+    provides = entry.get("provides")
+    if isinstance(provides, dict) and provides.get("unit"):
+        unit_name = locale.get(f"unit.{provides['unit']}", {}).get("zh", str(provides["unit"]))
+        stats.append(stat("空缺", f"{unit_name} × {int(provides.get('slots') or 0)}"))
     recruits = entry.get("recruits") or []
     if recruits:
         stats.append(stat("可招募", recruit_names(recruits, locale)))
@@ -709,6 +720,15 @@ tr + tr td, tr + tr th {{ border-top: 1px solid var(--line); }}
   background: var(--chip); border: 1px solid var(--line);
 }}
 footer {{ margin-bottom: 32px; color: var(--muted); font-size: 13px; }}
+.refresh-row {{ display: flex; align-items: center; gap: 12px; margin: 0 0 8px; flex-wrap: wrap; }}
+.refresh-row button {{
+  font: inherit; font-size: 15px; color: var(--text); cursor: pointer;
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 16px; min-height: 40px;
+}}
+.refresh-row button:hover {{ border-color: var(--gold); }}
+.refresh-row button:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
+#codex-refresh-note {{ color: var(--muted); font-size: 14px; }}
 a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
 @media (max-width: 767px) {{
   header.top {{ padding: 18px 0 12px; }}
@@ -723,12 +743,57 @@ a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
   <p class="kicker">部落村落塔防</p>
   <h1>图鉴</h1>
   <p class="summary">{esc(summary)}，共 {total} 张。</p>
+  <p class="refresh-row">
+    <button type="button" id="codex-refresh">刷新</button>
+    <span id="codex-refresh-note"></span>
+  </p>
 </header>
 {shell}
 <footer>
   <p>头像是序列帧左上角第 0 帧，或建筑的俯视图，透明边已裁掉。数值来自 data/units.json、data/enemies.json、data/buildings.json，对局由 scripts/balance.gd 加载同一份。攻速是每秒攻击次数。伤害是 max(1, round(attack × 100 / (100 + defense)))。移速、射程、溅射和弹速是世界单位。卡片上的小数最多显示 4 位。</p>
-  <p>此页由 tools/build_codex.py 生成。改目录后重新运行脚本，再提交 docs/codex/。</p>
+  <p>此页由 tools/build_codex.py 生成。改目录后重新运行脚本，再提交 docs/codex/。点「刷新」会读取 catalog.json 的 config_version。本地配置版本更低时，先用出厂配置补齐并升版本，再重新载入这一页。图鉴本身不编辑数值。</p>
 </footer>
+<script>
+(function () {{
+  var KEY = "vtd.setup";
+  var PAGE_VERSION = {int(catalog.get("config_version", 1))};
+  var note = document.getElementById("codex-refresh-note");
+  var pending = sessionStorage.getItem("vtd.refreshNote");
+  if (pending) {{
+    note.textContent = pending;
+    sessionStorage.removeItem("vtd.refreshNote");
+  }}
+  document.getElementById("codex-refresh").addEventListener("click", function () {{
+    note.textContent = "正在检查配置…";
+    fetch("catalog.json?t=" + Date.now(), {{ cache: "no-store" }})
+      .then(function (response) {{
+        if (!response.ok) throw new Error("catalog");
+        return response.json();
+      }})
+      .then(function (remote) {{
+        var remoteVersion = Number(remote.config_version) || 0;
+        var local = null;
+        try {{ local = JSON.parse(localStorage.getItem(KEY) || "null"); }} catch (err) {{ local = null; }}
+        var localVersion = local && Number(local.config_version) || 0;
+        if (localVersion < remoteVersion) {{
+          var base = remote.setup && typeof remote.setup === "object" ? remote.setup : {{}};
+          var merged = Object.assign({{}}, base, local || {{}});
+          merged.config_version = remoteVersion;
+          localStorage.setItem(KEY, JSON.stringify(merged));
+          sessionStorage.setItem("vtd.refreshNote", "配置已从版本 " + localVersion + " 更新到 " + remoteVersion);
+        }} else {{
+          sessionStorage.setItem("vtd.refreshNote", "配置已是版本 " + remoteVersion);
+        }}
+        var next = new URL(window.location.href);
+        next.searchParams.set("v", String(remoteVersion || PAGE_VERSION));
+        window.location.replace(next.toString());
+      }})
+      .catch(function () {{
+        note.textContent = "刷新失败，请再试一次";
+      }});
+  }});
+}})();
+</script>
 </body>
 </html>
 """
@@ -1244,12 +1309,15 @@ dl.card-stats {
 
 def render_economy(economy: dict) -> str:
     return (
-        '<p class="callout">清完一波：木材 '
+        '<p class="callout">击杀只掉金币。清完一波：木材 '
         f"{int(economy['wave_clear_wood'])} + 每座农场 × {fmt_num(economy['farm_wood'])}，"
         f"金币 +{int(economy['wave_clear_gold'])}。"
-        "平底薪仍是 scripts/main.gd 里的 WAVE_CLEAR_WOOD 和 WAVE_CLEAR_GOLD。"
+        f"木坊按驻守村民产木：每 {fmt_num(economy['lumber_interval'])} 秒、每名村民 +{fmt_num(economy['lumber_rate'])} 木，"
+        f"上限 {int(economy['lumber_slots'])} 人，空坊为 0。"
+        f"清波入驻概率 {fmt_num(economy['settle_chance'])}，每类 1～min({int(economy['settle_max'])}, 空缺)。"
+        "房屋床位是村民空缺，矛兵营/枪兵营是对应兵种空缺，工坊是工兵空缺。"
         f"塔立着就会攻击。工坊把塔的攻击 ×{fmt_num(economy['workshop_tower_damage'])}，"
-        "先乘攻击再套伤害公式，不叠加，取还立着的最高一座。</p>"
+        "先乘攻击再套伤害公式，不叠加。</p>"
     )
 
 
@@ -1263,20 +1331,32 @@ def esc(value) -> str:
     )
 
 
-def economy_from(main_gd: str, buildings: list) -> dict:
+def economy_from(main_gd: str, buildings: list, setup: dict) -> dict:
     wood = read_const(main_gd, "WAVE_CLEAR_WOOD")
     gold = read_const(main_gd, "WAVE_CLEAR_GOLD")
     farm = next((entry for entry in buildings if entry.get("id") == "farm"), None)
     workshop = next((entry for entry in buildings if entry.get("id") == "workshop"), None)
+    mill = next((entry for entry in buildings if entry.get("id") == "lumber_mill"), None)
     produces = (farm or {}).get("produces") or {}
     bonus = (workshop or {}).get("bonus") or {}
+    mill_out = (mill or {}).get("produces") or {}
+    settle = setup.get("settlement") or {}
     if produces.get("rate") is None or bonus.get("tower_damage") is None:
         die("farm.produces.rate and workshop.bonus.tower_damage are required")
+    if mill_out.get("mode") != "staff" or mill_out.get("rate_per_villager") is None:
+        die("lumber_mill.produces must be mode staff with rate_per_villager")
+    if "chance" not in settle or "max_per_wave" not in settle:
+        die("data/setup.json settlement needs chance and max_per_wave")
     return {
         "wave_clear_wood": int(wood),
         "wave_clear_gold": int(gold),
         "farm_wood": produces["rate"],
         "workshop_tower_damage": bonus["tower_damage"],
+        "lumber_rate": mill_out["rate_per_villager"],
+        "lumber_interval": mill_out.get("interval", 0),
+        "lumber_slots": int((mill or {}).get("staff_slots") or 0),
+        "settle_chance": settle["chance"],
+        "settle_max": settle["max_per_wave"],
     }
 
 
@@ -1298,6 +1378,10 @@ def _check_skin_switcher(html: str) -> None:
         die("responsive breakpoints missing from the codex page")
     if "返回游戏" in html:
         die("codex page must not include 返回游戏")
+    if 'id="codex-refresh"' not in html or ">刷新</button>" not in html:
+        die("codex page needs a 刷新 button")
+    if "vtd.setup" not in html or "config_version" not in html:
+        die("codex refresh must compare the local config version")
 
 
 def main() -> None:
@@ -1311,7 +1395,7 @@ def main() -> None:
     balance_gd = (ROOT / "scripts" / "balance.gd").read_text(encoding="utf-8")
     locale = parse_locale((ROOT / "scripts" / "locale.gd").read_text(encoding="utf-8"))
 
-    for name in ("data/units.json", "data/enemies.json", "data/buildings.json"):
+    for name in ("data/units.json", "data/enemies.json", "data/buildings.json", "data/setup.json"):
         if name not in balance_gd:
             die(f"scripts/balance.gd no longer loads {name}")
     if PEOPLE_VOLUME not in volumes:
@@ -1348,7 +1432,10 @@ def main() -> None:
         missing = [name for name in WAVE_FIELDS if name not in wave]
         if missing:
             die(f"wave {index} missing {', '.join(missing)}")
-    economy = economy_from(main_gd, buildings)
+    setup = load_json(ROOT / "data" / "setup.json")
+    if int(setup.get("config_version", 0)) < 1:
+        die("data/setup.json needs config_version")
+    economy = economy_from(main_gd, buildings, setup)
 
     if THUMBS.exists():
         shutil.rmtree(THUMBS)
@@ -1404,6 +1491,8 @@ def main() -> None:
         },
         "waves": wave_rows(json_waves),
         "economy": economy,
+        "config_version": int(setup["config_version"]),
+        "setup": {key: value for key, value in setup.items() if key != "_comment"},
     }
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "catalog.json").write_text(

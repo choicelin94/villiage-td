@@ -13,6 +13,7 @@ var attack_range := 0.0
 var housed := false
 var refugee := false
 var infected := false
+var fallen := false
 var leaving := false
 var claim_left := -1.0
 var job: Building = null
@@ -30,6 +31,13 @@ var _path: Array[Vector2i] = []
 var _path_i := 0
 var _held_job := false
 var anchored := false
+var foe: Zombie = null
+var foe_hold := 0.0
+var strike_cd := 0.0
+var path_cd := 0.0
+
+func is_fighter() -> bool:
+	return unit_id != "" and unit_id != "villager"
 
 func configure(def: Dictionary) -> void:
 	unit_id = str(def.get("id", "villager"))
@@ -96,6 +104,10 @@ func _process(delta: float) -> void:
 		_path.clear()
 		_path_i = 0
 	visible = true
+	if is_fighter():
+		_fight(delta, game)
+		queue_redraw()
+		return
 	if refugee and claim_left > 0.0:
 		claim_left -= delta
 		if claim_left <= 0.0 and game.phase != "win" and game.phase != "lose":
@@ -116,7 +128,8 @@ func _process(delta: float) -> void:
 
 func _pick_goal(game: Node) -> void:
 	var panic: bool = game.should_panic(self)
-	_retarget = randf_range(0.35, 0.7) if panic else randf_range(1.1, 2.2)
+	var base := Balance.combat_f("panic_hold", 1.3) if panic else Balance.combat_f("wander_hold", 2.4)
+	_retarget = base * randf_range(0.85, 1.15)
 	var cell: Vector2i = game.wander_cell(self, panic)
 	var here: Vector2i = game.world_to_cell(global_position)
 	_path = game.route_cells(here, cell)
@@ -144,7 +157,7 @@ func _walk(delta: float, game: Node) -> void:
 		_hold_idle(delta)
 		return
 	var dir := vel.normalized()
-	var step_speed := speed * (1.15 if panic else 0.72)
+	var step_speed := speed if is_fighter() else speed * (1.15 if panic else 0.72)
 	var step := minf(step_speed * delta, vel.length())
 	var nxt: Vector2 = global_position + dir * step
 	if game.can_step(global_position, nxt, self):
@@ -160,8 +173,97 @@ func _walk(delta: float, game: Node) -> void:
 			return
 	_path.clear()
 	_path_i = 0
-	_retarget = 0.0
+	_retarget = 0.45
 	_hold_idle(delta)
+
+func _fight(delta: float, game: Node) -> void:
+	foe_hold = maxf(foe_hold - delta, 0.0)
+	strike_cd -= delta
+	path_cd -= delta
+	var hold := Balance.combat_f("target_hold", 1.2)
+	var margin := Balance.combat_f("switch_margin", 0.72)
+	if not _foe_ok(foe):
+		foe = null
+	var best := _nearest_zombie()
+	if foe == null:
+		foe = best
+		foe_hold = hold
+		_path.clear()
+	elif foe_hold <= 0.0 and best != null and best != foe:
+		var old_d := global_position.distance_to(foe.global_position)
+		var new_d := global_position.distance_to(best.global_position)
+		if new_d < old_d * margin:
+			foe = best
+			foe_hold = hold
+			_path.clear()
+		else:
+			foe_hold = hold
+	if foe == null:
+		_hold_idle(delta)
+		return
+	var dist := global_position.distance_to(foe.global_position)
+	_facing = LpcFacing.row_for(foe.global_position - global_position)
+	if dist <= attack_range:
+		_path.clear()
+		_path_i = 0
+		if strike_cd <= 0.0:
+			var rate := attack_speed if attack_speed > 0.0 else 1.0
+			strike_cd = 1.0 / rate
+			_strike(game, foe)
+		_hold_idle(delta)
+		return
+	if path_cd <= 0.0 or _path.is_empty():
+		path_cd = Balance.combat_f("repath", 0.6)
+		var here: Vector2i = game.world_to_cell(global_position)
+		var goal: Vector2i = game.approach_cell(here, game.world_to_cell(foe.global_position))
+		_path = game.route_cells(here, goal)
+		_path_i = 0
+		while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 10.0 * IsoVolume.WORLD_SCALE:
+			_path_i += 1
+	if _path_i >= _path.size():
+		_hold_idle(delta)
+		return
+	_walk(delta, game)
+
+func _foe_ok(z: Zombie) -> bool:
+	return z != null and is_instance_valid(z) and not z.dying
+
+func _nearest_zombie() -> Zombie:
+	var best: Zombie = null
+	var best_d := INF
+	for node in get_tree().get_nodes_in_group("zombies"):
+		var z := node as Zombie
+		if not _foe_ok(z):
+			continue
+		var d := global_position.distance_squared_to(z.global_position)
+		if d < best_d:
+			best_d = d
+			best = z
+	return best
+
+func _strike(game: Node, z: Zombie) -> void:
+	if attack_range >= 96.0:
+		var shot := Projectile.new()
+		shot.setup(global_position + Vector2(0, -36), z.global_position, z, attack, 0.0, 700.0, false)
+		if game.fx:
+			game.fx.add_child(shot)
+		return
+	z.hurt(Balance.damage(attack, z.defense))
+
+func hurt(amount: int) -> void:
+	if fallen or infected or not is_fighter():
+		return
+	hp -= amount
+	if hp <= 0:
+		hp = 0
+		fallen = true
+		if job != null and is_instance_valid(job):
+			job.dismiss(self)
+		job = null
+		visible = false
+		remove_from_group("iso")
+		remove_from_group("villagers")
+		queue_free()
 
 func _step_anim(vel: Vector2, delta: float) -> void:
 	# Callers pass a unit direction. A threshold of 1 px rejected those, so a
@@ -227,6 +329,8 @@ func _leave(delta: float) -> void:
 	else:
 		_path.clear()
 		_path_i = 0
+		if not is_fighter():
+			_retarget = 0.45
 
 func _game() -> Node:
 	return get_tree().get_first_node_in_group("game")

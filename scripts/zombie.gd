@@ -26,6 +26,10 @@ var _flash := 0.0
 var _death := 0.0
 var _repath_cd := 0.0
 var _stuck_t := 0.0
+var focus_unit: Node2D = null
+var focus_cell := Vector2i(-1, -1)
+var focus_hold := 0.0
+var _bite_cd := 0.0
 var _last_pos := Vector2.ZERO
 var _rewarded := false
 var _actor: SpineActor
@@ -134,6 +138,8 @@ func _process(delta: float) -> void:
 		return
 	_flash = maxf(_flash - delta, 0.0)
 	_hurt_t = maxf(_hurt_t - delta, 0.0)
+	focus_hold = maxf(focus_hold - delta, 0.0)
+	_bite_cd = maxf(_bite_cd - delta, 0.0)
 	var tint := _base_mod
 	if fresh > 0.0:
 		tint = Color(1, 1, 0.45)
@@ -150,10 +156,19 @@ func _process(delta: float) -> void:
 	_last_pos = global_position
 	if _path_i >= _path.size() and not _attacking:
 		_repath_cd = minf(_repath_cd, 0.0)
-	var need_path := _repath_cd <= 0.0 or _stuck_t > 0.85
+	var stuck_limit := Balance.combat_f("stuck", 0.9)
+	if _stuck_t > stuck_limit:
+		focus_unit = null
+		focus_cell = Vector2i(-1, -1)
+		focus_hold = 0.0
+		_stuck_t = 0.0
+		_repath_cd = 0.0
+	if _bite_fighter(delta):
+		return
+	var need_path := _repath_cd <= 0.0 or _stuck_t > stuck_limit
 	if _attacking:
 		if need_path:
-			_repath_cd = 0.7
+			_repath_cd = Balance.combat_f("repath", 0.6)
 			_stuck_t = 0.0
 			_repath()
 			if not _attacking:
@@ -161,7 +176,7 @@ func _process(delta: float) -> void:
 		_do_attack(delta)
 		return
 	if need_path:
-		_repath_cd = 0.7
+		_repath_cd = Balance.combat_f("repath", 0.6)
 		_stuck_t = 0.0
 		_repath()
 	if _path_i >= _path.size():
@@ -226,6 +241,23 @@ func _separate(delta: float, forward: Vector2) -> void:
 	if game == null or game.can_step(global_position, nxt, self):
 		global_position = nxt
 
+func _bite_fighter(delta: float) -> bool:
+	var person := focus_unit as Villager
+	if person == null or not is_instance_valid(person) or not person.is_fighter():
+		return false
+	if global_position.distance_to(person.global_position) > attack_range:
+		return false
+	var game := _game()
+	if game == null:
+		return false
+	_attacking = false
+	_face(person.global_position - global_position, delta, true)
+	if _bite_cd <= 0.0:
+		var rate := attack_speed if attack_speed > 0.0 else 1.0
+		_bite_cd = 1.0 / rate
+		game.damage_fighter(person, float(bite))
+	return true
+
 func _repath() -> void:
 	var game := _game()
 	if game == null:
@@ -233,7 +265,8 @@ func _repath() -> void:
 	var here: Vector2i = game.world_to_cell(global_position)
 	if not game.in_bounds(here):
 		here = game.nearest_spawn(global_position)
-	var info: Dictionary = game.route_from(here)
+	var info: Dictionary = game.route_for(self, here)
+	var previous := _attack
 	var new_path: Array[Vector2i] = info.path
 	var idx := 0
 	# A refresh used to restart at the cell under the zombie, so they walked
@@ -249,9 +282,12 @@ func _repath() -> void:
 	_path = new_path
 	_path_i = idx
 	_attack = info.attack
-	_attacking = false
-	if _path_i >= _path.size() and _attack.x >= 0:
+	if previous == _attack and _attack.x >= 0 and _path_i >= _path.size():
 		_attacking = true
+	else:
+		_attacking = false
+		if _path_i >= _path.size() and _attack.x >= 0:
+			_attacking = true
 
 func bar_anchor() -> float:
 	return _actor.bar_y() if _actor else -110.0

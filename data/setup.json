@@ -1,0 +1,48 @@
+{
+  "_comment": "Defaults the workbench can override in user://setup.json. config_version is the shipped schema. A saved file with a lower version is upgraded before the codex refresh redraws. difficulty presets scale spawned wave counts, enemy hp/speed, and kill gold. settlement is the wave-clear vacancy roll. combat is target-lock and path refresh. economy.start_* and wave_clear_* are the match defaults. spawns are enemy birth cells. starter_buildings and starter_units are the opening map and roster.",
+  "config_version": 1,
+  "difficulty_id": "normal",
+  "presets": {
+    "easy": { "hp": 0.8, "count": 0.8, "speed": 0.92, "gold": 1.15 },
+    "normal": { "hp": 1.0, "count": 1.0, "speed": 1.0, "gold": 1.0 },
+    "hard": { "hp": 1.35, "count": 1.15, "speed": 1.08, "gold": 0.85 }
+  },
+  "settlement": { "chance": 0.65, "max_per_wave": 3 },
+  "combat": {
+    "target_hold": 1.2,
+    "switch_margin": 0.72,
+    "repath": 0.6,
+    "stuck": 0.9,
+    "wander_hold": 2.4,
+    "panic_hold": 1.3
+  },
+  "economy": {
+    "start_wood": 100,
+    "start_gold": 70,
+    "wave_clear_wood": 8,
+    "wave_clear_gold": 14
+  },
+  "spawns": [[8, 0], [9, 0], [10, 0], [11, 0], [12, 0]],
+  "starter_buildings": [
+    { "kind": "HOUSE", "cell": [8, 14] },
+    { "kind": "HOUSE", "cell": [12, 14] },
+    { "kind": "FARM", "cell": [9, 16] },
+    { "kind": "WORKSHOP", "cell": [11, 16] },
+    { "kind": "SPEAR", "cell": [7, 12] },
+    { "kind": "SPEAR", "cell": [13, 12] },
+    { "kind": "FIRE", "cell": [10, 12] },
+    { "kind": "WALL", "cell": [6, 11] },
+    { "kind": "WALL", "cell": [8, 11] },
+    { "kind": "WALL", "cell": [12, 11] },
+    { "kind": "WALL", "cell": [14, 11] },
+    { "kind": "WALL", "cell": [9, 10] },
+    { "kind": "WALL", "cell": [11, 10] }
+  ],
+  "starter_units": [
+    { "unit": "villager", "cell": [9, 15], "sex": "m" },
+    { "unit": "villager", "cell": [10, 15], "sex": "f" },
+    { "unit": "villager", "cell": [11, 15], "sex": "m" },
+    { "unit": "villager", "cell": [8, 15], "sex": "f" },
+    { "unit": "villager", "cell": [12, 15], "sex": "m" }
+  ]
+}

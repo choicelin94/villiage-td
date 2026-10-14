@@ -4,9 +4,10 @@ const COLS := 20
 const ROWS := 20
 const TILE := Vector2i(128, 128)
 const HEART := Vector2i(10, 14)
-const SPAWNS: Array[Vector2i] = [
+const DEFAULT_SPAWNS: Array[Vector2i] = [
 	Vector2i(8, 0), Vector2i(9, 0), Vector2i(10, 0), Vector2i(11, 0), Vector2i(12, 0)
 ]
+var spawns: Array[Vector2i] = []
 const DIRS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)
 ]
@@ -72,6 +73,12 @@ func _ready() -> void:
 	process_priority = 50
 	Engine.max_fps = 60
 	add_to_group("game")
+	_touch_unit_catalog()
+	if OS.get_environment("TD_SELFTEST") == "1":
+		seed(1)
+	_load_setup_layout()
+	wood = Balance.economy_i("start_wood", START_WOOD)
+	gold = Balance.economy_i("start_gold", START_GOLD)
 	font = load("res://assets/fonts/NotoSansSC-Regular.otf")
 	_selftest = OS.get_environment("TD_SELFTEST") == "1"
 	if OS.get_environment("TD_UI") == "1":
@@ -92,6 +99,7 @@ func _ready() -> void:
 	hud.place_requested.connect(_on_place_requested)
 	hud.sell_pressed.connect(_on_sell_requested)
 	hud.staff_selected.connect(_on_staff_selected)
+	hud.staff_dismissed.connect(_on_staff_dismissed)
 	hud.codex_pressed.connect(_open_codex)
 	hud.bench_pressed.connect(_open_workbench)
 	get_viewport().size_changed.connect(_on_viewport_resized)
@@ -140,6 +148,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_refresh_beds()
 	_infect_contacts()
+	_tick_mills(delta)
 	_update_ghost()
 	if phase == "combat":
 		_tick_spawns(delta)
@@ -222,6 +231,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				_place_from_shortcut(Building.Kind.FARM)
 			KEY_6:
 				_place_from_shortcut(Building.Kind.WORKSHOP)
+			KEY_7:
+				_place_from_shortcut(Building.Kind.LUMBER)
+			KEY_8:
+				_place_from_shortcut(Building.Kind.SPEAR_BARRACKS)
+			KEY_9:
+				_place_from_shortcut(Building.Kind.GUN_BARRACKS)
 			KEY_ESCAPE:
 				hud.close_panel()
 				_clear_villager_selection()
@@ -281,7 +296,7 @@ func _paint_map() -> void:
 	for rock_cell in [Vector2i(4, 8), Vector2i(16, 8), Vector2i(4, 16), Vector2i(16, 16)]:
 		scenery[rock_cell] = true
 	var trail := {}
-	for spawn in SPAWNS:
+	for spawn in spawns:
 		for cell in _astar(spawn, HEART).path:
 			trail[cell] = true
 	for y in ROWS:
@@ -309,45 +324,49 @@ func _paint_map() -> void:
 	_invalidate_props()
 
 func _place_starter() -> void:
-	var plan := [
-		[Building.Kind.HOUSE, Vector2i(8, 14)],
-		[Building.Kind.HOUSE, Vector2i(12, 14)],
-		[Building.Kind.FARM, Vector2i(9, 16)],
-		[Building.Kind.WORKSHOP, Vector2i(11, 16)],
-		[Building.Kind.SPEAR, Vector2i(7, 12)],
-		[Building.Kind.SPEAR, Vector2i(13, 12)],
-		[Building.Kind.FIRE, Vector2i(10, 12)],
-		[Building.Kind.WALL, Vector2i(6, 11)],
-		[Building.Kind.WALL, Vector2i(8, 11)],
-		[Building.Kind.WALL, Vector2i(12, 11)],
-		[Building.Kind.WALL, Vector2i(14, 11)],
-		[Building.Kind.WALL, Vector2i(9, 10)],
-		[Building.Kind.WALL, Vector2i(11, 10)],
-	]
+	var plan := Balance.starter_buildings()
+	if plan.is_empty():
+		plan = [
+			{"kind": "HOUSE", "cell": [8, 14]},
+			{"kind": "HOUSE", "cell": [12, 14]},
+			{"kind": "FARM", "cell": [9, 16]},
+			{"kind": "WORKSHOP", "cell": [11, 16]},
+			{"kind": "SPEAR", "cell": [7, 12]},
+			{"kind": "SPEAR", "cell": [13, 12]},
+			{"kind": "FIRE", "cell": [10, 12]},
+			{"kind": "WALL", "cell": [6, 11]},
+			{"kind": "WALL", "cell": [8, 11]},
+			{"kind": "WALL", "cell": [12, 11]},
+			{"kind": "WALL", "cell": [14, 11]},
+			{"kind": "WALL", "cell": [9, 10]},
+			{"kind": "WALL", "cell": [11, 10]},
+		]
 	for item in plan:
-		_place_free(int(item[0]), item[1])
+		if not (item is Dictionary):
+			continue
+		var cell_raw = item.get("cell", [])
+		if not (cell_raw is Array) or cell_raw.size() < 2:
+			continue
+		_place_free(_kind_from_name(str(item.get("kind", "WALL"))), Vector2i(int(cell_raw[0]), int(cell_raw[1])))
 
 func _spawn_starter_people() -> void:
-	var spots: Array[Vector2i] = [
-		Vector2i(9, 15), Vector2i(10, 15), Vector2i(11, 15), Vector2i(8, 15), Vector2i(12, 15)
-	]
-	var sexes := ["m", "f", "m", "f", "m"]
-	for i in spots.size():
-		_make_villager(spots[i], sexes[i], false)
+	var roster := Balance.starter_units()
+	if roster.is_empty():
+		roster = [
+			{"unit": "villager", "cell": [9, 15], "sex": "m"},
+			{"unit": "villager", "cell": [10, 15], "sex": "f"},
+			{"unit": "villager", "cell": [11, 15], "sex": "m"},
+			{"unit": "villager", "cell": [8, 15], "sex": "f"},
+			{"unit": "villager", "cell": [12, 15], "sex": "m"},
+		]
+	for item in roster:
+		if not (item is Dictionary):
+			continue
+		var cell_raw = item.get("cell", [])
+		if not (cell_raw is Array) or cell_raw.size() < 2:
+			continue
+		_spawn_unit(str(item.get("unit", "villager")), Vector2i(int(cell_raw[0]), int(cell_raw[1])), str(item.get("sex", "")))
 
-func _make_villager(cell: Vector2i, sex: String, as_refugee: bool) -> Villager:
-	var v := Villager.new()
-	v.position = cell_center(cell)
-	var def := Balance.unit("villager")
-	var pool: Array = Balance.villager_skin_pool()
-	var skin_name := str(pool[_skin_i % pool.size()])
-	_skin_i += 1
-	v.configure(def)
-	v.setup(Balance.skin_index("villager", skin_name), sex, float(def.get("move_speed", 0.0)))
-	v.refugee = as_refugee
-	v.claim_left = CLAIM_TIME if as_refugee else -1.0
-	actors.add_child(v)
-	return v
 
 func _place_prop(cell: Vector2i, tex: Texture2D, key: String) -> void:
 	var node := Node2D.new()
@@ -575,9 +594,9 @@ func in_bounds(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < COLS and cell.y < ROWS
 
 func nearest_spawn(world: Vector2) -> Vector2i:
-	var best := SPAWNS[0]
+	var best: Vector2i = spawns[0] if not spawns.is_empty() else DEFAULT_SPAWNS[0]
 	var best_d := INF
-	for cell in SPAWNS:
+	for cell in spawns:
 		var d := world.distance_squared_to(cell_center(cell))
 		if d < best_d:
 			best_d = d
@@ -629,6 +648,217 @@ func v_cell_or_heart(v: Villager) -> Vector2i:
 	if in_bounds(cell) and not _blocked(cell):
 		return cell
 	return HEART
+
+func _load_setup_layout() -> void:
+	spawns.clear()
+	for item in Balance.spawns():
+		if item is Array and item.size() >= 2:
+			var cell := Vector2i(int(item[0]), int(item[1]))
+			if in_bounds(cell):
+				spawns.append(cell)
+	if spawns.is_empty():
+		spawns = DEFAULT_SPAWNS.duplicate()
+
+func _touch_unit_catalog() -> void:
+	Balance.unit("villager")
+	Balance.unit("spearman")
+	Balance.unit("gunner")
+	Balance.unit("engineer")
+
+func _kind_from_name(kind_name: String) -> int:
+	match kind_name:
+		"WALL":
+			return Building.Kind.WALL
+		"SPEAR":
+			return Building.Kind.SPEAR
+		"FIRE":
+			return Building.Kind.FIRE
+		"HOUSE":
+			return Building.Kind.HOUSE
+		"FARM":
+			return Building.Kind.FARM
+		"WORKSHOP":
+			return Building.Kind.WORKSHOP
+		"LUMBER":
+			return Building.Kind.LUMBER
+		"SPEAR_BARRACKS":
+			return Building.Kind.SPEAR_BARRACKS
+		"GUN_BARRACKS":
+			return Building.Kind.GUN_BARRACKS
+	return Building.Kind.WALL
+
+func _count_unit(unit_id: String) -> int:
+	var n := 0
+	for v in _alive_villagers():
+		if v.unit_id == unit_id:
+			n += 1
+	return n
+
+func _unit_cap(unit_id: String) -> int:
+	if unit_id == "villager":
+		return _bed_cap()
+	var n := 0
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		var provides := building.provides()
+		if str(provides.get("unit", "")) == unit_id:
+			n += int(provides.get("slots", 0))
+	return n
+
+func _settle_cell() -> Vector2i:
+	var origin := Vector2i(10, 16)
+	for radius in 8:
+		for y in range(origin.y - radius, origin.y + radius + 1):
+			for x in range(origin.x - radius, origin.x + radius + 1):
+				var cell := Vector2i(x, y)
+				if not in_bounds(cell) or _blocked(cell) or _is_spawn(cell):
+					continue
+				var taken := false
+				for v in _alive_villagers():
+					if world_to_cell(v.global_position) == cell:
+						taken = true
+						break
+				if not taken:
+					return cell
+	return Vector2i(-1, -1)
+
+func _tick_mills(delta: float) -> void:
+	if phase == "win" or phase == "lose":
+		return
+	var gained := 0
+	var popup_at := Vector2.ZERO
+	var popup_n := 0
+	for cell in buildings:
+		var building: Building = buildings[cell]
+		if not building.staff_produces():
+			continue
+		var spec := building.produce_spec()
+		var interval := float(spec.get("interval", 5.0))
+		var rate := int(spec.get("rate_per_villager", 0))
+		var crew_n := building.villager_crew()
+		if crew_n <= 0 or rate <= 0 or interval <= 0.0:
+			building.produce_cd = 0.0
+			continue
+		building.produce_cd += delta
+		var batch := 0
+		while building.produce_cd >= interval:
+			building.produce_cd -= interval
+			batch += rate * crew_n
+		if batch > 0:
+			gained += batch
+			popup_n = batch
+			popup_at = building.global_position
+	if gained <= 0:
+		return
+	wood += gained
+	_popup(popup_at + Vector2(0, -80), Locale.format("popup.wood", [popup_n]), Color(0.86, 0.62, 0.32))
+	_refresh_hud()
+
+func damage_fighter(person: Villager, attack: float) -> void:
+	if person == null or not is_instance_valid(person) or person.fallen:
+		return
+	var dealt := Balance.damage(attack, person.defense)
+	person.hurt(dealt)
+	if is_instance_valid(person):
+		_popup(person.global_position + Vector2(0, -30), "-%d" % dealt, Color(1, 0.7, 0.45))
+
+func approach_cell(start: Vector2i, goal: Vector2i) -> Vector2i:
+	if not _blocked(goal) and in_bounds(goal):
+		return goal
+	var best := start
+	var best_d := 999999
+	for dir in DIRS:
+		var nxt: Vector2i = goal + dir
+		if not in_bounds(nxt) or _blocked(nxt):
+			continue
+		var d := absi(nxt.x - start.x) + absi(nxt.y - start.y)
+		if d < best_d:
+			best_d = d
+			best = nxt
+	return best
+
+func route_for(z: Zombie, start: Vector2i) -> Dictionary:
+	var hold := Balance.combat_f("target_hold", 1.2)
+	var margin := Balance.combat_f("switch_margin", 0.72)
+	var current_ok := _focus_ok(z)
+	var best := _best_focus(start)
+	var keep := false
+	if current_ok and z.focus_hold > 0.0:
+		keep = true
+	elif current_ok:
+		var old_d := _focus_dist(z, start)
+		var new_d := int(best.get("dist", 999999))
+		var same := false
+		if z.focus_unit != null:
+			same = best.get("unit") == z.focus_unit
+		else:
+			same = best.get("unit") == null and best.get("cell") == z.focus_cell
+		if same or new_d > int(round(float(old_d) * margin)):
+			keep = true
+			z.focus_hold = hold
+	if not keep:
+		z.focus_unit = best.get("unit") as Node2D
+		var cell_raw = best.get("cell", Vector2i(-1, -1))
+		z.focus_cell = cell_raw if cell_raw is Vector2i else Vector2i(-1, -1)
+		z.focus_hold = hold
+	return _route_kept(z, start)
+
+func _focus_ok(z: Zombie) -> bool:
+	if z.focus_unit != null and is_instance_valid(z.focus_unit):
+		var person := z.focus_unit as Villager
+		if person != null and not person.infected and not person.fallen and not person.leaving and person.job == null:
+			return true
+	if z.focus_cell.x >= 0 and buildings.has(z.focus_cell):
+		return z.focus_unit == null
+	return false
+
+func _focus_dist(z: Zombie, start: Vector2i) -> int:
+	if z.focus_unit != null and is_instance_valid(z.focus_unit):
+		var cell := world_to_cell(z.focus_unit.global_position)
+		return absi(cell.x - start.x) + absi(cell.y - start.y)
+	if z.focus_cell.x >= 0:
+		return absi(z.focus_cell.x - start.x) + absi(z.focus_cell.y - start.y)
+	return 999999
+
+func _best_focus(start: Vector2i) -> Dictionary:
+	var best_unit: Node2D = null
+	var best_d := 999999
+	for v in _alive_villagers():
+		if v.job != null and is_instance_valid(v.job):
+			continue
+		var cell := world_to_cell(v.global_position)
+		if not in_bounds(cell) or _blocked(cell):
+			continue
+		var d := absi(cell.x - start.x) + absi(cell.y - start.y)
+		if d < best_d:
+			best_d = d
+			best_unit = v
+	if best_unit != null:
+		return {"unit": best_unit, "cell": Vector2i(-1, -1), "dist": best_d}
+	var shelter := _nearest_staffed_cell(start)
+	if shelter.x >= 0:
+		return {"unit": null, "cell": shelter, "dist": absi(shelter.x - start.x) + absi(shelter.y - start.y)}
+	var any := _nearest_building(start)
+	return {"unit": null, "cell": any, "dist": absi(any.x - start.x) + absi(any.y - start.y) if any.x >= 0 else 999999}
+
+func _nearest_building(start: Vector2i) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := 999999
+	for cell in buildings:
+		var d := absi(cell.x - start.x) + absi(cell.y - start.y)
+		if d < best_d:
+			best_d = d
+			best = cell
+	return best
+
+func _route_kept(z: Zombie, start: Vector2i) -> Dictionary:
+	if z.focus_unit != null and is_instance_valid(z.focus_unit):
+		var goal := world_to_cell(z.focus_unit.global_position)
+		var chased: Dictionary = _astar(start, goal)
+		return {"path": chased.path, "attack": Vector2i(-1, -1)}
+	if z.focus_cell.x >= 0 and buildings.has(z.focus_cell):
+		return _path_to_attack(start, z.focus_cell)
+	return _path_to_building(start)
 
 func route_from(start: Vector2i) -> Dictionary:
 	var open_goal := _nearest_open_villager_cell(start)
@@ -682,7 +912,6 @@ func apply_hit(at: Vector2, attack: float, splash: float, is_fire: bool, target:
 func on_zombie_killed(z: Zombie) -> void:
 	if phase == "lose":
 		return
-	wood += z.reward_wood
 	gold += z.reward_gold
 	_popup(z.global_position, Locale.format("popup.gold", [z.reward_gold]), Color(1, 0.86, 0.3))
 	_refresh_hud()
@@ -713,14 +942,14 @@ func _try_start_wave() -> void:
 
 func _compose_wave(spec: Dictionary) -> Array[String]:
 	var list: Array[String] = []
-	for _i in int(spec.get("normal", spec.get("n", 0))):
+	for _i in Balance.count_scale(int(spec.get("normal", spec.get("n", 0)))):
 		list.append("spear_normal")
-	for _i in int(spec.get("fast", 0)):
+	for _i in Balance.count_scale(int(spec.get("fast", 0))):
 		list.append("spear_fast")
-	for _i in int(spec.get("elite", spec.get("brute", 0))):
+	for _i in Balance.count_scale(int(spec.get("elite", spec.get("brute", 0)))):
 		list.append("shooter_elite")
 	list.shuffle()
-	for _i in int(spec.get("boss", 0)):
+	for _i in Balance.count_scale(int(spec.get("boss", 0))):
 		list.append("shooter_boss")
 	return list
 
@@ -741,7 +970,7 @@ func _spawn_zombie(kind: String, turned: bool, at: Vector2) -> void:
 		z.position = at
 		z.mark_fresh()
 	else:
-		var cell := SPAWNS[spawn_cursor % SPAWNS.size()]
+		var cell := spawns[spawn_cursor % spawns.size()]
 		spawn_cursor += 1
 		z.position = cell_center(cell)
 	z.setup(int(stat.hp), float(stat.move_speed), float(stat.scale), int(round(float(stat.attack))), int(stat.wood_reward), int(stat.gold_reward), id, Color.WHITE, str(stat.character))
@@ -754,29 +983,75 @@ func _spawn_zombie(kind: String, turned: bool, at: Vector2) -> void:
 func _on_wave_cleared() -> void:
 	if phase != "combat":
 		return
-	wood += WAVE_CLEAR_WOOD + _farm_wave_wood()
-	gold += WAVE_CLEAR_GOLD
+	wood += Balance.economy_i("wave_clear_wood", WAVE_CLEAR_WOOD) + _farm_wave_wood()
+	gold += Balance.economy_i("wave_clear_gold", WAVE_CLEAR_GOLD)
 	if wave_number >= _wave_count():
 		_finish(true)
 		return
 	phase = "prep"
-	_spawn_refugees()
-	hud.flash(Locale.format("flash.wave_clear", [wave_number, CLAIM_TIME]))
+	var note := _settle_wave()
+	hud.flash(Locale.format("flash.wave_settle", [wave_number, note]))
 	_refresh_hud()
 	if _selftest:
 		_try_start_wave()
 
-func _spawn_refugees() -> void:
-	var spots: Array[Vector2i] = [Vector2i(10, 17), Vector2i(9, 17), Vector2i(11, 17), Vector2i(8, 17)]
-	var made := 0
-	for cell in spots:
-		if made >= REFUGEES_PER_WAVE:
-			break
-		if _blocked(cell):
+func _settle_wave() -> String:
+	var rules := Balance.settlement()
+	var chance := float(rules.get("chance", 0.65))
+	var per_wave := int(rules.get("max_per_wave", 3))
+	var order: Array[String] = ["villager", "spearman", "gunner", "engineer"]
+	var any_free := false
+	var parts: PackedStringArray = []
+	for unit_id in order:
+		var free := _unit_cap(unit_id) - _count_unit(unit_id)
+		if free <= 0 or per_wave <= 0:
 			continue
-		var sex := "f" if made % 2 == 0 else "m"
-		_make_villager(cell, sex, true)
-		made += 1
+		any_free = true
+		if randf() >= chance:
+			continue
+		var n := randi_range(1, mini(per_wave, free))
+		for _i in n:
+			var cell := _settle_cell()
+			if cell.x < 0:
+				break
+			_spawn_unit(unit_id, cell, "")
+		var label := Locale.text("unit." + unit_id)
+		parts.append("%s +%d" % [label, n])
+	_refresh_beds()
+	if not parts.is_empty():
+		return " ".join(parts)
+	if any_free:
+		return Locale.text("flash.settle_none")
+	return Locale.text("flash.settle_full")
+
+func _spawn_unit(unit_id: String, cell: Vector2i, sex: String) -> Villager:
+	var v := Villager.new()
+	v.position = cell_center(cell)
+	var def := Balance.unit(unit_id)
+	if def.is_empty():
+		def = Balance.unit("villager")
+		unit_id = "villager"
+	var skin_name := str(def.get("skin", "wolf"))
+	if unit_id == "villager":
+		var pool: Array = Balance.villager_skin_pool()
+		skin_name = str(pool[_skin_i % pool.size()])
+		_skin_i += 1
+		if sex != "m" and sex != "f":
+			sex = "f" if _skin_i % 2 == 0 else "m"
+	elif sex != "m" and sex != "f":
+		sex = "m"
+	v.configure(def)
+	v.setup(Balance.skin_index("villager", skin_name), sex, float(def.get("move_speed", 0.0)))
+	v.refugee = false
+	v.claim_left = -1.0
+	actors.add_child(v)
+	return v
+
+func _make_villager(cell: Vector2i, sex: String, as_refugee: bool) -> Villager:
+	var v := _spawn_unit("villager", cell, sex)
+	v.refugee = as_refugee
+	v.claim_left = CLAIM_TIME if as_refugee else -1.0
+	return v
 
 func _finish(win: bool) -> void:
 	if phase == "win" or phase == "lose":
@@ -843,18 +1118,27 @@ func _place_from_shortcut(kind: int) -> void:
 func _on_place_requested(kind: int) -> void:
 	_place_from_shortcut(kind)
 
-func _on_staff_selected() -> void:
-	var building := hud.inspected_building()
-	if building == null or not building.has_staff():
-		return
-	var person := building.staff as Villager
-	if person == null or person.infected or person.leaving:
+func _on_staff_selected(person: Villager) -> void:
+	if person == null or person.infected or person.leaving or person.fallen:
 		return
 	hud.close_panel()
 	_clear_villager_selection()
 	selected_villager = person
 	person.selected = true
 	hud.flash(Locale.text("flash.assign_next"))
+
+func _on_staff_dismissed(person: Villager) -> void:
+	var building := hud.inspected_building()
+	if building == null or person == null or not building.holds(person):
+		return
+	building.dismiss(person)
+	person.job = null
+	person.visible = true
+	person.global_position = building.global_position + Vector2(0, 72)
+	_popup(building.global_position + Vector2(0, -80), Locale.text("popup.dismissed"), Color(0.85, 0.95, 0.75))
+	_refresh_beds()
+	_refresh_hud()
+	hud.open_building(building)
 
 func _on_sell_requested() -> void:
 	var building := hud.inspected_building()
@@ -865,21 +1149,33 @@ func _on_sell_requested() -> void:
 	hud.close_panel()
 
 func _assign(v: Villager, building: Building) -> void:
-	if v.infected or v.leaving:
+	if v.infected or v.leaving or v.fallen:
 		return
 	if not building.is_functional():
 		hud.flash(Locale.text("flash.wall_no_staff"))
 		return
-	if building.staff != null and is_instance_valid(building.staff) and building.staff != v:
-		var old := building.staff as Villager
-		if old:
-			old.job = null
-		building.staff = null
+	if v.is_fighter():
+		hud.flash(Locale.text("flash.fighter_stay"))
+		return
+	if building.kind == Building.Kind.LUMBER and v.unit_id != "villager":
+		hud.flash(Locale.text("flash.mill_villager"))
+		return
+	if building.holds(v):
+		_clear_villager_selection()
+		return
+	if building.staff_count() >= building.staff_cap():
+		if building.staff_cap() <= 1:
+			for old in building.dismiss_all():
+				var prior := old as Villager
+				if prior:
+					prior.job = null
+		else:
+			hud.flash(Locale.format("flash.mill_full", [building.staff_cap()]))
+			return
 	if v.job != null and is_instance_valid(v.job) and v.job != building:
-		if v.job.staff == v:
-			v.job.staff = null
+		v.job.dismiss(v)
 		v.job = null
-	building.staff = v
+	building.add_crew(v)
 	v.job = building
 	v.refugee = false
 	v.claim_left = -1.0
@@ -887,6 +1183,8 @@ func _assign(v: Villager, building: Building) -> void:
 	_popup(building.global_position + Vector2(0, -80), Locale.text("popup.assigned"), Color(0.7, 0.95, 1))
 	_refresh_beds()
 	_refresh_hud()
+	if hud.inspected_building() == building:
+		hud.open_building(building)
 
 func _try_place(kind: int, cell: Vector2i) -> bool:
 	var reason := _block_reason(cell)
@@ -924,10 +1222,11 @@ func _remove_building(cell: Vector2i, refund: bool) -> void:
 	if not buildings.has(cell):
 		return
 	var building: Building = buildings[cell]
-	var person: Villager = building.staff as Villager
-	building.staff = null
-	if person != null and is_instance_valid(person):
-		person.job = null
+	var people := building.dismiss_all()
+	for node in people:
+		var person := node as Villager
+		if person != null and is_instance_valid(person):
+			person.job = null
 	if refund:
 		var stats: Dictionary = Balance.building_by_kind(Building.kind_key(building.kind))
 		var cost: Dictionary = stats.get("cost", {})
@@ -943,8 +1242,11 @@ func _remove_building(cell: Vector2i, refund: bool) -> void:
 	building.queue_free()
 	_notify_zombies()
 	_refresh_hud()
-	if not refund and person != null and is_instance_valid(person):
-		_infect(person)
+	if not refund:
+		for node in people:
+			var person := node as Villager
+			if person != null and is_instance_valid(person):
+				_infect(person)
 
 func _block_reason(cell: Vector2i) -> String:
 	if not in_bounds(cell):
@@ -967,6 +1269,8 @@ func _infect_contacts() -> void:
 		return
 	for z in _living_zombies():
 		for v in _alive_villagers():
+			if v.is_fighter():
+				continue
 			if z.global_position.distance_to(v.global_position) <= INFECT_RADIUS:
 				_infect(v)
 				if phase == "lose":
@@ -978,8 +1282,8 @@ func _infect(v: Villager) -> void:
 		return
 	v.infected = true
 	v.leaving = false
-	if v.job != null and is_instance_valid(v.job) and v.job.staff == v:
-		v.job.staff = null
+	if v.job != null and is_instance_valid(v.job):
+		v.job.dismiss(v)
 	v.job = null
 	if selected_villager == v:
 		selected_villager = null
@@ -1003,15 +1307,16 @@ func _refresh_beds() -> void:
 		v.housed = false
 	for cell in buildings:
 		var building: Building = buildings[cell]
-		if building.kind != Building.Kind.HOUSE or not building.has_staff():
+		if building.kind != Building.Kind.HOUSE:
 			continue
-		var staff := building.staff as Villager
-		if staff and not staff.infected:
-			staff.housed = true
-			beds -= 1
+		for node in building.crew:
+			var staff := node as Villager
+			if staff and not staff.infected and not staff.fallen and not staff.is_fighter():
+				staff.housed = true
+				beds -= 1
 	var pool: Array[Villager] = []
 	for v in people:
-		if v.housed or v.job != null:
+		if v.housed or v.job != null or v.is_fighter():
 			continue
 		pool.append(v)
 	pool.sort_custom(func(a: Villager, b: Villager) -> bool: return a.refugee and not b.refugee)
@@ -1028,7 +1333,7 @@ func _alive_villagers() -> Array[Villager]:
 	var list: Array[Villager] = []
 	for node in get_tree().get_nodes_in_group("villagers"):
 		var v := node as Villager
-		if v != null and not v.infected and not v.leaving:
+		if v != null and not v.infected and not v.leaving and not v.fallen:
 			list.append(v)
 	return list
 
@@ -1169,6 +1474,57 @@ func _balance_probe() -> int:
 			failed = true
 	if _bed_cap() != 8 or absf(tower_bonus() - 1.25) > 0.001 or _farm_wave_wood() != 6 or _wall_cap() != 28:
 		failed = true
+	var mill_def := Balance.building("lumber_mill")
+	var mill_out: Dictionary = mill_def.get("produces", {})
+	if int(mill_def.get("staff_slots", 0)) != 4 or str(mill_out.get("mode", "")) != "staff" or int(mill_out.get("rate_per_villager", 0)) != 1:
+		failed = true
+	if int(Balance.enemy("spear_normal").get("wood_reward", 1)) != 0:
+		failed = true
+	if absf(float(Balance.settlement().get("chance", 0.0)) - 0.65) > 0.001 or int(Balance.settlement().get("max_per_wave", 0)) != 3:
+		failed = true
+	var spear_slots: Dictionary = Balance.building("spear_barracks").get("provides", {})
+	var gun_slots: Dictionary = Balance.building("gun_barracks").get("provides", {})
+	var shop_slots: Dictionary = Balance.building("workshop").get("provides", {})
+	var house_slots: Dictionary = Balance.building("house").get("provides", {})
+	if str(spear_slots.get("unit", "")) != "spearman" or int(spear_slots.get("slots", 0)) != 2:
+		failed = true
+	if str(gun_slots.get("unit", "")) != "gunner" or int(gun_slots.get("slots", 0)) != 2:
+		failed = true
+	if str(shop_slots.get("unit", "")) != "engineer" or int(shop_slots.get("slots", 0)) != 2:
+		failed = true
+	if int(house_slots.get("slots", 0)) != 4:
+		failed = true
+	var wood_before := wood
+	var gold_before := gold
+	var payout := Zombie.new()
+	payout.reward_wood = 9
+	payout.reward_gold = 3
+	on_zombie_killed(payout)
+	if wood != wood_before or gold != gold_before + 3:
+		failed = true
+	wood = 500
+	gold = 500
+	var mill_cell := Vector2i(10, 8)
+	if not _try_place(Building.Kind.LUMBER, mill_cell):
+		failed = true
+	else:
+		var idle_wood := wood
+		_tick_mills(20.0)
+		if wood != idle_wood:
+			failed = true
+		var mill: Building = buildings[mill_cell]
+		var assigned := 0
+		for person in _alive_villagers():
+			if person.unit_id != "villager" or person.job != null:
+				continue
+			_assign(person, mill)
+			assigned += 1
+			if assigned >= 2:
+				break
+		var staffed_wood := wood
+		_tick_mills(5.0)
+		if assigned != 2 or mill.villager_crew() != 2 or wood != staffed_wood + 2:
+			failed = true
 	var spear: Building = buildings[Vector2i(7, 12)]
 	if spear.has_staff() or not spear.is_defense() or spear.max_hp != 200 or absf(spear.defense - 6.0) > 0.001:
 		failed = true
@@ -1185,6 +1541,25 @@ func _balance_probe() -> int:
 	if shots < 1:
 		failed = true
 	var normal := Balance.scaled_enemy("spear_normal", 0)
+	var user_path := "user://setup.json"
+	var old_setup := FileAccess.open(user_path, FileAccess.WRITE)
+	if old_setup == null:
+		failed = true
+	else:
+		old_setup.store_string("{\"config_version\":0,\"difficulty_id\":\"hard\"}")
+		old_setup.close()
+		Balance.reload()
+		var upgraded = JSON.parse_string(FileAccess.get_file_as_string(user_path))
+		var version_ok := false
+		if upgraded is Dictionary:
+			var econ: Dictionary = upgraded.get("economy", {})
+			version_ok = int(upgraded.get("config_version", 0)) == Balance.config_version() and Balance.difficulty_id() == "hard" and int(econ.get("start_wood", 0)) == 100
+		if not version_ok:
+			failed = true
+		DirAccess.remove_absolute(user_path)
+		Balance.reload()
+		if Balance.difficulty_id() != "normal" or Balance.config_version() < 1:
+			failed = true
 	print("BALANCE units=", units, " enemies=", enemies, " buildings=", buildings_ids)
 	print("BALANCE dmg=", Balance.damage(24.0, 0.0), "/", Balance.damage(22.5, 0.0), " beds=", _bed_cap(), " bonus=", tower_bonus(), " shots=", shots, " boss=", Balance.scaled_enemy("shooter_boss", 9).hp, " normal_hp=", normal.hp)
 	print("BALANCE_OK" if not failed else "BALANCE_FAIL")
@@ -1233,7 +1608,7 @@ func _is_border(cell: Vector2i) -> bool:
 	return cell.x == 0 or cell.y == 0 or cell.x == COLS - 1 or cell.y == ROWS - 1
 
 func _is_spawn(cell: Vector2i) -> bool:
-	return cell in SPAWNS
+	return cell in spawns
 
 func _open_stress_now() -> bool:
 	if Engine.get_meta("skip_stress", false):
@@ -1289,6 +1664,7 @@ func _open_lab_now() -> bool:
 	return false
 
 func _open_codex() -> void:
+	Balance.prepare_codex_refresh()
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.location.assign(new URL('codex/', window.location.href).href)", true)
 		return
@@ -1832,7 +2208,7 @@ func _scripted_defense() -> void:
 			if _count_kind(Building.Kind.WALL) >= _wall_cap():
 				break
 			_try_place(Building.Kind.WALL, cell)
-	var route: Dictionary = route_from(SPAWNS[2])
+	var route: Dictionary = route_from(spawns[mini(2, spawns.size() - 1)])
 	print("SCRIPTED buildings=", buildings.size(), " people=", _alive_villagers().size(), " path=", route.path.size())
 
 func _flow_shot() -> void:
@@ -1853,7 +2229,7 @@ func _flow_shot() -> void:
 	_click_world(spear.global_position + Vector2(0, -70))
 	await get_tree().process_frame
 	await get_tree().process_frame
-	print("FLOW_ASSIGNED ", spear.has_staff() and spear.staff == people[0])
+	print("FLOW_ASSIGNED ", spear.has_staff() and spear.primary_staff() == people[0])
 	await _capture("/tmp/shots/assigned.png")
 	var restart := _restart_button()
 	print("FLOW_RESTART_BUTTON ", restart != null)

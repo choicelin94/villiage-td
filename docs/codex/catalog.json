@@ -1,8 +1,8 @@
 {
   "counts": {
-    "units": 3,
+    "units": 4,
     "enemies": 5,
-    "buildings": 6,
+    "buildings": 9,
     "scenery": 4
   },
   "sections": {
@@ -97,8 +97,8 @@
         "name_zh": "矛兵",
         "name_en": "Spearman",
         "portrait": "thumbs/spearman.png",
-        "badge": "配置已有 · 尚未出场",
-        "badge_tone": "soon",
+        "badge": "已出场",
+        "badge_tone": "live",
         "stats": [
           {
             "k": "职责",
@@ -145,22 +145,22 @@
             "v": "walker"
           }
         ],
-        "note": "Knight sheet (villager_3). move_speed and attack_range are 90 and 48 times WORLD_SCALE. Not spawned until recruitment is wired.",
+        "note": "Knight sheet (villager_3). move_speed and attack_range are 90 and 48 times WORLD_SCALE. Settles into spear barracks vacancies.",
         "skins": [],
         "volume": "walker"
       },
       {
         "id": "engineer",
         "section": "units",
-        "name_zh": "工匠",
+        "name_zh": "工兵",
         "name_en": "Engineer",
         "portrait": "thumbs/engineer.png",
-        "badge": "配置已有 · 尚未出场",
-        "badge_tone": "soon",
+        "badge": "已出场",
+        "badge_tone": "live",
         "stats": [
           {
             "k": "职责",
-            "v": "支援 · support"
+            "v": "工兵 · support"
           },
           {
             "k": "生命",
@@ -203,7 +203,65 @@
             "v": "walker"
           }
         ],
-        "note": "Robot sheet (villager_5). Faster repair comes later. move_speed and attack_range are 100 and 42 times WORLD_SCALE.",
+        "note": "Robot sheet (villager_5). Settles into workshop vacancies. move_speed and attack_range are 100 and 42 times WORLD_SCALE.",
+        "skins": [],
+        "volume": "walker"
+      },
+      {
+        "id": "gunner",
+        "section": "units",
+        "name_zh": "枪兵",
+        "name_en": "Gunner",
+        "portrait": "thumbs/gunner.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "职责",
+            "v": "远程 · ranged"
+          },
+          {
+            "k": "生命",
+            "v": "64"
+          },
+          {
+            "k": "防御",
+            "v": "2"
+          },
+          {
+            "k": "攻击",
+            "v": "11"
+          },
+          {
+            "k": "攻速",
+            "v": "0.75 次/秒"
+          },
+          {
+            "k": "移速",
+            "v": "133.4361"
+          },
+          {
+            "k": "射程",
+            "v": "279.5803"
+          },
+          {
+            "k": "费用",
+            "v": "36 金"
+          },
+          {
+            "k": "训练",
+            "v": "8 秒"
+          },
+          {
+            "k": "形象",
+            "v": "villager"
+          },
+          {
+            "k": "体积",
+            "v": "walker"
+          }
+        ],
+        "note": "Raccoon sheet (villager_2). move_speed and attack_range are 105 and 220 times WORLD_SCALE. Settles into gun barracks vacancies.",
         "skins": [],
         "volume": "walker"
       }
@@ -252,7 +310,7 @@
           },
           {
             "k": "木材",
-            "v": "2 木"
+            "v": "0 木"
           },
           {
             "k": "标签",
@@ -314,7 +372,7 @@
           },
           {
             "k": "木材",
-            "v": "1 木"
+            "v": "0 木"
           },
           {
             "k": "标签",
@@ -376,7 +434,7 @@
           },
           {
             "k": "木材",
-            "v": "2 木"
+            "v": "0 木"
           },
           {
             "k": "标签",
@@ -438,7 +496,7 @@
           },
           {
             "k": "木材",
-            "v": "3 木"
+            "v": "0 木"
           },
           {
             "k": "标签",
@@ -500,7 +558,7 @@
           },
           {
             "k": "木材",
-            "v": "8 木"
+            "v": "0 木"
           },
           {
             "k": "标签",
@@ -713,15 +771,19 @@
             "v": "4"
           },
           {
+            "k": "空缺",
+            "v": "村民 × 4"
+          },
+          {
             "k": "可招募",
-            "v": "村民、工匠、矛兵"
+            "v": "村民、工兵、矛兵"
           },
           {
             "k": "体积",
             "v": "house"
           }
         ],
-        "note": "Grants beds while it stands. recruits is a later train list, not a spawn button yet.",
+        "note": "beds and provides.slots are the same villager vacancy. A new house does not spawn anyone. Wave clear may fill empty beds.",
         "skins": [],
         "volume": "house"
       },
@@ -736,7 +798,7 @@
         "stats": [
           {
             "k": "类别",
-            "v": "产木材 · 生产"
+            "v": "清波木材 · 生产"
           },
           {
             "k": "种类",
@@ -763,7 +825,7 @@
             "v": "farm"
           }
         ],
-        "note": "rate is extra wood added once per cleared wave, on top of the flat wave payout.",
+        "note": "Secondary wood. mode wave adds rate once per cleared wave. The lumber mill is the staffed wood source.",
         "skins": [],
         "volume": "farm"
       },
@@ -778,7 +840,7 @@
         "stats": [
           {
             "k": "类别",
-            "v": "强化塔 · 生产"
+            "v": "工兵空缺 · 生产"
           },
           {
             "k": "种类",
@@ -797,6 +859,10 @@
             "v": "20 木 + 28 金"
           },
           {
+            "k": "空缺",
+            "v": "工兵 × 2"
+          },
+          {
             "k": "加成",
             "v": "塔攻击 ×1.25"
           },
@@ -805,9 +871,147 @@
             "v": "workshop"
           }
         ],
-        "note": "tower_damage multiplies tower attack before defense. Bonuses do not stack; the highest standing workshop wins.",
+        "note": "tower_damage multiplies tower attack before defense. Bonuses do not stack; the highest standing workshop wins. provides.slots is the engineer vacancy. Engineers arrive on wave clear; villagers are not converted.",
         "skins": [],
         "volume": "workshop"
+      },
+      {
+        "id": "lumber_mill",
+        "section": "buildings",
+        "name_zh": "木坊",
+        "name_en": "Lumber mill",
+        "portrait": "thumbs/lumber_mill.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "驻人产木 · 生产"
+          },
+          {
+            "k": "种类",
+            "v": "LUMBER"
+          },
+          {
+            "k": "生命",
+            "v": "110"
+          },
+          {
+            "k": "防御",
+            "v": "3"
+          },
+          {
+            "k": "费用",
+            "v": "20 木 + 10 金"
+          },
+          {
+            "k": "产出",
+            "v": "每 5 秒，每名村民 +1 木"
+          },
+          {
+            "k": "驻守",
+            "v": "4"
+          },
+          {
+            "k": "体积",
+            "v": "lumber"
+          }
+        ],
+        "note": "Main wood source. Empty mill produces 0. Each stationed villager adds rate_per_villager wood every interval seconds during prep and combat. staff_slots is the crew cap.",
+        "skins": [],
+        "volume": "lumber"
+      },
+      {
+        "id": "spear_barracks",
+        "section": "buildings",
+        "name_zh": "矛兵营",
+        "name_en": "Spear barracks",
+        "portrait": "thumbs/spear_barracks.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "矛兵空缺 · 招募"
+          },
+          {
+            "k": "种类",
+            "v": "SPEAR_BARRACKS"
+          },
+          {
+            "k": "生命",
+            "v": "140"
+          },
+          {
+            "k": "防御",
+            "v": "4"
+          },
+          {
+            "k": "费用",
+            "v": "26 木 + 24 金"
+          },
+          {
+            "k": "空缺",
+            "v": "矛兵 × 2"
+          },
+          {
+            "k": "可招募",
+            "v": "矛兵"
+          },
+          {
+            "k": "体积",
+            "v": "spear_barracks"
+          }
+        ],
+        "note": "Spearman vacancy. Wave clear can settle spearmen up to slots. It does not turn a villager into a spearman.",
+        "skins": [],
+        "volume": "spear_barracks"
+      },
+      {
+        "id": "gun_barracks",
+        "section": "buildings",
+        "name_zh": "枪兵营",
+        "name_en": "Gun barracks",
+        "portrait": "thumbs/gun_barracks.png",
+        "badge": "已出场",
+        "badge_tone": "live",
+        "stats": [
+          {
+            "k": "类别",
+            "v": "枪兵空缺 · 招募"
+          },
+          {
+            "k": "种类",
+            "v": "GUN_BARRACKS"
+          },
+          {
+            "k": "生命",
+            "v": "130"
+          },
+          {
+            "k": "防御",
+            "v": "3"
+          },
+          {
+            "k": "费用",
+            "v": "22 木 + 36 金"
+          },
+          {
+            "k": "空缺",
+            "v": "枪兵 × 2"
+          },
+          {
+            "k": "可招募",
+            "v": "枪兵"
+          },
+          {
+            "k": "体积",
+            "v": "gun_barracks"
+          }
+        ],
+        "note": "Gunner vacancy. Wave clear can settle gunners up to slots. It does not convert villagers.",
+        "skins": [],
+        "volume": "gun_barracks"
       }
     ],
     "scenery": [
@@ -1023,6 +1227,211 @@
     "wave_clear_wood": 8,
     "wave_clear_gold": 14,
     "farm_wood": 6,
-    "workshop_tower_damage": 1.25
+    "workshop_tower_damage": 1.25,
+    "lumber_rate": 1,
+    "lumber_interval": 5.0,
+    "lumber_slots": 4,
+    "settle_chance": 0.65,
+    "settle_max": 3
+  },
+  "config_version": 1,
+  "setup": {
+    "config_version": 1,
+    "difficulty_id": "normal",
+    "presets": {
+      "easy": {
+        "hp": 0.8,
+        "count": 0.8,
+        "speed": 0.92,
+        "gold": 1.15
+      },
+      "normal": {
+        "hp": 1.0,
+        "count": 1.0,
+        "speed": 1.0,
+        "gold": 1.0
+      },
+      "hard": {
+        "hp": 1.35,
+        "count": 1.15,
+        "speed": 1.08,
+        "gold": 0.85
+      }
+    },
+    "settlement": {
+      "chance": 0.65,
+      "max_per_wave": 3
+    },
+    "combat": {
+      "target_hold": 1.2,
+      "switch_margin": 0.72,
+      "repath": 0.6,
+      "stuck": 0.9,
+      "wander_hold": 2.4,
+      "panic_hold": 1.3
+    },
+    "economy": {
+      "start_wood": 100,
+      "start_gold": 70,
+      "wave_clear_wood": 8,
+      "wave_clear_gold": 14
+    },
+    "spawns": [
+      [
+        8,
+        0
+      ],
+      [
+        9,
+        0
+      ],
+      [
+        10,
+        0
+      ],
+      [
+        11,
+        0
+      ],
+      [
+        12,
+        0
+      ]
+    ],
+    "starter_buildings": [
+      {
+        "kind": "HOUSE",
+        "cell": [
+          8,
+          14
+        ]
+      },
+      {
+        "kind": "HOUSE",
+        "cell": [
+          12,
+          14
+        ]
+      },
+      {
+        "kind": "FARM",
+        "cell": [
+          9,
+          16
+        ]
+      },
+      {
+        "kind": "WORKSHOP",
+        "cell": [
+          11,
+          16
+        ]
+      },
+      {
+        "kind": "SPEAR",
+        "cell": [
+          7,
+          12
+        ]
+      },
+      {
+        "kind": "SPEAR",
+        "cell": [
+          13,
+          12
+        ]
+      },
+      {
+        "kind": "FIRE",
+        "cell": [
+          10,
+          12
+        ]
+      },
+      {
+        "kind": "WALL",
+        "cell": [
+          6,
+          11
+        ]
+      },
+      {
+        "kind": "WALL",
+        "cell": [
+          8,
+          11
+        ]
+      },
+      {
+        "kind": "WALL",
+        "cell": [
+          12,
+          11
+        ]
+      },
+      {
+        "kind": "WALL",
+        "cell": [
+          14,
+          11
+        ]
+      },
+      {
+        "kind": "WALL",
+        "cell": [
+          9,
+          10
+        ]
+      },
+      {
+        "kind": "WALL",
+        "cell": [
+          11,
+          10
+        ]
+      }
+    ],
+    "starter_units": [
+      {
+        "unit": "villager",
+        "cell": [
+          9,
+          15
+        ],
+        "sex": "m"
+      },
+      {
+        "unit": "villager",
+        "cell": [
+          10,
+          15
+        ],
+        "sex": "f"
+      },
+      {
+        "unit": "villager",
+        "cell": [
+          11,
+          15
+        ],
+        "sex": "m"
+      },
+      {
+        "unit": "villager",
+        "cell": [
+          8,
+          15
+        ],
+        "sex": "f"
+      },
+      {
+        "unit": "villager",
+        "cell": [
+          12,
+          15
+        ],
+        "sex": "m"
+      }
+    ]
   }
 }
