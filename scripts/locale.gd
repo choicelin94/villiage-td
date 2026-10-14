@@ -54,6 +54,7 @@ const TEXT := {
 	"menu.codex": {"zh": "玩法指南", "en": "Guide"},
 	"menu.bench": {"zh": "工作台", "en": "Workbench"},
 	"bench.title": {"zh": "工作台", "en": "Workbench"},
+	"bench.narrow": {"zh": "工作台请在电脑浏览器中打开使用。", "en": "Open the workbench in a desktop browser."},
 	"bench.save": {"zh": "保存", "en": "Save"},
 	"bench.reset": {"zh": "默认", "en": "Defaults"},
 	"bench.saved": {"zh": "已保存，返回后下一局生效。", "en": "Saved. It applies when you return."},

@@ -12,6 +12,12 @@ var _scroll: ScrollContainer
 var _popup: PanelContainer
 var _popup_col: VBoxContainer
 var _popup_cell := Vector2i(-1, -1)
+var _narrow_root: Control
+var _narrow_card: PanelContainer
+var _narrow_box: VBoxContainer
+var _narrow_label: Label
+var _narrow_back: Button
+var _narrow_on := false
 
 func _ready() -> void:
 	_font = CatalogPaths.load_font()
@@ -25,12 +31,18 @@ func _ready() -> void:
 	_state = _doc.data
 	_build_chrome()
 	Locale.changed.connect(_show_tab.bind(_tab))
+	Locale.changed.connect(_apply_narrow_copy)
+	get_viewport().size_changed.connect(_apply_narrow_lock)
 	_show_tab("diff")
+	_apply_narrow_lock()
 	if OS.get_environment("TD_BENCH") == "1":
 		_bench_probe()
 
 func _bench_probe() -> void:
 	Locale.set_code("zh")
+	get_window().size = Vector2i(1100, 1400)
+	await get_tree().process_frame
+	_apply_narrow_lock()
 	_show_tab("map")
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -77,6 +89,8 @@ func _bench_probe() -> void:
 		print("BENCH_SHOT ", image.get_width(), " ", image.get_height(), " reds=", reds, " run=", longest)
 		if reds < 8 or longest < 24:
 			passed = false
+	var narrow_ok := await _probe_narrow_lock()
+	passed = passed and narrow_ok
 	get_tree().quit(0 if passed else 1)
 
 func _probe_layout() -> bool:
@@ -115,6 +129,16 @@ func _probe_thumbs() -> bool:
 		print("BENCH_DRAG ", data)
 		return false
 	return ok
+
+func _input(event: InputEvent) -> void:
+	if not _narrow_on or not (event is InputEventKey):
+		return
+	var key := event as InputEventKey
+	if key.keycode == KEY_ESCAPE:
+		return
+	if get_viewport().gui_get_focus_owner() == _narrow_back:
+		return
+	get_viewport().set_input_as_handled()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_ESCAPE:
@@ -182,6 +206,187 @@ func _build_chrome() -> void:
 	_body.add_theme_constant_override("separation", 8)
 	_scroll.add_child(_body)
 	_build_popup(layer)
+	_build_narrow_lock()
+
+func _build_narrow_lock() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "NarrowLockLayer"
+	layer.layer = 80
+	add_child(layer)
+	_narrow_root = Control.new()
+	_narrow_root.name = "NarrowLock"
+	_narrow_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_narrow_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_narrow_root.visible = false
+	layer.add_child(_narrow_root)
+	var dim := ColorRect.new()
+	dim.name = "NarrowDim"
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.color = Color(0.22, 0.24, 0.23, 0.74)
+	_narrow_root.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_STOP
+	_narrow_root.add_child(center)
+	_narrow_card = PanelContainer.new()
+	_narrow_card.name = "NarrowCard"
+	_narrow_card.mouse_filter = Control.MOUSE_FILTER_STOP
+	var plate := StyleBoxFlat.new()
+	plate.bg_color = Color(0.12, 0.14, 0.12, 0.96)
+	plate.border_color = Color(0.78, 0.72, 0.58)
+	plate.set_border_width_all(2)
+	plate.set_corner_radius_all(14)
+	plate.content_margin_left = 22
+	plate.content_margin_right = 22
+	plate.content_margin_top = 20
+	plate.content_margin_bottom = 18
+	_narrow_card.add_theme_stylebox_override("panel", plate)
+	center.add_child(_narrow_card)
+	_narrow_box = VBoxContainer.new()
+	_narrow_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_narrow_card.add_child(_narrow_box)
+	_narrow_label = Label.new()
+	_narrow_label.name = "NarrowMessage"
+	_narrow_label.theme = _theme
+	_narrow_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_narrow_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_narrow_label.add_theme_color_override("font_color", Color(0.96, 0.93, 0.84))
+	_narrow_box.add_child(_narrow_label)
+	_narrow_back = _button("NarrowBack", Locale.text("lab.back"))
+	_narrow_back.pressed.connect(_back_to_game)
+	_narrow_box.add_child(_narrow_back)
+	_apply_narrow_copy()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_SIZE_CHANGED:
+		_apply_narrow_lock()
+
+func _css_window_size() -> Vector2:
+	# Web reports the canvas backing store. Divide by the screen scale so a
+	# phone at devicePixelRatio 3 is judged in CSS pixels, same as the browser.
+	var px := Vector2(DisplayServer.window_get_size())
+	if OS.has_feature("web"):
+		var ratio := DisplayServer.screen_get_scale()
+		if ratio >= 0.5:
+			px /= ratio
+	return px
+
+func _narrow_locked() -> bool:
+	var css := _css_window_size()
+	if css.x < 8.0 or css.y < 8.0:
+		return false
+	# Width under 900 covers a portrait phone and a squeezed desktop window.
+	# Short side under 480 covers a landscape phone whose width is just over 900.
+	# The design viewport is 720 tall, so the short side must stay below that.
+	if css.x < 900.0:
+		return true
+	return minf(css.x, css.y) < 480.0
+
+func _viewport_units_per_css() -> float:
+	var css := _css_window_size()
+	var view := get_viewport_rect().size
+	if css.x < 8.0 or view.x < 8.0:
+		return 1.0
+	return view.x / css.x
+
+func _apply_narrow_copy() -> void:
+	if _narrow_label:
+		_narrow_label.text = Locale.text("bench.narrow")
+	if _narrow_back:
+		_narrow_back.text = Locale.text("lab.back")
+
+func _apply_narrow_lock() -> void:
+	if _narrow_root == null:
+		return
+	var locked := _narrow_locked()
+	_narrow_on = locked
+	_narrow_root.visible = locked
+	_narrow_root.mouse_filter = Control.MOUSE_FILTER_STOP if locked else Control.MOUSE_FILTER_IGNORE
+	if not locked:
+		return
+	_apply_narrow_copy()
+	var k := _viewport_units_per_css()
+	var css := _css_window_size()
+	var card_w := clampf(css.x * 0.86, 240.0, 420.0) * k
+	_narrow_card.custom_minimum_size = Vector2(card_w, 0)
+	_narrow_label.custom_minimum_size = Vector2(maxf(card_w - 64.0 * k, 160.0 * k), 0)
+	_narrow_label.add_theme_font_size_override("font_size", int(round(22.0 * k)))
+	_narrow_back.add_theme_font_size_override("font_size", int(round(20.0 * k)))
+	_narrow_back.custom_minimum_size = Vector2(0, 52.0 * k)
+	_narrow_box.add_theme_constant_override("separation", int(round(18.0 * k)))
+
+func _probe_narrow_lock() -> bool:
+	Locale.set_code("zh")
+	var phone_ok := await _probe_narrow_at(Vector2i(390, 844), true)
+	var land_ok := await _probe_narrow_at(Vector2i(932, 430), true)
+	var squeezed_ok := await _probe_narrow_at(Vector2i(800, 700), true)
+	var wide_ok := await _probe_narrow_at(Vector2i(1280, 800), false)
+	var ok := phone_ok and land_ok and squeezed_ok and wide_ok
+	print("BENCH_NARROW ok=", ok, " phone=", phone_ok, " land=", land_ok, " squeezed=", squeezed_ok, " wide=", wide_ok)
+	return ok
+
+func _probe_narrow_at(window_size: Vector2i, expect_lock: bool) -> bool:
+	get_window().size = window_size
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_apply_narrow_lock()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var css := _css_window_size()
+	var shown := _narrow_root != null and _narrow_root.visible and _narrow_on
+	var text_ok := true
+	var back_ok := true
+	var blocked := true
+	var back_click := true
+	if expect_lock:
+		text_ok = _narrow_label != null and _narrow_label.text == "工作台请在电脑浏览器中打开使用。"
+		back_ok = _narrow_back != null and _narrow_back.text == "返回游戏" and _narrow_back.visible
+		var save := find_child("SaveButton", true, false) as Button
+		if save == null:
+			blocked = false
+		else:
+			var hits := {"n": 0}
+			var on_save := func() -> void: hits["n"] = int(hits["n"]) + 1
+			save.pressed.connect(on_save)
+			_probe_click(save.get_global_rect().get_center())
+			await get_tree().process_frame
+			blocked = int(hits["n"]) == 0
+			save.pressed.disconnect(on_save)
+		if _narrow_back == null:
+			back_click = false
+		else:
+			var backs := {"n": 0}
+			var on_back := func() -> void: backs["n"] = int(backs["n"]) + 1
+			_narrow_back.pressed.disconnect(_back_to_game)
+			_narrow_back.pressed.connect(on_back)
+			_probe_click(_narrow_back.get_global_rect().get_center())
+			await get_tree().process_frame
+			back_click = int(backs["n"]) == 1
+			_narrow_back.pressed.disconnect(on_back)
+			_narrow_back.pressed.connect(_back_to_game)
+		if window_size == Vector2i(390, 844):
+			var image := get_viewport().get_texture().get_image()
+			if image and not image.is_empty():
+				image.save_png("/tmp/bench-narrow.png")
+			print("BENCH_NARROW_RECT root=", _narrow_root.size, " card=", _narrow_card.get_global_rect(), " back=", _narrow_back.get_global_rect(), " font=", _narrow_label.get_theme_font_size("font_size"))
+	var ok := shown == expect_lock and text_ok and back_ok and blocked and back_click
+	print("BENCH_NARROW_AT ", window_size, " css=", css, " win=", DisplayServer.window_get_size(), " scale=", DisplayServer.screen_get_scale(), " view=", get_viewport_rect().size, " shown=", shown, " text=", text_ok, " back=", back_ok, " blocked=", blocked, " back_click=", back_click)
+	return ok
+
+func _probe_click(at: Vector2) -> void:
+	# push_input expects window coordinates and converts them into the stretched viewport.
+	var screen: Vector2 = get_viewport().get_screen_transform() * at
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = screen
+	get_viewport().push_input(press)
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = screen
+	get_viewport().push_input(release)
 
 func _build_popup(layer: CanvasLayer) -> void:
 	_popup = PanelContainer.new()
