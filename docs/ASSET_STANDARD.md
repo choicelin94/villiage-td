@@ -174,4 +174,4 @@ Distances and speeds are already world units. Do not scale them again. `attack_s
 - 建筑和树、岩石用 `assets/village/` 里的 PNG
 - 写出 `docs/codex/catalog.json` 和 `docs/codex/index.html`
 
-页面是静态的。推到 `main` 时，GitHub Actions 会再跑一次生成器，并发布整个 `docs/`。游戏里右上角问号菜单的「图鉴」打开这一页。草地 `grass_*.png` 和 `road.png` 不是卡片；新的景物 PNG 要先写进 `tools/build_codex.py` 的 `SCENERY_LABELS`，否则生成器会停下来。发布细节在 [ARCHITECTURE.md](ARCHITECTURE.md)。
+页面是静态的。推到 `main` 时，GitHub Actions 会再跑一次生成器，并发布整个 `docs/`。游戏里右上角问号菜单的「玩法指南」打开这一页。草地 `grass_*.png` 和 `road.png` 不是卡片；新的景物 PNG 要先写进 `tools/build_codex.py` 的 `SCENERY_LABELS`，否则生成器会停下来。发布细节在 [ARCHITECTURE.md](ARCHITECTURE.md)。

@@ -18,7 +18,7 @@
         "stats": [
           {
             "k": "职责",
-            "v": "劳工 · worker"
+            "v": "劳工"
           },
           {
             "k": "生命",
@@ -51,17 +51,16 @@
           {
             "k": "训练",
             "v": "—"
-          },
-          {
-            "k": "形象",
-            "v": "villager"
-          },
-          {
-            "k": "体积",
-            "v": "walker"
           }
         ],
         "note": "Cosmetic pool for the auto villagers. move_speed is the old 108 * WORLD_SCALE. Wander still uses 0.72x of it and panic 1.15x, in villager.gd.",
+        "dev": [
+          "英文名 Villager",
+          "id villager",
+          "职责键 worker",
+          "形象 villager",
+          "体积 walker"
+        ],
         "skins": [
           {
             "name": "wolf",
@@ -102,7 +101,7 @@
         "stats": [
           {
             "k": "职责",
-            "v": "近战 · melee"
+            "v": "近战"
           },
           {
             "k": "生命",
@@ -135,17 +134,16 @@
           {
             "k": "训练",
             "v": "8 秒"
-          },
-          {
-            "k": "形象",
-            "v": "villager"
-          },
-          {
-            "k": "体积",
-            "v": "walker"
           }
         ],
         "note": "Knight sheet (villager_3). move_speed and attack_range are 90 and 48 times WORLD_SCALE. Settles into spear barracks vacancies.",
+        "dev": [
+          "英文名 Spearman",
+          "id spearman",
+          "职责键 melee",
+          "形象 villager",
+          "体积 walker"
+        ],
         "skins": [],
         "volume": "walker"
       },
@@ -160,7 +158,7 @@
         "stats": [
           {
             "k": "职责",
-            "v": "工兵 · support"
+            "v": "工兵"
           },
           {
             "k": "生命",
@@ -193,17 +191,16 @@
           {
             "k": "训练",
             "v": "10 秒"
-          },
-          {
-            "k": "形象",
-            "v": "villager"
-          },
-          {
-            "k": "体积",
-            "v": "walker"
           }
         ],
         "note": "Robot sheet (villager_5). Settles into workshop vacancies. move_speed and attack_range are 100 and 42 times WORLD_SCALE.",
+        "dev": [
+          "英文名 Engineer",
+          "id engineer",
+          "职责键 support",
+          "形象 villager",
+          "体积 walker"
+        ],
         "skins": [],
         "volume": "walker"
       },
@@ -218,7 +215,7 @@
         "stats": [
           {
             "k": "职责",
-            "v": "远程 · ranged"
+            "v": "远程"
           },
           {
             "k": "生命",
@@ -251,17 +248,16 @@
           {
             "k": "训练",
             "v": "8 秒"
-          },
-          {
-            "k": "形象",
-            "v": "villager"
-          },
-          {
-            "k": "体积",
-            "v": "walker"
           }
         ],
         "note": "Raccoon sheet (villager_2). move_speed and attack_range are 105 and 220 times WORLD_SCALE. Settles into gun barracks vacancies.",
+        "dev": [
+          "英文名 Gunner",
+          "id gunner",
+          "职责键 ranged",
+          "形象 villager",
+          "体积 walker"
+        ],
         "skins": [],
         "volume": "walker"
       }
@@ -309,23 +305,18 @@
             "v": "4 金"
           },
           {
-            "k": "木材",
-            "v": "0 木"
-          },
-          {
             "k": "标签",
             "v": "普通"
-          },
-          {
-            "k": "形象",
-            "v": "spear"
-          },
-          {
-            "k": "体积",
-            "v": "walker"
           }
         ],
         "note": "Old kind normal. Horde spear goblin.",
+        "dev": [
+          "英文名 Spear zombie",
+          "id spear_normal",
+          "形象 spear",
+          "体积 walker",
+          "标签键 normal"
+        ],
         "skins": [],
         "volume": "walker"
       },
@@ -371,23 +362,18 @@
             "v": "5 金"
           },
           {
-            "k": "木材",
-            "v": "0 木"
-          },
-          {
             "k": "标签",
             "v": "迅捷"
-          },
-          {
-            "k": "形象",
-            "v": "spear"
-          },
-          {
-            "k": "体积",
-            "v": "walker"
           }
         ],
         "note": "Old kind fast. hp is 34 * 0.7, move_speed is 72 * 1.35 * WORLD_SCALE.",
+        "dev": [
+          "英文名 Fast zombie",
+          "id spear_fast",
+          "形象 spear",
+          "体积 walker",
+          "标签键 fast"
+        ],
         "skins": [],
         "volume": "walker"
       },
@@ -433,23 +419,18 @@
             "v": "4 金"
           },
           {
-            "k": "木材",
-            "v": "0 木"
-          },
-          {
             "k": "标签",
             "v": "感染"
-          },
-          {
-            "k": "形象",
-            "v": "spear"
-          },
-          {
-            "k": "体积",
-            "v": "walker"
           }
         ],
         "note": "A villager who was just infected. hp is 34 * 0.65, which replaces the old extra 0.65 multiplier on the normal kind.",
+        "dev": [
+          "英文名 Infected villager",
+          "id spear_infected",
+          "形象 spear",
+          "体积 walker",
+          "标签键 infected"
+        ],
         "skins": [],
         "volume": "walker"
       },
@@ -495,23 +476,18 @@
             "v": "9 金"
           },
           {
-            "k": "木材",
-            "v": "0 木"
-          },
-          {
             "k": "标签",
             "v": "精锐"
-          },
-          {
-            "k": "形象",
-            "v": "shooter"
-          },
-          {
-            "k": "体积",
-            "v": "walker"
           }
         ],
         "note": "Old kind brute. Gun goblin, still walks up and bites. hp is 34 * 2.2.",
+        "dev": [
+          "英文名 Gun brute",
+          "id shooter_elite",
+          "形象 shooter",
+          "体积 walker",
+          "标签键 elite"
+        ],
         "skins": [],
         "volume": "walker"
       },
@@ -557,23 +533,18 @@
             "v": "30 金"
           },
           {
-            "k": "木材",
-            "v": "0 木"
-          },
-          {
             "k": "标签",
             "v": "首领"
-          },
-          {
-            "k": "形象",
-            "v": "shooter"
-          },
-          {
-            "k": "体积",
-            "v": "walker"
           }
         ],
         "note": "Old kind boss. Gun goblin, still melee. hp is 34 * 4.2.",
+        "dev": [
+          "英文名 Gun boss",
+          "id shooter_boss",
+          "形象 shooter",
+          "体积 walker",
+          "标签键 boss"
+        ],
         "skins": [],
         "volume": "walker"
       }
@@ -593,10 +564,6 @@
             "v": "挡路 · 防御"
           },
           {
-            "k": "种类",
-            "v": "WALL"
-          },
-          {
             "k": "生命",
             "v": "170"
           },
@@ -611,13 +578,15 @@
           {
             "k": "上限",
             "v": "28"
-          },
-          {
-            "k": "体积",
-            "v": "wall"
           }
         ],
         "note": "Blocks movement. No attack.",
+        "dev": [
+          "英文名 Wall",
+          "id wall",
+          "种类 WALL",
+          "体积 wall"
+        ],
         "skins": [],
         "volume": "wall"
       },
@@ -633,10 +602,6 @@
           {
             "k": "类别",
             "v": "穿刺 · 防御"
-          },
-          {
-            "k": "种类",
-            "v": "SPEAR"
           },
           {
             "k": "生命",
@@ -669,13 +634,15 @@
           {
             "k": "弹速",
             "v": "889.5738"
-          },
-          {
-            "k": "体积",
-            "v": "spear"
           }
         ],
         "note": "Single-target spear. Range and shot speed are 460 and 700 times WORLD_SCALE.",
+        "dev": [
+          "英文名 Spear",
+          "id spear_tower",
+          "种类 SPEAR",
+          "体积 spear"
+        ],
         "skins": [],
         "volume": "spear"
       },
@@ -691,10 +658,6 @@
           {
             "k": "类别",
             "v": "溅射 · 防御"
-          },
-          {
-            "k": "种类",
-            "v": "FIRE"
           },
           {
             "k": "生命",
@@ -727,13 +690,15 @@
           {
             "k": "弹速",
             "v": "482.9115"
-          },
-          {
-            "k": "体积",
-            "v": "fire"
           }
         ],
         "note": "Splash fire. Range, splash, and shot speed are 420, 120, and 380 times WORLD_SCALE.",
+        "dev": [
+          "英文名 Fire",
+          "id fire_tower",
+          "种类 FIRE",
+          "体积 fire"
+        ],
         "skins": [],
         "volume": "fire"
       },
@@ -749,10 +714,6 @@
           {
             "k": "类别",
             "v": "床位 · 招募"
-          },
-          {
-            "k": "种类",
-            "v": "HOUSE"
           },
           {
             "k": "生命",
@@ -777,13 +738,15 @@
           {
             "k": "可招募",
             "v": "村民、工兵、矛兵"
-          },
-          {
-            "k": "体积",
-            "v": "house"
           }
         ],
         "note": "beds and provides.slots are the same villager vacancy. A new house does not spawn anyone. Wave clear may fill empty beds.",
+        "dev": [
+          "英文名 House",
+          "id house",
+          "种类 HOUSE",
+          "体积 house"
+        ],
         "skins": [],
         "volume": "house"
       },
@@ -801,10 +764,6 @@
             "v": "清波木材 · 生产"
           },
           {
-            "k": "种类",
-            "v": "FARM"
-          },
-          {
             "k": "生命",
             "v": "80"
           },
@@ -819,13 +778,15 @@
           {
             "k": "产出",
             "v": "每波 +6 木"
-          },
-          {
-            "k": "体积",
-            "v": "farm"
           }
         ],
         "note": "Secondary wood. mode wave adds rate once per cleared wave. The lumber mill is the staffed wood source.",
+        "dev": [
+          "英文名 Farm",
+          "id farm",
+          "种类 FARM",
+          "体积 farm"
+        ],
         "skins": [],
         "volume": "farm"
       },
@@ -841,10 +802,6 @@
           {
             "k": "类别",
             "v": "工兵空缺 · 生产"
-          },
-          {
-            "k": "种类",
-            "v": "WORKSHOP"
           },
           {
             "k": "生命",
@@ -865,13 +822,15 @@
           {
             "k": "加成",
             "v": "塔攻击 ×1.25"
-          },
-          {
-            "k": "体积",
-            "v": "workshop"
           }
         ],
         "note": "tower_damage multiplies tower attack before defense. Bonuses do not stack; the highest standing workshop wins. provides.slots is the engineer vacancy. Engineers arrive on wave clear; villagers are not converted.",
+        "dev": [
+          "英文名 Workshop",
+          "id workshop",
+          "种类 WORKSHOP",
+          "体积 workshop"
+        ],
         "skins": [],
         "volume": "workshop"
       },
@@ -887,10 +846,6 @@
           {
             "k": "类别",
             "v": "驻人产木 · 生产"
-          },
-          {
-            "k": "种类",
-            "v": "LUMBER"
           },
           {
             "k": "生命",
@@ -911,13 +866,15 @@
           {
             "k": "驻守",
             "v": "4"
-          },
-          {
-            "k": "体积",
-            "v": "lumber"
           }
         ],
         "note": "Main wood source. Empty mill produces 0. Each stationed villager adds rate_per_villager wood every interval seconds during prep and combat. staff_slots is the crew cap.",
+        "dev": [
+          "英文名 Lumber mill",
+          "id lumber_mill",
+          "种类 LUMBER",
+          "体积 lumber"
+        ],
         "skins": [],
         "volume": "lumber"
       },
@@ -933,10 +890,6 @@
           {
             "k": "类别",
             "v": "矛兵空缺 · 招募"
-          },
-          {
-            "k": "种类",
-            "v": "SPEAR_BARRACKS"
           },
           {
             "k": "生命",
@@ -957,13 +910,15 @@
           {
             "k": "可招募",
             "v": "矛兵"
-          },
-          {
-            "k": "体积",
-            "v": "spear_barracks"
           }
         ],
         "note": "Spearman vacancy. Wave clear can settle spearmen up to slots. It does not turn a villager into a spearman.",
+        "dev": [
+          "英文名 Spear barracks",
+          "id spear_barracks",
+          "种类 SPEAR_BARRACKS",
+          "体积 spear_barracks"
+        ],
         "skins": [],
         "volume": "spear_barracks"
       },
@@ -979,10 +934,6 @@
           {
             "k": "类别",
             "v": "枪兵空缺 · 招募"
-          },
-          {
-            "k": "种类",
-            "v": "GUN_BARRACKS"
           },
           {
             "k": "生命",
@@ -1003,13 +954,15 @@
           {
             "k": "可招募",
             "v": "枪兵"
-          },
-          {
-            "k": "体积",
-            "v": "gun_barracks"
           }
         ],
         "note": "Gunner vacancy. Wave clear can settle gunners up to slots. It does not convert villagers.",
+        "dev": [
+          "英文名 Gun barracks",
+          "id gun_barracks",
+          "种类 GUN_BARRACKS",
+          "体积 gun_barracks"
+        ],
         "skins": [],
         "volume": "gun_barracks"
       }
@@ -1025,19 +978,17 @@
         "badge_tone": "scene",
         "stats": [
           {
-            "k": "体积",
-            "v": "tree"
-          },
-          {
-            "k": "贴图",
-            "v": "tree.png"
-          },
-          {
             "k": "建造",
             "v": "不能"
           }
         ],
         "note": "已出场。树干落地的那一块椭圆挡建造。树冠不参与碰撞。",
+        "dev": [
+          "英文名 Tree",
+          "id tree",
+          "体积 tree",
+          "贴图 tree.png"
+        ],
         "skins": [],
         "volume": "tree"
       },
@@ -1051,19 +1002,17 @@
         "badge_tone": "scene",
         "stats": [
           {
-            "k": "体积",
-            "v": "tree"
-          },
-          {
-            "k": "贴图",
-            "v": "tree_b.png"
-          },
-          {
             "k": "建造",
             "v": "不能"
           }
         ],
         "note": "已出场。贴图变体，体积键仍是 tree。",
+        "dev": [
+          "英文名 Tree B",
+          "id tree_b",
+          "体积 tree",
+          "贴图 tree_b.png"
+        ],
         "skins": [],
         "volume": "tree"
       },
@@ -1077,19 +1026,17 @@
         "badge_tone": "scene",
         "stats": [
           {
-            "k": "体积",
-            "v": "tree"
-          },
-          {
-            "k": "贴图",
-            "v": "tree_c.png"
-          },
-          {
             "k": "建造",
             "v": "不能"
           }
         ],
         "note": "已出场。贴图变体，体积键仍是 tree。",
+        "dev": [
+          "英文名 Tree C",
+          "id tree_c",
+          "体积 tree",
+          "贴图 tree_c.png"
+        ],
         "skins": [],
         "volume": "tree"
       },
@@ -1103,19 +1050,17 @@
         "badge_tone": "scene",
         "stats": [
           {
-            "k": "体积",
-            "v": "rock"
-          },
-          {
-            "k": "贴图",
-            "v": "rock.png"
-          },
-          {
             "k": "建造",
             "v": "不能"
           }
         ],
         "note": "已出场。椭圆体积挡建造。",
+        "dev": [
+          "英文名 Rock",
+          "id rock",
+          "体积 rock",
+          "贴图 rock.png"
+        ],
         "skins": [],
         "volume": "rock"
       }
