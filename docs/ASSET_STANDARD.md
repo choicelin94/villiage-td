@@ -112,7 +112,7 @@ Distances and speeds are already world units. Do not scale them again. `attack_s
 
 ### `setup.json` 地图字段（config_version 2）
 
-格子与对局相同：20×20，一格 128，`(0, 0)` 在西北角，`+x` 向东，`+y` 向南。工作台保存的是下面这些字段，开局由 `Balance` 读入。
+格子与对局相同：20×20，一格 128，`(0, 0)` 在西北角，`+x` 向东，`+y` 向南。工作台地图页画出对局里的草地、道路、树、岩石、建筑 PNG 和单位待机帧，锚点和 `building.gd`、`iso_prop.gd`、`spine_actor.gd` 一致。出怪点不另画图标，只在对应格子上盖红色半透明遮罩。工作台保存的是下面这些字段，开局由 `Balance` 读入。
 
 | 字段 | 含义 |
 | --- | --- |
