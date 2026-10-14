@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "volumes.schema.json",
+  "type": "object",
+  "required": ["house", "farm", "workshop", "lumber", "spear_barracks", "gun_barracks", "wall", "spear", "fire", "tree", "rock", "walker"],
+  "additionalProperties": {
+    "type": "object",
+    "required": ["shape", "z"],
+    "properties": {
+      "shape": {"enum": ["ellipse", "poly"]},
+      "z": {"type": "number", "exclusiveMinimum": 0},
+      "rx": {"type": "number"},
+      "ry": {"type": "number"},
+      "ox": {"type": "number"},
+      "oy": {"type": "number"},
+      "poly": {"type": "array"}
+    }
+  }
+}

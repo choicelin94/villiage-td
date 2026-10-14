@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "units.schema.json",
+  "type": "object",
+  "required": ["units"],
+  "properties": {
+    "_comment": {"type": "string"},
+    "units": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "display_key", "faction", "role", "character", "hp", "defense", "attack", "attack_speed", "move_speed", "attack_range", "cost", "train_time"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "display_key": {"type": "string"},
+          "faction": {"const": "ally"},
+          "role": {"type": "string"},
+          "character": {"type": "string"},
+          "skin": {"type": "string"},
+          "skins": {"type": "array", "items": {"type": "string"}},
+          "hp": {"type": "number", "exclusiveMinimum": 0},
+          "defense": {"type": "number", "minimum": 0},
+          "attack": {"type": "number", "minimum": 0},
+          "attack_speed": {"type": "number", "exclusiveMinimum": 0},
+          "move_speed": {"type": "number", "minimum": 0},
+          "attack_range": {"type": "number", "minimum": 0},
+          "cost": {
+            "type": "object",
+            "required": ["wood", "gold"],
+            "properties": {
+              "wood": {"type": "number", "minimum": 0},
+              "gold": {"type": "number", "minimum": 0}
+            }
+          },
+          "train_time": {"type": "number", "minimum": 0},
+          "notes": {"type": "string"}
+        }
+      }
+    }
+  }
+}

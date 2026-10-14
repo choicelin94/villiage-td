@@ -6,7 +6,7 @@ var title := ""
 var font: Font
 
 func _ready() -> void:
-	font = load("res://assets/fonts/NotoSansSC-Regular.otf")
+	font = CatalogPaths.load_font()
 
 func _process(_delta: float) -> void:
 	queue_redraw()

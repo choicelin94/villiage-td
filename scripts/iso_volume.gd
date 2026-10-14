@@ -5,7 +5,7 @@ extends RefCounted
 # pixels. The map is orthographic top-down: +X is east, +Y is south. Cell
 # (0, 0) sits at (HALF, HALF) on a stacked square TileMapLayer.
 #
-# Authoring (data/iso_volumes.json), one entry per kind:
+# Authoring (config/presentation/volumes.json, formerly data/iso_volumes.json), one entry per kind:
 #   shape "ellipse" — rx, ry, optional ox/oy from the cell center (or the feet).
 #   shape "poly" — poly is a list of [x, y] offsets around that same origin.
 #   z — height of the prism. The solver compares these shapes; it does not
@@ -88,7 +88,9 @@ static func spec_for(key: String) -> Dictionary:
 static func _ensure() -> void:
 	if not _table.is_empty():
 		return
-	var path := "res://data/iso_volumes.json"
+	var path := "res://config/presentation/volumes.json"
+	if not FileAccess.file_exists(path):
+		path = "res://data/iso_volumes.json"
 	if not FileAccess.file_exists(path):
 		_table = TABLE.duplicate(true)
 		return

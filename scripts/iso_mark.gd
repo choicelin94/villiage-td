@@ -16,7 +16,7 @@ var _font: Font
 func _ready() -> void:
 	z_as_relative = true
 	z_index = 0
-	_font = load("res://assets/fonts/NotoSansSC-Regular.otf")
+	_font = CatalogPaths.load_font()
 
 func _process(_delta: float) -> void:
 	queue_redraw()

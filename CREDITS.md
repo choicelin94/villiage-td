@@ -11,7 +11,7 @@ This game uses third-party art and a third-party font. Licenses below are copied
   https://kenney.nl/media/pages/assets/fantasy-town-kit/efe948d309-1754222374/kenney_fantasy-town-kit_2.0.zip
 - **License:** Creative Commons Zero (CC0) 1.0 Universal  
   http://creativecommons.org/publicdomain/zero/1.0/
-- **License file shipped with the pack:** copied unchanged to [`assets/village/LICENSE.txt`](assets/village/LICENSE.txt)
+- **License file shipped with the pack:** copied unchanged to [`art/village/LICENSE.txt`](art/village/LICENSE.txt)
 
 The pack's own `License.txt` says:
 
@@ -22,24 +22,24 @@ The pack's own `License.txt` says:
 > You can use this content for personal, educational, and commercial purposes.  
 > Support by crediting 'Kenney' or 'www.kenney.nl' (this is not a requirement)
 
-The download is a **3D** kit (FBX, GLB, OBJ). Those model files are not in this repository. Trees and rocks in `assets/village/` are the earlier isometric renders (orthographic camera, view direction along (1, 1, 1)). Houses, walls, the farm, the workshop, and both towers were rendered again for the top-down map: orthographic camera south of the model, looking down, so the ground reads as a square and the front of the building stays visible. Grass and the dirt path are original square textures made for this game, not Kenney images. Several building renders stack more than one model on the same 1×1 cell.
+The download is a **3D** kit (FBX, GLB, OBJ). Those model files are not in this repository. Trees and rocks in `art/village/` are the earlier isometric renders (orthographic camera, view direction along (1, 1, 1)). Houses, walls, the farm, the workshop, and both towers were rendered again for the top-down map: orthographic camera south of the model, looking down, so the ground reads as a square and the front of the building stays visible. Grass and the dirt path are original square textures made for this game, not Kenney images. Several building renders stack more than one model on the same 1×1 cell.
 
 OpenGameArt “Primitive Village” (CC0, https://opengameart.org/content/primitive-village) was checked and not used. Its tiles are isometric diamonds, which is the projection this map left behind. Kenney Tiny Town (CC0) is a 16×16 3/4 pixel set and was not mixed in with these renders.
 
 | In this game | Kenney models in the render |
 | --- | --- |
-| `assets/village/road.png` | original dirt path, not a Kenney texture |
-| `assets/village/tree.png` | `tree.glb` |
-| `assets/village/tree_b.png` | `tree-crooked.glb` |
-| `assets/village/tree_c.png` | `tree-high.glb` |
-| `assets/village/rock.png` | `rock-large.glb` |
-| `assets/village/wall.png` | `fence.glb` (four sides) and `pillar-wood.glb` |
-| `assets/village/spear.png` | `planks.glb`, `wall-wood-corner.glb`, `roof-point.glb`, `banner-green.glb` |
-| `assets/village/fire.png` | `planks.glb`, `pillar-wood.glb`, `chimney.glb`, `banner-green.glb` |
-| `assets/village/house.png` | `planks.glb`, `wall-wood.glb`, `wall-wood-door.glb`, `roof.glb`, `chimney.glb` |
-| `assets/village/workshop.png` | `planks.glb`, `wall-wood.glb`, `wall-wood-window-shutters.glb`, `roof-point.glb`, `stall.glb` |
-| `assets/village/farm.png` | `fence.glb`, `hedge.glb`, plus an original dirt-colored ground slab (see below) |
-| `assets/village/grass_a.png`, `grass_b.png` | original grass-colored ground slabs, not a Kenney texture |
+| `art/village/road.png` | original dirt path, not a Kenney texture |
+| `art/village/tree.png` | `tree.glb` |
+| `art/village/tree_b.png` | `tree-crooked.glb` |
+| `art/village/tree_c.png` | `tree-high.glb` |
+| `art/village/rock.png` | `rock-large.glb` |
+| `art/village/wall.png` | `fence.glb` (four sides) and `pillar-wood.glb` |
+| `art/village/spear.png` | `planks.glb`, `wall-wood-corner.glb`, `roof-point.glb`, `banner-green.glb` |
+| `art/village/fire.png` | `planks.glb`, `pillar-wood.glb`, `chimney.glb`, `banner-green.glb` |
+| `art/village/house.png` | `planks.glb`, `wall-wood.glb`, `wall-wood-door.glb`, `roof.glb`, `chimney.glb` |
+| `art/village/workshop.png` | `planks.glb`, `wall-wood.glb`, `wall-wood-window-shutters.glb`, `roof-point.glb`, `stall.glb` |
+| `art/village/farm.png` | `fence.glb`, `hedge.glb`, plus an original dirt-colored ground slab (see below) |
+| `art/village/grass_a.png`, `grass_b.png` | original grass-colored ground slabs, not a Kenney texture |
 
 `icon.png` is a scaled crop of `house.png`.
 
@@ -60,7 +60,7 @@ Villagers and monsters are no longer the LPC sheets. An infected villager become
 - **Page:** https://layerlab.itch.io/2d-characters-cute-adventurers
 - **File downloaded:** `2D Characters - Cute Adventurers_4_3.zip` (3.9 MB)
 - **Spine export inside that zip:** `Export_4_3/redhood.json`. The skeleton block says `"spine": "4.3.26"`. Skins are `skin_0` through `skin_6`. Animations are `die`, `die2`, `down`, `idle`, `jump`, `jump2`, and `run`. The page lists Idle, Walk, Jump, and Die. The file names the locomotion clip `run`, not `walk`.
-- **In this game:** `assets/characters/villager_0.png` through `villager_6.png`, in skin order wolf, penguin, raccoon, knight, frog, robot, skeleton. Each sheet is the pack's own PNG sequence (idle, run, down, die2) on the export canvas, with the standing foot at pixel (91, 144). `assets/characters/spine/redhood.spine-json`, `redhood.atlas`, and `redhood.png` are the packed Spine 4.3 export, used only if spine-godot is present.
+- **In this game:** `art/characters/villager_0.png` through `villager_6.png`, in skin order wolf, penguin, raccoon, knight, frog, robot, skeleton. Each sheet is the pack's own PNG sequence (idle, run, down, die2) on the export canvas, with the standing foot at pixel (91, 144). `art/characters/spine/redhood.spine-json`, `redhood.atlas`, and `redhood.png` are the packed Spine 4.3 export, used only if spine-godot is present.
 - The `.spine` project, the loose limb folders, the image-sequence directory, and the zip are not in this repository. Jump is in the skeleton and is not a village action.
 
 The itch page's license block says, in its own words:
@@ -87,7 +87,7 @@ This page does not name CC0, CC-BY, or CC-BY-SA. Those names are not this pack's
 - **Shooter file:** `shooting goblin.zip` (170 MB)
 - **Shooter page text:** "Shooting Goblin is a hand drawn, spine animated, goblin with a gun with all the animations you will need for you game. Along with the limbs to make your very own animations(With Spine)." It lists "Walk, Idle, Shoot, Reload, Stun, death." The info table says "No generative AI was used".
 - Neither zip contains a `LICENSE` file, a Spine `.json`, a `.atlas`, or a `.skel`. The spear zip's `Goblin spearman.clip` starts with the bytes `CSFCHUNK` and is not a Spine skeleton. spine-godot cannot play these two packs. The game uses their frame PNGs.
-- **In this game:** `assets/characters/spear.png` (idle, walk, stab, hurt) and `assets/characters/shooter.png` (idle, walk, shoot, stun, death). Shooter frames were scaled down from source PNGs around 3000×3600. Reload frames and the limb sheets were not shipped. Spear goblins are normal zombies, fast zombies, and infected villagers. The gun goblin is a brute or the boss.
+- **In this game:** `art/characters/spear.png` (idle, walk, stab, hurt) and `art/characters/shooter.png` (idle, walk, shoot, stun, death). Shooter frames were scaled down from source PNGs around 3000×3600. Reload frames and the limb sheets were not shipped. Spear goblins are normal zombies, fast zombies, and infected villagers. The gun goblin is a brute or the boss.
 - The pages do not state CC0, CC-BY, or CC-BY-SA. This file does not invent a license for them.
 
 ### Spine runtime, not shipped
@@ -172,9 +172,9 @@ Authors and source pages, taken from `CREDITS.csv` (not guessed):
   http://scripts.sil.org/OFL
 - **Source:** https://github.com/notofonts/noto-cjk (`Sans/SubsetOTF/SC/NotoSansSC-Regular.otf`)  
   https://fonts.google.com/noto/specimen/Noto+Sans+SC
-- **Bundled file:** [`assets/fonts/NotoSansSC-Regular.otf`](assets/fonts/NotoSansSC-Regular.otf)  
+- **Bundled file:** [`art/fonts/NotoSansSC-Regular.otf`](art/fonts/NotoSansSC-Regular.otf)  
   The full Regular face, not a character subset. The earlier Droid Sans Fallback subset missed glyphs such as 倒、大、小、总、数、时、计, which the web build drew as boxes because HTML5 has no system-font fallback.
-- The license text shipped with that Noto CJK file is in [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt).
+- The license text shipped with that Noto CJK file is in [`art/fonts/OFL.txt`](art/fonts/OFL.txt).
 
 ## Code and effects drawn in the game
 

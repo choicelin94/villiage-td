@@ -79,7 +79,7 @@ func _ready() -> void:
 	_load_setup_layout()
 	wood = Balance.economy_i("start_wood", START_WOOD)
 	gold = Balance.economy_i("start_gold", START_GOLD)
-	font = load("res://assets/fonts/NotoSansSC-Regular.otf")
+	font = CatalogPaths.load_font()
 	_selftest = OS.get_environment("TD_SELFTEST") == "1"
 	if OS.get_environment("TD_UI") == "1":
 		get_window().size = Vector2i(390, 844)
@@ -256,13 +256,13 @@ func _build_world() -> void:
 	tileset.tile_layout = TileSet.TILE_LAYOUT_STACKED
 	tileset.tile_size = TILE
 	var files := [
-		"res://assets/village/grass_a.png",
-		"res://assets/village/grass_b.png",
-		"res://assets/village/road.png",
+		"res://art/village/grass_a.png",
+		"res://art/village/grass_b.png",
+		"res://art/village/road.png",
 	]
 	for i in files.size():
 		var atlas := TileSetAtlasSource.new()
-		var tex: Texture2D = load(files[i])
+		var tex: Texture2D = CatalogPaths.load_tex(files[i])
 		atlas.texture = tex
 		atlas.texture_region_size = Vector2i(tex.get_width(), tex.get_height())
 		atlas.create_tile(Vector2i.ZERO)
@@ -301,11 +301,11 @@ func _paint_map() -> void:
 				source = 2
 			ground.set_cell(cell, source, Vector2i.ZERO)
 	for rock_cell in MapPlan.ROCKS:
-		_place_prop(rock_cell, load("res://assets/village/rock.png"), "rock")
+		_place_prop(rock_cell, CatalogPaths.load_tex("village/rock.png"), "rock")
 	var trees := [
-		"res://assets/village/tree.png",
-		"res://assets/village/tree_b.png",
-		"res://assets/village/tree_c.png",
+		"res://art/village/tree.png",
+		"res://art/village/tree_b.png",
+		"res://art/village/tree_c.png",
 	]
 	for y in ROWS:
 		for x in COLS:
@@ -314,7 +314,7 @@ func _paint_map() -> void:
 				continue
 			if not _is_border(cell):
 				continue
-			_place_prop(cell, load(trees[(x + y) % trees.size()]), "tree")
+			_place_prop(cell, CatalogPaths.load_tex(trees[(x + y) % trees.size()]), "tree")
 	for item in Balance.starter_props():
 		if not (item is Dictionary):
 			continue
@@ -326,9 +326,9 @@ func _paint_map() -> void:
 			continue
 		var kind := str(item.get("kind", "tree"))
 		if kind == "rock":
-			_place_prop(cell, load("res://assets/village/rock.png"), "rock")
+			_place_prop(cell, CatalogPaths.load_tex("village/rock.png"), "rock")
 		else:
-			_place_prop(cell, load(trees[(cell.x + cell.y) % trees.size()]), "tree")
+			_place_prop(cell, CatalogPaths.load_tex(trees[(cell.x + cell.y) % trees.size()]), "tree")
 	_invalidate_props()
 
 func _place_starter() -> void:
@@ -2483,7 +2483,7 @@ func _move_shot() -> void:
 	print("MOVE_WALK entered=", entered, " reached=", reached, " at=", world_to_cell(walker.global_position))
 	var rock_cell := Vector2i(4, 8)
 	var rock_pos := cell_center(rock_cell)
-	var rock_tex: Texture2D = load("res://assets/village/rock.png")
+	var rock_tex: Texture2D = CatalogPaths.load_tex("village/rock.png")
 	var rock := _actor_near(rock_pos)
 	var rock_vol: IsoVolume = rock.get_iso_volume()
 	for v in people:

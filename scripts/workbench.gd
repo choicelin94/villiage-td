@@ -2,6 +2,7 @@ extends Node2D
 
 var _font: Font
 var _theme: Theme
+var _doc: ConfigDocument
 var _state: Dictionary = {}
 var _tab := "diff"
 var _title: Label
@@ -13,13 +14,15 @@ var _popup_col: VBoxContainer
 var _popup_cell := Vector2i(-1, -1)
 
 func _ready() -> void:
-	_font = load("res://assets/fonts/NotoSansSC-Regular.otf")
+	_font = CatalogPaths.load_font()
 	_theme = Theme.new()
 	_theme.default_font = _font
 	_theme.default_font_size = 18
 	for type_name in ["Label", "Button", "LineEdit", "SpinBox", "OptionButton"]:
 		_theme.set_font("font", type_name, _font)
-	_state = Balance.editor_state()
+	_doc = ConfigDocument.new()
+	_doc.pull()
+	_state = _doc.data
 	_build_chrome()
 	Locale.changed.connect(_show_tab.bind(_tab))
 	_show_tab("diff")
@@ -493,14 +496,16 @@ func _save() -> void:
 	if (_state["spawn_rects"] as Array).is_empty():
 		_state["spawn_rects"] = MapPlan.default_rects()
 	_state["spawns"] = MapPlan.cells_from_rects(_state["spawn_rects"])
-	Balance.save_editor_state(_state)
-	_state = Balance.editor_state()
+	_doc.data = _state
+	_doc.save()
+	_state = _doc.data
 	if _status:
 		_status.text = Locale.text("bench.saved")
+	_show_tab(_tab)
 
 func _reset() -> void:
-	Balance.reset_editor_state()
-	_state = Balance.editor_state()
+	_doc.reset()
+	_state = _doc.data
 	if _status:
 		_status.text = Locale.text("bench.reset")
 	_show_tab(_tab)

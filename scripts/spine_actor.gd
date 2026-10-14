@@ -8,7 +8,8 @@ extends Node2D
 # a Spine Editor license to ship it, and GitHub Pages cannot be given the
 # COOP/COEP headers Godot's web extension export expects. See CREDITS.md.
 
-const DATA_PATH := "res://data/characters.json"
+const DATA_PATH := "res://config/presentation/characters.json"
+const DATA_LEGACY := "res://data/characters.json"
 
 static var _catalog: Dictionary = {}
 static var _announced := false
@@ -37,7 +38,7 @@ func _ready() -> void:
 	_foot = Vector2(float(foot[0]), float(foot[1]))
 	_faces_right = bool(_spec.faces_right)
 	var sheets: Array = _spec.sheets
-	var sheet_path: String = str(sheets[skin % sheets.size()])
+	var sheet_path: String = CatalogPaths.resolve(str(sheets[skin % sheets.size()]))
 	_sheet = load(sheet_path)
 	_atlas = AtlasTexture.new()
 	_atlas.atlas = _sheet
@@ -138,8 +139,8 @@ func _try_spine() -> void:
 	if not ClassDB.class_exists("SpineSkeletonDataResource"):
 		return
 	var spine_info: Dictionary = _spec.spine
-	var atlas_path := str(spine_info.atlas)
-	var json_path := str(spine_info.json)
+	var atlas_path := CatalogPaths.resolve(str(spine_info.atlas))
+	var json_path := CatalogPaths.resolve(str(spine_info.json))
 	if not FileAccess.file_exists(atlas_path) or not FileAccess.file_exists(json_path):
 		return
 	var atlas: Object = ClassDB.instantiate("SpineAtlasResource")
@@ -178,7 +179,8 @@ func _try_spine() -> void:
 
 static func spec_for(kind: String) -> Dictionary:
 	if _catalog.is_empty():
-		var file := FileAccess.open(DATA_PATH, FileAccess.READ)
+		var catalog_path := DATA_PATH if FileAccess.file_exists(DATA_PATH) else DATA_LEGACY
+		var file := FileAccess.open(catalog_path, FileAccess.READ)
 		if file == null:
 			push_error("Missing character catalog")
 			return {}

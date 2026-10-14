@@ -1,10 +1,10 @@
 # 资源标准 / Asset standard
 
-友方单位、敌人、建筑，以及会挡住建造的树和岩石，都按这份约定放文件、起 id、填 JSON。图鉴页 [docs/codex/](codex/) 读这些目录，不读 Godot 场景。
+友方单位、敌人、建筑，以及会挡住建造的树和岩石，都按这份约定起 id、填 JSON。文件放在 `config/` 和 `art/`，见 [SPEC_CONFIG.md](SPEC_CONFIG.md) 与 [SPEC_ART.md](SPEC_ART.md)。图鉴页 [docs/codex/](codex/) 读这些目录，不读 Godot 场景。
 
 Ally units, enemies, buildings, and the trees and rocks that block building follow this layout, these ids, and these JSON fields. The codex at [docs/codex/](codex/) reads the catalogs. It does not read a Godot scene.
 
-对局通过自动加载 `scripts/balance.gd` 读取 `data/units.json`、`data/enemies.json`、`data/buildings.json`。改这三份里的数值，重新开一局就会生效。`data/characters.json` 只描述形象。伤害公式、哪些单位会生成、清波底薪还写在脚本里，见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+对局通过自动加载 `scripts/balance.gd` 读取 `config/balance/units.json`、`config/balance/enemies.json`、`config/balance/buildings.json`。改这三份里的数值，重新开一局就会生效。`config/presentation/characters.json` 只描述形象。伤害公式、哪些单位会生成、清波底薪还写在脚本里，见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 The match loads those three catalogs through the `Balance` autoload. `characters.json` stays visual. The damage formula, which units spawn, and the flat wave payout stay in scripts. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -12,8 +12,8 @@ The match loads those three catalogs through the `Balance` autoload. `characters
 
 | 目录 | 放什么 | 维护 |
 | --- | --- | --- |
-| `data/` | 平衡、目录、体积、形象。只有 JSON。 | 改 id 和数值的人。 |
-| `assets/` | PNG、字体、可选 Spine。 | 改图的人。不要改已经在用的文件名。 |
+| `config/` | 平衡、目录、体积、形象。只有 JSON。 | 改 id 和数值的人。 |
+| `art/` | PNG、字体、可选 Spine。 | 改图的人。不要改已经在用的文件名。 |
 | `scripts/` | 玩法，以及仍写死的清波底薪、占地后备表。 | 改行为的人。 |
 | `docs/codex/` | 图鉴生成结果。 | 只跑 `python3 tools/build_codex.py`，不要手改。 |
 | `docs/index.html` | 网页包外壳。 | 不要再手写左上角入口。问号菜单在游戏 HUD。 |
@@ -21,7 +21,7 @@ The match loads those three catalogs through the `Balance` autoload. `characters
 ## 目录 / Layout
 
 ```
-assets/
+art/
   characters/                 # 单位与敌人的序列帧
     villager_0.png … villager_6.png
     spear.png
@@ -31,12 +31,14 @@ assets/
     house.png farm.png workshop.png wall.png spear.png fire.png
     tree.png tree_b.png tree_c.png rock.png
     grass_a.png grass_b.png road.png    # 地面，不是图鉴卡片
-data/
-  characters.json             # 只描述形象：图、皮肤、帧、脚、片段
-  units.json                  # 友方。Balance 会读
-  enemies.json                # 敌人，波次表在同一文件。Balance 会读
-  buildings.json              # 建筑。Balance 会读
-  iso_volumes.json            # 占地，键是体积 id
+  fonts/
+    NotoSansSC-Regular.otf
+config/
+  balance/units.json enemies.json buildings.json
+  layout/setup.json
+  presentation/characters.json volumes.json
+  schema/                     # JSON Schema
+  manifest.json
 ```
 
 不要改已经在用的文件名。新文件沿用同一套名字。地面贴图不进图鉴。
@@ -108,7 +110,7 @@ Distances and speeds are already world units. Do not scale them again. `attack_s
 | `spear_barracks` | `SPEAR_BARRACKS` | recruit | `spear_barracks` | `spear_barracks.png` |
 | `gun_barracks` | `GUN_BARRACKS` | recruit | `gun_barracks` | `gun_barracks.png` |
 
-塔立着就会攻击。房屋的 `beds` 与 `provides.slots` 都是村民空缺，盖下不加人。矛兵营、枪兵营、工坊的 `provides` 是对应兵种空缺。农场的 `produces.rate` 是每清一波加的木材，不用派人。木坊按驻守村民数产木，空坊为 0。工坊的 `bonus.tower_damage` 先乘攻击，不叠加。木墙 `place_cap` 含开局已经放好的墙。清波底薪在 `data/setup.json` 的 `economy`，`main.gd` 的 `WAVE_CLEAR_WOOD` 和 `WAVE_CLEAR_GOLD` 只是缺字段时的兜底。难度、出怪长方形、开局人口和 `config_version` 也在 `setup.json`。工作台把覆盖写到 `user://setup.json`。图鉴刷新发现本地 `config_version` 更低时，用出厂配置补齐后再升版本。
+塔立着就会攻击。房屋的 `beds` 与 `provides.slots` 都是村民空缺，盖下不加人。矛兵营、枪兵营、工坊的 `provides` 是对应兵种空缺。农场的 `produces.rate` 是每清一波加的木材，不用派人。木坊按驻守村民数产木，空坊为 0。工坊的 `bonus.tower_damage` 先乘攻击，不叠加。木墙 `place_cap` 含开局已经放好的墙。清波底薪在 `config/layout/setup.json` 的 `economy`，`main.gd` 的 `WAVE_CLEAR_WOOD` 和 `WAVE_CLEAR_GOLD` 只是缺字段时的兜底。难度、出怪长方形、开局人口和 `config_version` 也在 `setup.json`。工作台把覆盖写到 `user://setup.json`。图鉴刷新发现本地 `config_version` 更低时，用出厂配置补齐后再升版本。
 
 ### `setup.json` 地图字段（config_version 2）
 
@@ -136,7 +138,7 @@ The match grid is 20×20 cells of 128. `spawn_rects` is the authored enemy gate:
 
 村民片段：`idle` 第 0 行 12 帧，`move` 第 1 行 6 帧，`hurt` 第 2 行 3 帧，`death` 第 3 行 8 帧。持矛：`idle` 8、`move` 8、`attack` 10、`hurt` 2。持枪：`idle` 7、`move` 9、`attack` 10、`hurt` 7、`death` 6。行号从 0 开始。左上角第 0 帧是图鉴头像。
 
-### `iso_volumes.json`
+### `volumes.json`
 
 `ellipse` 用 `rx` / `ry`，可加 `ox` / `oy`。`poly` 必须是凸多边形，顶点相对格子中心。`z` 是高度。空心的农场和木墙写成盖住内部的实心凸多边形。人用 `walker`，必须是有面积的椭圆。
 
@@ -161,9 +163,9 @@ The match grid is 20×20 cells of 128. `spawn_rects` is the authored enemy gate:
 ## 新实体怎么接 / Adding an entity
 
 1. 先放图。角色一张序列帧，或村民再加一张皮肤。建筑一张俯视 PNG。不要改旧文件名。
-2. 角色写入 `data/characters.json`：`sheets`, `skins`, `frame`, `foot`, `faces_right`, `clips`。
-3. 平衡写入 `data/units.json`、`data/enemies.json` 或 `data/buildings.json`，字段见上。对局已经会读这三份。
-4. 会占地的再写 `data/iso_volumes.json`，并更新 `iso_volume.gd` 的 `TABLE` 后备。多边形或椭圆要包住落地接触，并且是凸的。
+2. 角色写入 `config/presentation/characters.json`：`sheets`, `skins`, `frame`, `foot`, `faces_right`, `clips`。
+3. 平衡写入 `config/balance/units.json`、`config/balance/enemies.json` 或 `config/balance/buildings.json`，字段见上。对局已经会读这三份。
+4. 会占地的再写 `config/presentation/volumes.json`，并更新 `iso_volume.gd` 的 `TABLE` 后备。多边形或椭圆要包住落地接触，并且是凸的。
 5. `scripts/locale.gd` 加上 `display_key`。
 6. 只有新的建筑 `kind` 才改 `Building.Kind`、`_volume_key` 和放置逻辑。矛兵和工匠已经在 `units.json` 里，`main.gd` 仍然只调用 `Balance.unit("villager")`。
 7. 运行 `python3 tools/build_codex.py`，提交 `docs/codex/`。
@@ -185,7 +187,7 @@ The match grid is 20×20 cells of 128. `spawn_rects` is the authored enemy gate:
 `python3 tools/build_codex.py` 需要 Pillow。它会：
 
 - 用 `characters.json` 的 `frame` 裁每张序列帧的左上角，写成 `docs/codex/thumbs/`
-- 建筑和树、岩石用 `assets/village/` 里的 PNG
+- 建筑和树、岩石用 `art/village/` 里的 PNG
 - 写出 `docs/codex/catalog.json` 和 `docs/codex/index.html`
 
 页面是静态的。推到 `main` 时，GitHub Actions 会再跑一次生成器，并发布整个 `docs/`。游戏里右上角问号菜单的「玩法指南」打开这一页。草地 `grass_*.png` 和 `road.png` 不是卡片；新的景物 PNG 要先写进 `tools/build_codex.py` 的 `SCENERY_LABELS`，否则生成器会停下来。发布细节在 [ARCHITECTURE.md](ARCHITECTURE.md)。

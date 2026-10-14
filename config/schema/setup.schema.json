@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "setup.schema.json",
+  "type": "object",
+  "required": ["config_version", "difficulty_id", "presets", "settlement", "combat", "economy", "spawn_rects", "spawns", "starter_buildings", "starter_units"],
+  "properties": {
+    "_comment": {"type": "string"},
+    "config_version": {"type": "integer", "minimum": 1},
+    "difficulty_id": {"enum": ["easy", "normal", "hard"]},
+    "presets": {"type": "object"},
+    "settlement": {
+      "type": "object",
+      "required": ["chance", "max_per_wave"],
+      "properties": {
+        "chance": {"type": "number", "minimum": 0, "maximum": 1},
+        "max_per_wave": {"type": "integer", "minimum": 0}
+      }
+    },
+    "combat": {"type": "object"},
+    "economy": {
+      "type": "object",
+      "required": ["start_wood", "start_gold", "wave_clear_wood", "wave_clear_gold"]
+    },
+    "spawn_rects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["edge", "middle", "length", "width"],
+        "properties": {
+          "edge": {"enum": ["north", "south", "west", "east"]},
+          "middle": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {"type": "integer"}
+          },
+          "length": {"const": 3},
+          "width": {"const": 1}
+        }
+      }
+    },
+    "spawns": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {"type": "integer"}
+      }
+    },
+    "starter_buildings": {"type": "array"},
+    "starter_units": {"type": "array"},
+    "starter_props": {"type": "array"}
+  }
+}

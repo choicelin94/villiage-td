@@ -34,7 +34,7 @@ var hosted := false
 
 func _ready() -> void:
 	process_priority = 50
-	_font = load("res://assets/fonts/NotoSansSC-Regular.otf")
+	_font = CatalogPaths.load_font()
 	_auto = OS.get_environment("TD_LAB") == "1"
 	_build_ground()
 	_build_props()
@@ -108,7 +108,7 @@ func _build_ground() -> void:
 	tileset.tile_layout = TileSet.TILE_LAYOUT_STACKED
 	tileset.tile_size = TILE
 	var atlas := TileSetAtlasSource.new()
-	var tex: Texture2D = load("res://assets/village/grass_a.png")
+	var tex: Texture2D = CatalogPaths.load_tex("village/grass_a.png")
 	atlas.texture = tex
 	atlas.texture_region_size = Vector2i(tex.get_width(), tex.get_height())
 	atlas.create_tile(Vector2i.ZERO)
@@ -141,11 +141,11 @@ func _build_props() -> void:
 	farm.setup(Building.Kind.FARM, FARM_CELL)
 	farm.name = "Farm"
 	add_child(farm)
-	tree = _prop(TREE_CELL, "res://assets/village/tree.png", "tree")
+	tree = _prop(TREE_CELL, "res://art/village/tree.png", "tree")
 	tree.name = "Tree"
-	tree2 = _prop(TREE2_CELL, "res://assets/village/tree_b.png", "tree")
+	tree2 = _prop(TREE2_CELL, "res://art/village/tree_b.png", "tree")
 	tree2.name = "TreeB"
-	rock = _prop(ROCK_CELL, "res://assets/village/rock.png", "rock")
+	rock = _prop(ROCK_CELL, "res://art/village/rock.png", "rock")
 	rock.name = "Rock"
 
 func _prop(cell: Vector2i, path: String, key: String) -> Node2D:
@@ -156,7 +156,7 @@ func _prop(cell: Vector2i, path: String, key: String) -> Node2D:
 	node.volume_key = key
 	var sprite := Sprite2D.new()
 	sprite.name = "Sprite"
-	sprite.texture = load(path)
+	sprite.texture = CatalogPaths.load_tex(path)
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	sprite.position = IsoVolume.ROCK_ANCHOR if key == "rock" else IsoVolume.TREE_ANCHOR
