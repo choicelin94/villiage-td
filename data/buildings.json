@@ -1,5 +1,5 @@
 {
-  "_comment": "attack_range, splash, and shot_speed are final world units, already multiplied by IsoVolume.WORLD_SCALE (1.2708197158225134). attack_speed is attacks per second (spear 1/0.64, fire 1/1.05). hp and defense are points. Costs are the old wood/gold prices. Defense buildings attack whenever they are standing; nobody has to be stationed. House beds, farm wood per cleared wave, the workshop tower multiplier, and the wall cap live here so they are not magic numbers in scripts. With these defense values, bites of 1, 2, and 3 still round to themselves under the loader's damage formula, so chew time matches the old table until a designer raises defense.",
+  "_comment": "attack_range, splash, and shot_speed are final world units, already multiplied by IsoVolume.WORLD_SCALE (1.2708197158225134). attack_speed is attacks per second (spear 1/0.64, fire 1/1.05). hp and defense are points. Defense buildings attack whenever they are standing; nobody has to be stationed. beds on a house is the villager vacancy cap. provides.slots on a barracks or the workshop is that unit's vacancy cap. The lumber mill staff_slots and produces.rate_per_villager / interval are the wood loop: empty mill makes 0, output is rate_per_villager * stationed villagers each interval. Farm produces.mode wave is a secondary per-clear bonus. Kills do not pay wood.",
   "buildings": [
     {
       "id": "wall",
@@ -67,7 +67,8 @@
       "produces": null,
       "recruits": ["villager", "engineer", "spearman"],
       "beds": 4,
-      "notes": "Grants beds while it stands. recruits is a later train list, not a spawn button yet."
+      "provides": { "unit": "villager", "slots": 4 },
+      "notes": "beds and provides.slots are the same villager vacancy. A new house does not spawn anyone. Wave clear may fill empty beds."
     },
     {
       "id": "farm",
@@ -79,9 +80,9 @@
       "defense": 2,
       "can_attack": false,
       "cost": { "wood": 16, "gold": 12 },
-      "produces": { "resource": "wood", "rate": 6 },
+      "produces": { "resource": "wood", "mode": "wave", "rate": 6 },
       "recruits": [],
-      "notes": "rate is extra wood added once per cleared wave, on top of the flat wave payout."
+      "notes": "Secondary wood. mode wave adds rate once per cleared wave. The lumber mill is the staffed wood source."
     },
     {
       "id": "workshop",
@@ -95,8 +96,54 @@
       "cost": { "wood": 20, "gold": 28 },
       "produces": null,
       "recruits": [],
+      "provides": { "unit": "engineer", "slots": 2 },
       "bonus": { "tower_damage": 1.25 },
-      "notes": "tower_damage multiplies tower attack before defense. Bonuses do not stack; the highest standing workshop wins."
+      "notes": "tower_damage multiplies tower attack before defense. Bonuses do not stack; the highest standing workshop wins. provides.slots is the engineer vacancy. Engineers arrive on wave clear; villagers are not converted."
+    },
+    {
+      "id": "lumber_mill",
+      "kind": "LUMBER",
+      "category": "production",
+      "display_key": "build.lumber",
+      "tex": "res://assets/village/lumber.png",
+      "hp": 110,
+      "defense": 3,
+      "can_attack": false,
+      "cost": { "wood": 20, "gold": 10 },
+      "staff_slots": 4,
+      "produces": { "resource": "wood", "mode": "staff", "rate_per_villager": 1, "interval": 5.0 },
+      "recruits": [],
+      "notes": "Main wood source. Empty mill produces 0. Each stationed villager adds rate_per_villager wood every interval seconds during prep and combat. staff_slots is the crew cap."
+    },
+    {
+      "id": "spear_barracks",
+      "kind": "SPEAR_BARRACKS",
+      "category": "recruit",
+      "display_key": "build.spear_barracks",
+      "tex": "res://assets/village/spear_barracks.png",
+      "hp": 140,
+      "defense": 4,
+      "can_attack": false,
+      "cost": { "wood": 26, "gold": 24 },
+      "provides": { "unit": "spearman", "slots": 2 },
+      "produces": null,
+      "recruits": ["spearman"],
+      "notes": "Spearman vacancy. Wave clear can settle spearmen up to slots. It does not turn a villager into a spearman."
+    },
+    {
+      "id": "gun_barracks",
+      "kind": "GUN_BARRACKS",
+      "category": "recruit",
+      "display_key": "build.gun_barracks",
+      "tex": "res://assets/village/gun_barracks.png",
+      "hp": 130,
+      "defense": 3,
+      "can_attack": false,
+      "cost": { "wood": 22, "gold": 36 },
+      "provides": { "unit": "gunner", "slots": 2 },
+      "produces": null,
+      "recruits": ["gunner"],
+      "notes": "Gunner vacancy. Wave clear can settle gunners up to slots. It does not convert villagers."
     }
   ]
 }

@@ -1,5 +1,5 @@
 {
-  "_comment": "Speeds and attack_range are final world units, already multiplied by IsoVolume.WORLD_SCALE (1.2708197158225134). Do not scale them again. attack_speed is attacks per second. hp, defense, and attack are points. Only the generic villager is spawned today. Spearman and engineer are the agreed knight and robot roles for a later recruit pass. Contact still infects a villager in one touch; their attack stats are not spent yet.",
+  "_comment": "Speeds and attack_range are final world units, already multiplied by IsoVolume.WORLD_SCALE (1.2708197158225134). Do not scale them again. attack_speed is attacks per second. hp, defense, and attack are points. Villagers fill house beds. Spearmen, gunners, and engineers fill the matching barracks or workshop vacancies on wave clear. They are not converted from villagers. Contact still infects a villager in one touch. Fighters spend their attack stats and die on hit points.",
   "units": [
     {
       "id": "villager",
@@ -34,7 +34,7 @@
       "attack_range": 60.99934635948064,
       "cost": { "wood": 0, "gold": 40 },
       "train_time": 8.0,
-      "notes": "Knight sheet (villager_3). move_speed and attack_range are 90 and 48 times WORLD_SCALE. Not spawned until recruitment is wired."
+      "notes": "Knight sheet (villager_3). move_speed and attack_range are 90 and 48 times WORLD_SCALE. Settles into spear barracks vacancies."
     },
     {
       "id": "engineer",
@@ -51,7 +51,24 @@
       "attack_range": 53.37442806454556,
       "cost": { "wood": 10, "gold": 30 },
       "train_time": 10.0,
-      "notes": "Robot sheet (villager_5). Faster repair comes later. move_speed and attack_range are 100 and 42 times WORLD_SCALE."
+      "notes": "Robot sheet (villager_5). Settles into workshop vacancies. move_speed and attack_range are 100 and 42 times WORLD_SCALE."
+    },
+    {
+      "id": "gunner",
+      "display_key": "unit.gunner",
+      "faction": "ally",
+      "role": "ranged",
+      "skin": "raccoon",
+      "character": "villager",
+      "hp": 64,
+      "defense": 2,
+      "attack": 11,
+      "attack_speed": 0.75,
+      "move_speed": 133.4360701613639,
+      "attack_range": 279.580337480953,
+      "cost": { "wood": 0, "gold": 36 },
+      "train_time": 8.0,
+      "notes": "Raccoon sheet (villager_2). move_speed and attack_range are 105 and 220 times WORLD_SCALE. Settles into gun barracks vacancies."
     }
   ]
 }

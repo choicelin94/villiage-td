@@ -7,7 +7,8 @@ signal zoom_in_pressed
 signal zoom_out_pressed
 signal place_requested(kind: int)
 signal sell_pressed
-signal staff_selected
+signal staff_selected(person: Villager)
+signal staff_dismissed(person: Villager)
 signal codex_pressed
 signal bench_pressed
 
@@ -500,6 +501,9 @@ func _fill_ground() -> void:
 		[Building.Kind.HOUSE, "build.house", "role.house"],
 		[Building.Kind.FARM, "build.farm", "role.farm"],
 		[Building.Kind.WORKSHOP, "build.workshop", "role.workshop"],
+		[Building.Kind.LUMBER, "build.lumber", "role.lumber"],
+		[Building.Kind.SPEAR_BARRACKS, "build.spear_barracks", "role.spear_barracks"],
+		[Building.Kind.GUN_BARRACKS, "build.gun_barracks", "role.gun_barracks"],
 	]
 	for item in options:
 		var kind := int(item[0])
@@ -533,14 +537,33 @@ func _fill_building(building: Building) -> void:
 		Building.Kind.HOUSE: "build.house",
 		Building.Kind.FARM: "build.farm",
 		Building.Kind.WORKSHOP: "build.workshop",
+		Building.Kind.LUMBER: "build.lumber",
+		Building.Kind.SPEAR_BARRACKS: "build.spear_barracks",
+		Building.Kind.GUN_BARRACKS: "build.gun_barracks",
 	}
 	_list.add_child(_title(Locale.text(str(names.get(building.kind, "panel.building")))))
 	if building.is_functional():
-		var stationed := 1 if building.has_staff() else 0
-		_list.add_child(_body(Locale.format("panel.station_count", [stationed])))
+		if building.staff_cap() > 1:
+			_list.add_child(_body(Locale.format("panel.crew_count", [building.staff_count(), building.staff_cap()])))
+			var spec := building.produce_spec()
+			_list.add_child(_body(Locale.format("panel.lumber_rate", [float(spec.get("interval", 5.0)), int(spec.get("rate_per_villager", 0))])))
+		else:
+			_list.add_child(_body(Locale.format("panel.station_count", [building.staff_count()])))
+		var provides := building.provides()
+		if str(provides.get("unit", "")) != "" and building.kind != Building.Kind.LUMBER:
+			var unit_name := Locale.text("unit." + str(provides.get("unit", "")))
+			_list.add_child(_body(Locale.format("panel.vacancy", [unit_name, int(provides.get("slots", 0))])))
 		if building.has_staff():
-			_list.add_child(_staff_button(building.staff as Villager))
+			for node in building.crew:
+				var person := node as Villager
+				if person == null:
+					continue
+				_list.add_child(_staff_button(person))
+				if building.staff_produces():
+					_list.add_child(_dismiss_button(person))
 			_list.add_child(_body(Locale.text("panel.reassign")))
+		elif building.staff_produces():
+			_list.add_child(_body(Locale.format("panel.mill_empty", [building.staff_cap()])))
 		else:
 			_list.add_child(_body(Locale.text("panel.empty")))
 	else:
@@ -610,7 +633,19 @@ func _staff_button(person: Villager) -> Button:
 	name.add_theme_font_size_override("font_size", 16)
 	name.add_theme_color_override("font_color", Color(0.96, 0.94, 0.86))
 	row.add_child(name)
-	btn.pressed.connect(func() -> void: staff_selected.emit())
+	btn.pressed.connect(func() -> void: staff_selected.emit(person))
+	return btn
+
+func _dismiss_button(person: Villager) -> Button:
+	var btn := Button.new()
+	btn.name = "DismissButton"
+	btn.theme = _theme
+	btn.custom_minimum_size = Vector2(0, 52)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.add_theme_font_size_override("font_size", 16)
+	btn.text = Locale.text("panel.dismiss")
+	_style_button(btn, Color(0.28, 0.2, 0.12), Color(0.72, 0.55, 0.28))
+	btn.pressed.connect(func() -> void: staff_dismissed.emit(person))
 	return btn
 
 func _title(text: String) -> Label:

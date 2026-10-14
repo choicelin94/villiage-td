@@ -1,7 +1,7 @@
 class_name Building
 extends Node2D
 
-enum Kind { WALL, SPEAR, FIRE, HOUSE, FARM, WORKSHOP }
+enum Kind { WALL, SPEAR, FIRE, HOUSE, FARM, WORKSHOP, LUMBER, SPEAR_BARRACKS, GUN_BARRACKS }
 
 var kind: Kind = Kind.WALL
 var cell := Vector2i.ZERO
@@ -11,8 +11,11 @@ var defense := 0.0
 var always_bar := true
 var cooldown := 0.0
 var _stats: Dictionary = {}
-var staff: Node2D = null
+var crew: Array[Node2D] = []
 var _muzzle := Vector2(0, -40)
+var _locked: Zombie = null
+var _lock_left := 0.0
+var produce_cd := 0.0
 
 static func kind_key(p_kind: Kind) -> String:
 	match p_kind:
@@ -28,10 +31,79 @@ static func kind_key(p_kind: Kind) -> String:
 			return "FARM"
 		Kind.WORKSHOP:
 			return "WORKSHOP"
+		Kind.LUMBER:
+			return "LUMBER"
+		Kind.SPEAR_BARRACKS:
+			return "SPEAR_BARRACKS"
+		Kind.GUN_BARRACKS:
+			return "GUN_BARRACKS"
 	return "WALL"
 
+func _prune_crew() -> void:
+	var kept: Array[Node2D] = []
+	for node in crew:
+		if node != null and is_instance_valid(node) and not bool(node.get("infected")) and not bool(node.get("fallen")) and not bool(node.get("leaving")):
+			kept.append(node)
+	crew = kept
+
+func staff_cap() -> int:
+	if not is_functional():
+		return 0
+	if kind == Kind.LUMBER:
+		return maxi(int(_stats.get("staff_slots", 4)), 0)
+	return 1
+
+func staff_count() -> int:
+	_prune_crew()
+	return crew.size()
+
+func villager_crew() -> int:
+	_prune_crew()
+	var n := 0
+	for node in crew:
+		if str(node.get("unit_id")) == "villager":
+			n += 1
+	return n
+
 func has_staff() -> bool:
-	return staff != null and is_instance_valid(staff) and not bool(staff.get("infected")) and not bool(staff.get("leaving"))
+	return staff_count() > 0
+
+func primary_staff() -> Node2D:
+	_prune_crew()
+	if crew.is_empty():
+		return null
+	return crew[0]
+
+func holds(person: Node) -> bool:
+	_prune_crew()
+	return person != null and person in crew
+
+func add_crew(person: Node2D) -> void:
+	_prune_crew()
+	if person == null or person in crew:
+		return
+	crew.append(person)
+
+func dismiss(person: Node) -> void:
+	_prune_crew()
+	crew.erase(person)
+
+func dismiss_all() -> Array[Node2D]:
+	_prune_crew()
+	var copy: Array[Node2D] = crew.duplicate()
+	crew.clear()
+	return copy
+
+func provides() -> Dictionary:
+	var row = _stats.get("provides", {})
+	return row if row is Dictionary else {}
+
+func produce_spec() -> Dictionary:
+	var row = _stats.get("produces", {})
+	return row if row is Dictionary else {}
+
+func staff_produces() -> bool:
+	return str(produce_spec().get("mode", "")) == "staff"
 
 func is_functional() -> bool:
 	return kind != Kind.WALL
@@ -91,6 +163,12 @@ func _volume_key() -> String:
 			return "farm"
 		Kind.WORKSHOP:
 			return "workshop"
+		Kind.LUMBER:
+			return "lumber"
+		Kind.SPEAR_BARRACKS:
+			return "spear_barracks"
+		Kind.GUN_BARRACKS:
+			return "gun_barracks"
 	return "house"
 
 func _art() -> Sprite2D:
@@ -104,6 +182,7 @@ func is_defense() -> bool:
 
 func _process(delta: float) -> void:
 	queue_redraw()
+	_lock_left = maxf(_lock_left - delta, 0.0)
 	if not bool(_stats.get("can_attack", false)) or hp <= 0:
 		return
 	cooldown -= delta
@@ -116,24 +195,43 @@ func _process(delta: float) -> void:
 	cooldown = 1.0 / rate if rate > 0.0 else 0.64
 	_shoot(target)
 
-func _acquire() -> Zombie:
+func _in_range(z: Zombie) -> bool:
+	return z != null and is_instance_valid(z) and not z.dying and global_position.distance_to(z.global_position) <= float(_stats.get("attack_range", 0.0))
+
+func _best_target() -> Zombie:
 	var best: Zombie = null
 	var best_core := INF
 	var game := _game()
 	if game == null:
 		return null
-	var reach := float(_stats.get("attack_range", 0.0))
 	for node in get_tree().get_nodes_in_group("zombies"):
 		var z := node as Zombie
-		if z == null or z.dying:
-			continue
-		if global_position.distance_to(z.global_position) > reach:
+		if not _in_range(z):
 			continue
 		var core_d := z.global_position.distance_to(game.core_pos)
 		if core_d < best_core:
 			best_core = core_d
 			best = z
 	return best
+
+func _acquire() -> Zombie:
+	var hold := Balance.combat_f("target_hold", 1.2)
+	var margin := Balance.combat_f("switch_margin", 0.72)
+	var best := _best_target()
+	if _in_range(_locked) and _lock_left > 0.0:
+		return _locked
+	if _in_range(_locked) and best != null and best != _locked:
+		var old_d := global_position.distance_to(_locked.global_position)
+		var new_d := global_position.distance_to(best.global_position)
+		if new_d > old_d * margin:
+			_lock_left = hold
+			return _locked
+	if best != _locked:
+		_lock_left = hold
+	elif _lock_left <= 0.0:
+		_lock_left = hold
+	_locked = best
+	return _locked
 
 func _shoot(target: Zombie) -> void:
 	var shot := Projectile.new()
@@ -159,12 +257,17 @@ func _game() -> Node:
 func _draw() -> void:
 	var rad := 36.0 if is_defense() else 42.0
 	draw_circle(Vector2.ZERO, rad, Color(0, 0, 0, 0.22))
-	if is_functional() and has_staff():
+	var stationed := staff_count()
+	if is_functional() and stationed > 0:
 		var art := _art()
 		var dot_at := Vector2(0, -70)
 		if art:
 			dot_at = Vector2(0, art.position.y + 14.0)
-		draw_circle(dot_at, 6, Color(0.4, 0.85, 0.45))
+		var shown := mini(stationed, 4)
+		var span := 14.0
+		var origin := dot_at.x - span * float(shown - 1) * 0.5
+		for i in shown:
+			draw_circle(Vector2(origin + span * float(i), dot_at.y), 5, Color(0.4, 0.85, 0.45))
 	if bool(_stats.get("can_attack", false)) and _game() and _game().inspected == self:
 		draw_arc(Vector2.ZERO, float(_stats.get("attack_range", 0.0)), 0, TAU, 48, Color(1, 0.86, 0.35, 0.55), 2.0)
 

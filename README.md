@@ -1,11 +1,11 @@
 # 部落村落塔防 / Tribal Village TD
 
-正面俯视的部落村落塔防。地图大约是原先的四倍大。僵尸从北边入口进来，追赶还在外面的村民，也会啃房屋和塔。房屋、农场、工坊和塔自己就会工作，不用先派人。把村民派进建筑只是把人收起来。守住 **10** 波即胜利。只有村民全部被感染才会失败。
+正面俯视的部落村落塔防。地图大约是原先的四倍大。僵尸从北边入口进来，追赶还在外面的村民，也会啃房屋和塔。房屋、农场、工坊和塔自己就会工作。木坊例外：木材按驻守的村民人数产出，最多 4 人。守住 **10** 波即胜利。只有村民全部被感染才会失败。矛兵、枪兵和工兵有自己的空缺，被击倒不会变成僵尸。
 
-A top-down tower defense game on a map about four times the previous area. Zombies enter from the north, chase villagers who are still outside, and chew houses and towers. Houses, farms, the workshop, and towers work on their own. Assigning a villager only shelters that person inside. Hold for **10** waves to win. The only loss is every villager becoming infected.
+A top-down tower defense game on a map about four times the previous area. Zombies enter from the north, chase villagers who are still outside, and chew houses and towers. Houses, farms, the workshop, and towers work on their own. The lumber mill is the exception: wood follows how many villagers are stationed there, up to 4. Hold for **10** waves to win. The only loss is every villager becoming infected. Spearmen, gunners, and engineers fill their own vacancies and do not turn into zombies when they fall.
 
 **引擎 / Engine:** Godot 4.7 (GDScript)  
-**玩法切片 / Slice:** 20×20 正方形俯视地图，村落建筑 + 有上限的木墙 + 两种炮塔，村民可躲进建筑，难民，10 波。  
+**玩法切片 / Slice:** 20×20 正方形俯视地图，村落建筑 + 有上限的木墙 + 两种炮塔 + 木坊 + 矛兵营/枪兵营，村民可驻守木坊，清波按空缺入驻，10 波。  
 **美术 / Art:** 建筑用 Kenney Fantasy Town Kit 2.0（CC0）。村民是 LAYERLAB 的 Cute Adventurers 七个皮肤（Spine 4.3 导出的序列帧：待机、跑、倒下、死亡）。怪物是两套手绘哥布林：持矛的是普通尸潮和被感染的村民，持枪的是蛮力和首领。朝向跟屏幕上的速度走，侧面的序列不会倒着播。这两套图都不是 CC0 / CC-BY。Spine 运行时没有打进网页包。详见 [CREDITS.md](CREDITS.md)。 Buildings are Kenney Fantasy Town Kit 2.0 (CC0). Villagers are the seven LAYERLAB Cute Adventurers skins, played from the Spine 4.3 frame export (idle, run, down, death). Monsters are two hand-drawn goblins: the spear goblin is the horde and an infected villager, and the gun goblin is a brute or the boss. Facing follows screen-space velocity, and the side-view cycles are not played backwards. Neither character pack is CC0 or CC-BY. The Spine runtime is not in the web build. See [CREDITS.md](CREDITS.md).
 
 ## 在线试玩 / Play in the browser
@@ -24,7 +24,7 @@ The web export leaves GDExtension off (`extensions_support` stays false). The of
 
 线上页面是 `main` 里的 `docs/`，由 GitHub Actions 发布。地图是正面俯视的正方形格子。房屋和木墙是同一套 CC0 模型从南边俯视渲染的，树和岩石仍用原来的图。前后仍由体积决定：人的落点是一块椭圆，树干、岩石和房子各用自己的凸多边形或椭圆。整块椭圆到了占地北侧，人才被挡住。空心的农场和木墙用一块盖住内部的凸多边形，椭圆不能走进去，人与人之间也保持椭圆不相交。选中线跟着物件的深度。
 
-排序仍是两段。每件东西先按椭圆或多边形算出紧的包围盒。屏幕上的盒子先扫一遍，对不上的对子直接丢掉。盒子在东西、南北或高度上已经分开的，用包围盒就能定前后。只有盒子真的叠在一起，才问整块是不是在北侧。房屋、木墙、树和岩石的结果会留着，人挪动了才重算涉及到的对子。游戏右上角的问号打开菜单，里面是「图鉴」和「工作台」。工作台把景深试验和压力测试收在一处。旧的深链仍然可用：
+排序仍是两段。每件东西先按椭圆或多边形算出紧的包围盒。屏幕上的盒子先扫一遍，对不上的对子直接丢掉。盒子在东西、南北或高度上已经分开的，用包围盒就能定前后。只有盒子真的叠在一起，才问整块是不是在北侧。房屋、木墙、树和岩石的结果会留着，人挪动了才重算涉及到的对子。游戏右上角的问号打开菜单，里面是「图鉴」和「工作台」。工作台编辑难度、数值、初始地图、刷怪点和开局人口站位，并保存到本机配置。图鉴只有「刷新」：本地配置版本落后时先补齐配置，再重载图鉴。景深试验和压力页不再从工作台进入，旧的深链仍然可用：
 
 **https://choicelin94.github.io/villiage-td/depth-lab/**
 
@@ -32,7 +32,7 @@ The web export leaves GDExtension off (`extensions_support` stays false). The of
 
 **https://choicelin94.github.io/villiage-td/stress/**
 
-图鉴列出当前的友方单位、敌人和建筑，也带上挡路的树和岩石。头像从现有序列帧和建筑图裁出，数值来自 `data/units.json`、`data/enemies.json`、`data/buildings.json`，和对局里的 Balance 是同一份。矛兵和工匠已经写进 Balance，对局还不会生成。资源约定见 [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md)。改完目录后运行 `python3 tools/build_codex.py`，再提交 `docs/codex/`。
+图鉴列出当前的友方单位、敌人和建筑，也带上挡路的树和岩石。头像从现有序列帧和建筑图裁出，数值来自 `data/units.json`、`data/enemies.json`、`data/buildings.json`，和对局里的 Balance 是同一份。页首的「刷新」读取 `catalog.json` 的 `config_version`。浏览器里保存的本地配置版本更低时，先用出厂配置补上缺的字段并升版本，再重新载入页面。图鉴不提供数值编辑。资源约定见 [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md)。改完目录后运行 `python3 tools/build_codex.py`，再提交 `docs/codex/`。
 
 **https://choicelin94.github.io/villiage-td/codex/**
 
@@ -40,7 +40,7 @@ The web export leaves GDExtension off (`extensions_support` stays false). The of
 
 The live site is the `docs/` directory on `main`, published by GitHub Actions. The map is a square top-down grid. Houses and walls are CC0 models rendered from the south. Trees and rocks keep their previous pictures. Depth still comes from volumes: a person stands on an oval, and each tree, rock, and building has its own convex polygon or ellipse. The whole oval has to sit north of a footprint before that object covers the person. The open farm and wall use one convex polygon over the interior. An oval cannot enter a footprint, and walkers keep their ovals apart. Selection lines use that depth.
 
-The sort stays two-phase. Each footprint first becomes a tight box around its ellipse or polygon. A sweep drops pairs whose screen boxes miss. Pairs whose boxes already separate in x, y, or height take their order from the box. Only a real overlap asks whether one footprint is entirely to the north. Houses, walls, trees, and rocks keep that result; a pair is redone when someone in it moves. The help menu beside the language button opens the codex or the workbench. The workbench holds the depth lab and the stress test together. The old direct pages still work:
+The sort stays two-phase. Each footprint first becomes a tight box around its ellipse or polygon. A sweep drops pairs whose screen boxes miss. Pairs whose boxes already separate in x, y, or height take their order from the box. Only a real overlap asks whether one footprint is entirely to the north. Houses, walls, trees, and rocks keep that result; a pair is redone when someone in it moves. The help menu beside the language button opens the codex or the workbench. The workbench edits difficulty, combat numbers, the opening map, spawn cells, and the starting roster, then saves that on the device. The codex only has Refresh: if the saved config version is behind, it updates that config and reloads the page. The depth lab and the stress page are no longer opened from the workbench. The old direct pages still work:
 
 **https://choicelin94.github.io/villiage-td/depth-lab/**
 
@@ -48,7 +48,7 @@ The stress page spawns many moving people and times the old sort against the two
 
 **https://choicelin94.github.io/villiage-td/stress/**
 
-The codex lists the current ally units, enemies, and buildings, plus the trees and rocks that block building. Portraits are cropped from the existing sheets and building pictures. Stats come from `data/units.json`, `data/enemies.json`, and `data/buildings.json`, the same files Balance loads in a match. Spearman and engineer are in that catalog and are not spawned yet. The resource rules are in [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md). After a catalog edit, run `python3 tools/build_codex.py` and commit `docs/codex/`.
+The codex lists the current ally units, enemies, and buildings, plus the trees and rocks that block building. Portraits are cropped from the existing sheets and building pictures. Stats come from `data/units.json`, `data/enemies.json`, and `data/buildings.json`, the same files Balance loads in a match. Refresh reads `config_version` from `catalog.json`. When the browser's saved config is older, the page fills missing fields from the shipped setup, bumps the version, and reloads. The codex does not edit numbers. The resource rules are in [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md). After a catalog edit, run `python3 tools/build_codex.py` and commit `docs/codex/`.
 
 **https://choicelin94.github.io/villiage-td/codex/**
 
@@ -80,24 +80,24 @@ You lose only when every villager is infected and turns into a zombie. Refugees 
 
 ### 操作 / Controls
 
-把人收进建筑是可选的：先点村民，再点房屋、农场、工坊或塔。先点建筑会打开右侧说明，可以出售，但不会把人收进去。建筑不等人也会工作。
+把人收进建筑是可选的：先点村民，再点房屋、农场、工坊、木坊或塔。木坊最多收 4 名村民，用来产木；其他功能建筑仍只留 1 人。先点建筑会打开右侧说明，可以出售，木坊还可以把人请出来。塔不等人也会攻击。
 
-建造从空地开始：点一块能造的草地，右侧列出木墙、矛塔、火塔、房屋、农场、工坊。点其中一项就盖在那一格上。侧栏打开时，按 `1` 到 `6` 也会盖对应的建筑。
+建造从空地开始：点一块能造的草地，右侧列出木墙、矛塔、火塔、房屋、农场、工坊、木坊、矛兵营、枪兵营。点其中一项就盖在那一格上。侧栏打开时，按 `1` 到 `9` 也会盖对应的建筑。
 
 地图可以单指拖动，双指或滚轮缩放。电脑还可以点左下角的 `+` 和 `-`，这两个按钮在开始和离开图标的右边，手机上不显示。第一次打开时镜头对准地图正中那一半，手机默认比电脑更近。之后如果自己拖过或缩放过，改变窗口大小不会把镜头拉回去。再缩小可以看到整张地图。顶栏是图标加数字：木材、金币、村民、床位、木墙、波次。有难民在等待时才多出一个计时图标。左下角两个图标是开始波次（三角）和离开并重开（出门箭头），没有文字按钮，点一下就生效，不用确认。
 
-Sheltering someone is optional. Tap a villager, then tap a house, farm, workshop, or tower. Tapping a building first opens the side panel, where you can sell it. That tap does not shelter anyone. The building works with nobody inside.
+Sheltering someone is optional. Tap a villager, then tap a house, farm, workshop, lumber mill, or tower. A mill holds up to 4 villagers and that crew is what produces wood. Every other functional building still keeps one person. Tapping a building first opens the side panel, where you can sell it, and a mill can also dismiss its crew. Towers attack with nobody inside.
 
-Building starts from the ground: tap an empty tile and the right-hand panel lists the wall, spear tower, fire tower, house, farm, and workshop. Tap one to place it on that tile. With the panel open, keys `1` through `6` place the same way.
+Building starts from the ground: tap an empty tile and the right-hand panel lists the wall, spear tower, fire tower, house, farm, workshop, lumber mill, spear barracks, and gun barracks. Tap one to place it on that tile. With the panel open, keys `1` through `9` place the same way.
 
 Drag with one finger to pan. Pinch or use the mouse wheel to zoom. On a computer, `+` and `-` sit to the right of the start and leave icons; those buttons stay hidden on a phone. The first view frames the center half of the map, closer on a phone than on a computer. After you pan or zoom, resizing the window does not snap the camera back. Zoom out to see the whole map. The top bar is an icon plus a number for wood, gold, people, beds, walls, and the wave. A timer icon appears only while refugees are waiting. Two icons at the lower left start the wave (triangle) and leave for a fresh game (door arrow). They are not text buttons. One tap, no confirmation.
 
 | 操作 Action | 作用 Effect |
 | --- | --- |
 | 点村民 | 选中。再点一座功能建筑把这个人收进去 |
-| 点已选中的人要去的建筑 | 把人收进去。一座建筑同时只留一个人 |
+| 点已选中的人要去的建筑 | 把人收进去。木坊最多 4 名村民，其他建筑同时只留一个人 |
 | 点空地 | 右侧打开建造列表 |
-| 点右侧的一项，或侧栏打开时按 `1` 到 `6` | 把该建筑盖在选中的格子上 |
+| 点右侧的一项，或侧栏打开时按 `1` 到 `9` | 把该建筑盖在选中的格子上 |
 | 点已有建筑（没有选中村民时） | 右侧显示躲在里面的头像和称呼，以及出售。地图上不再把人叠在建筑上 |
 | 右键建筑，或侧栏里的出售 | 出售，返还一半资源。取消派工，不感染 |
 | 单指拖动，或鼠标拖动 | 平移地图 |
@@ -108,7 +108,7 @@ Drag with one finger to pan. Pinch or use the mouse wheel to zoom. On a computer
 | 左下出门图标，或 `R`，或结束画面的图标 | 离开这一局并重开 |
 | `Esc` | 关掉侧栏并取消选中的村民 |
 
-Tap a villager, then tap a functional building to shelter them. One building keeps one villager. After that, the villager leaves the map and shows up as a portrait and name in that building's panel. Tap the portrait to select them again. Tap empty ground to open the build list. Tap an existing building, with nobody selected, to inspect or sell it. Drag to pan and pinch to zoom. On a computer, `+` and `-` zoom toward the middle of the screen. The triangle starts the next wave. The door icon leaves and restarts. `Esc` closes the panel. The top-right button shows the current language, 中文 or EN, and switches the whole interface. The choice is saved.
+Tap a villager, then tap a functional building to shelter them. A lumber mill keeps up to four villagers. Every other building keeps one. After that, the villager leaves the map and shows up as a portrait and name in that building's panel. Tap the portrait to select them again. Tap empty ground to open the build list. Tap an existing building, with nobody selected, to inspect or sell it. Drag to pan and pinch to zoom. On a computer, `+` and `-` zoom toward the middle of the screen. The triangle starts the next wave. The door icon leaves and restarts. `Esc` closes the panel. The top-right button shows the current language, 中文 or EN, and switches the whole interface. The choice is saved.
 
 ### 村民 / Villagers
 
@@ -126,21 +126,21 @@ Contact with a zombie infects them. They become a zombie on the spot, with a sho
 
 ### 建筑 / Buildings
 
-功能建筑（房屋、农场、工坊、矛塔、火塔）立着就会工作，不用先派人。木墙仍然挡路。木墙费用 18 木材，全图最多 **28** 座（含开局已有的墙），避免只用墙把路封死。
+塔立着就会攻击，不用先派人。木墙仍然挡路。木墙费用 18 木材，全图最多 **28** 座（含开局已有的墙），避免只用墙把路封死。木坊空着不产木。每名驻守村民每 **5** 秒产出 **1** 木材，一座最多 **4** 人，准备阶段和战斗中都会跳字。
 
-每座房屋提供 4 个床位。躲在这屋里的人占 1 个床位，剩下的床位分给还没躲起来的村民，难民优先。躲在农场、工坊或塔里的人不占床，也不会惊慌。盖房屋不会立刻生出新人。
+房屋的床位只是村民空缺，每座 4 个。盖房屋不会立刻加人。矛兵营提供矛兵空缺，枪兵营提供枪兵空缺，工坊提供工兵空缺，开局数值都是每座 2 个。这三类人不是由村民转化来的。村民被感染才会变成僵尸；兵种被打倒就离场，不占床。
 
-人口只在每波结束后来的难民里增加，每波固定 2 人。他们有 **6.5** 秒。这段时间里把他们收进建筑，或让房屋的床位够用，他们就会留下。超时就向北离开，离开不是失败。
+清完一波，某一类还有空缺时，以概率 **0.65** 入驻随机 **1～min(3, 空缺)** 人。村民看房屋空床，矛兵、枪兵、工兵各看自己的空缺。参数在 `data/setup.json` 的 `settlement`。
 
-清完一波：木材 `8 + 农场 × 6`，金币 `+14`。击杀僵尸也会给资源。
+清完一波：木材 `8 + 农场 × 6`，金币 `+14`。击杀只掉金币，不再掉木材。
 
-Functional buildings (house, farm, workshop, spear tower, fire tower) work while they are standing. Nobody has to be stationed first. Walls still block movement. A wall costs 18 wood, and the map allows at most **28** walls, counting the ones already built, so a pure maze has a limit.
+Towers attack while they stand. Nobody has to be stationed first. Walls still block movement. A wall costs 18 wood, and the map allows at most **28** walls, counting the ones already built, so a pure maze has a limit. An empty lumber mill produces nothing. Each stationed villager adds **1** wood every **5** seconds, up to **4** villagers, during prep and combat.
 
-Every house provides 4 beds. A villager sheltering in that house uses 1 bed. The remaining beds go to villagers who are still outside, refugees first. Someone sheltering in a farm, workshop, or tower does not use a bed and does not panic. Building a house does not spawn people.
+House beds are the villager vacancy, 4 per house. Building a house does not add people. A spear barracks opens spearman vacancies, a gun barracks opens gunner vacancies, and a workshop opens engineer vacancies, 2 each in the shipped data. Those fighters are not converted villagers. Only a villager who is infected becomes a zombie. A fighter who falls leaves the field and does not use a bed.
 
-Population grows only from refugees at the end of a wave, 2 people each time. They wait **6.5** seconds. Shelter them, or leave a free bed in a house, and they stay. Otherwise they walk off the north edge. Leaving is not a loss.
+After a wave, each role with a free slot settles a random **1..min(3, free)** people with probability **0.65**. Villagers use free beds. Spearmen, gunners, and engineers use their own vacancies. The knobs are `settlement` in `data/setup.json`.
 
-A cleared wave pays `8 + 6 per farm` wood and `14` gold. Kills also pay wood and gold.
+A cleared wave pays `8 + 6 per farm` wood and `14` gold. Kills pay gold only.
 
 | 建筑 | 费用 | 立着的时候 |
 | --- | --- | --- |
@@ -149,15 +149,18 @@ A cleared wave pays `8 + 6 per farm` wood and `14` gold. Kills also pay wood and
 | 火塔 Fire | 16 木材 + 64 金币 | 自动火球溅射。生命 160，防御 4。 |
 | 房屋 House | 22 木材 | 4 个床位。不生人。生命 120，防御 3。 |
 | 农场 Farm | 16 木材 + 12 金币 | 每波结束额外 +6 木材。生命 80，防御 2。 |
-| 工坊 Workshop | 20 木材 + 28 金币 | 矛塔和火塔攻击 +25%（不叠加）。生命 100，防御 3。 |
+| 工坊 Workshop | 20 木材 + 28 金币 | 矛塔和火塔攻击 +25%（不叠加），并提供 2 个工兵空缺。生命 100，防御 3。 |
+| 木坊 Lumber mill | 20 木材 + 10 金币 | 每 5 秒、每名驻守村民 +1 木材，最多 4 人，空坊为 0。生命 110，防御 3。 |
+| 矛兵营 Spear barracks | 26 木材 + 24 金币 | 2 个矛兵空缺。生命 140，防御 4。 |
+| 枪兵营 Gun barracks | 22 木材 + 36 金币 | 2 个枪兵空缺。生命 130，防御 3。 |
 
-有人躲在功能建筑里时，头顶有一个绿点。没有人时不画点，建筑照样工作。
+有人躲在功能建筑里时，头顶有绿点，木坊按人数最多画 4 个。塔没有人时不画点，照样攻击。木坊没有人时不产木。
 
 入口、树木和岩石不能建造。木墙会迫使僵尸绕路或啃墙；把他们留在塔的射程里。僵尸够到没进建筑的村民就会感染。建筑会从旁边被啃，倒下后里面的人感染。伤害是 `max(1, round(attack * 100 / (100 + defense)))`。防御为 0 时，打出去的伤害就等于攻击。现在这些防御值还小，1 到 3 点的撕咬四舍五入之后仍是原来的数字。
 
 Entrance tiles, trees, and rocks are not buildable. Walls bend the route or get chewed, which holds zombies in tower range. Zombies infect villagers who are still outside. They bite a building from the next tile, and anyone sheltering inside is infected when that building falls. Damage is `max(1, round(attack * 100 / (100 + defense)))`. Defense 0 leaves the attack unchanged after rounding. The defense values shipped here are still small enough that bites of 1, 2, and 3 round back to the same numbers.
 
-A green dot above a functional building means a villager is sheltering there. An empty building draws no dot and still works.
+Green dots above a functional building mean villagers are sheltering there. A mill draws one dot per villager, up to four. An empty tower draws no dot and still attacks. An empty mill draws no dot and produces no wood.
 
 ### 波次 / Waves
 

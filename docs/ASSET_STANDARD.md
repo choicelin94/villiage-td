@@ -78,7 +78,7 @@ Distances and speeds are already world units. Do not scale them again. `attack_s
 
 可选 `notes`。人的体积键是 `walker`，不写进这条 JSON。村民的 `skins` 是出场时的外观池（狼、企鹅、浣熊、青蛙、骷髅）。矛兵用 `knight`，工匠用 `robot`，这两张图在 `characters.json` 里，不在村民的外观池里。
 
-现在只有 `villager` 会被 `main.gd` 用 `Balance.unit("villager")` 生成。矛兵和工匠的数值以这份 JSON 为准，图鉴标成「配置已有 · 尚未出场」。
+`main.gd` 会用 `Balance.unit("villager")`、`Balance.unit("spearman")`、`Balance.unit("gunner")` 和 `Balance.unit("engineer")` 登记这四个 id。村民开局就在场上。矛兵、枪兵、工兵在对应空缺里，于清波时按概率入驻。枪兵用村民序列里的 `raccoon`。
 
 ### `enemies.json`
 
@@ -86,7 +86,7 @@ Distances and speeds are already world units. Do not scale them again. `attack_s
 
 每条波次是 `hp`, `speed`, `gap`, `normal`, `fast`, `elite`, `boss`。`hp` 和 `speed` 是这一波的基准。`speed` 还没乘 `WORLD_SCALE`，只用来和第一波做比。数量是这一波各加多少只。
 
-`enemies[]`：`id`, `display_key`, `character`, `hp`, `defense`, `attack`, `attack_speed`, `move_speed`, `attack_range`, `scale`, `gold_reward`, `wood_reward`, `tags[]`. 可选 `xp_reward`, `notes`。
+`enemies[]`：`id`, `display_key`, `character`, `hp`, `defense`, `attack`, `attack_speed`, `move_speed`, `attack_range`, `scale`, `gold_reward`, `wood_reward`, `tags[]`. 可选 `xp_reward`, `notes`。`wood_reward` 仍留在文件里，但 `Balance` 读入后写成 0。击杀只加 `gold_reward`。
 
 `hp` 和 `move_speed` 写**第 1 波**的世界单位。后面的波次是 `round(hp * wave.hp / waves[0].hp)` 和 `move_speed * wave.speed / waves[0].speed`。`spear_infected` 是单独一条，不再在普通僵尸上再乘 0.65。持枪的精锐 id 是 `shooter_elite`。
 
@@ -94,7 +94,7 @@ Distances and speeds are already world units. Do not scale them again. `attack_s
 
 `id`, `kind`, `category`（`recruit` | `production` | `defense`）, `display_key`, `tex`（`res://` 路径）, `hp`, `defense`, `can_attack`, `cost`.
 
-`can_attack` 为真时再写 `attack`, `attack_speed`, `attack_range`，塔再写 `splash`, `shot_speed`。可选 `beds`, `produces`（`{resource, rate}`，没有就是 `null`）, `recruits[]`, `bonus`（`{tower_damage}`）, `place_cap`, `notes`.
+`can_attack` 为真时再写 `attack`, `attack_speed`, `attack_range`，塔再写 `splash`, `shot_speed`。可选 `beds`, `provides`（`{unit, slots}`，这一类单位的空缺）, `staff_slots`, `produces`（清波是 `{resource, mode: "wave", rate}`；木坊是 `{resource, mode: "staff", rate_per_villager, interval}`；没有就是 `null`）, `recruits[]`, `bonus`（`{tower_damage}`）, `place_cap`, `notes`.
 
 | 建筑 id | kind | category | 体积 | 贴图 |
 | --- | --- | --- | --- | --- |
@@ -104,8 +104,11 @@ Distances and speeds are already world units. Do not scale them again. `attack_s
 | `house` | `HOUSE` | recruit | `house` | `house.png` |
 | `farm` | `FARM` | production | `farm` | `farm.png` |
 | `workshop` | `WORKSHOP` | production | `workshop` | `workshop.png` |
+| `lumber_mill` | `LUMBER` | production | `lumber` | `lumber.png` |
+| `spear_barracks` | `SPEAR_BARRACKS` | recruit | `spear_barracks` | `spear_barracks.png` |
+| `gun_barracks` | `GUN_BARRACKS` | recruit | `gun_barracks` | `gun_barracks.png` |
 
-塔立着就会攻击。房屋立着就给 `beds`，`recruits` 是以后的训练名单，现在不是按钮。农场的 `produces.rate` 是每清一波加的木材，不用派人。工坊的 `bonus.tower_damage` 先乘攻击，不叠加。木墙 `place_cap` 含开局已经放好的墙。清波另外还有一笔底薪，写在 `main.gd` 的 `WAVE_CLEAR_WOOD` 和 `WAVE_CLEAR_GOLD`，不在这份 JSON 里。
+塔立着就会攻击。房屋的 `beds` 与 `provides.slots` 都是村民空缺，盖下不加人。矛兵营、枪兵营、工坊的 `provides` 是对应兵种空缺。农场的 `produces.rate` 是每清一波加的木材，不用派人。木坊按驻守村民数产木，空坊为 0。工坊的 `bonus.tower_damage` 先乘攻击，不叠加。木墙 `place_cap` 含开局已经放好的墙。清波底薪在 `data/setup.json` 的 `economy`，`main.gd` 的 `WAVE_CLEAR_WOOD` 和 `WAVE_CLEAR_GOLD` 只是缺字段时的兜底。难度、刷怪点、开局人口和 `config_version` 也在 `setup.json`。工作台把覆盖写到 `user://setup.json`。图鉴刷新发现本地 `config_version` 更低时，用出厂配置补齐后再升版本。
 
 ### `characters.json`
 
