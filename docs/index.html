@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
 		<title>Tribal Village TD</title>
 		<style>
 html, body, #canvas {
@@ -70,29 +70,6 @@ body {
 	display: none;
 }
 
-#site-links {
-	position: fixed;
-	z-index: 50;
-	top: 8px;
-	left: 8px;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	max-width: calc(100vw - 16px);
-	pointer-events: none;
-}
-
-#depth-lab-link, #stress-link, #codex-link {
-	color: #ffe7a8;
-	background: rgba(12, 22, 16, 0.88);
-	border: 1px solid #8a7040;
-	border-radius: 8px;
-	padding: 6px 10px;
-	font: 14px/1.2 Arial, sans-serif;
-	text-decoration: none;
-	pointer-events: auto;
-}
-
 #status-progress {
 	bottom: 10%;
 	width: 50%;
@@ -121,11 +98,6 @@ body {
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
-		<nav id="site-links">
-			<a id="depth-lab-link" href="depth-lab/">Depth lab</a>
-			<a id="stress-link" href="stress/">Stress</a>
-			<a id="codex-link" href="codex/">图鉴</a>
-		</nav>
 
 		<noscript>
 			Your browser does not support JavaScript.
@@ -139,7 +111,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":11254524,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":11271308,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 

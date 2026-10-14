@@ -8,7 +8,8 @@ signal zoom_out_pressed
 signal place_requested(kind: int)
 signal sell_pressed
 signal staff_selected
-signal lab_pressed
+signal codex_pressed
+signal bench_pressed
 
 var _font: Font
 var _theme: Theme
@@ -38,8 +39,13 @@ var _end_title: Label
 var _end_body: Label
 var _again: Button
 var _lang: Button
-var _lab: Button
-var _top_box: VBoxContainer
+var _help: Button
+var _menu: Panel
+var _catcher: Control
+var _codex_btn: Button
+var _bench_btn: Button
+var _menu_open := false
+var _top_box: BoxContainer
 var _won := false
 
 var _ground := Vector2i(-1, -1)
@@ -60,7 +66,7 @@ func _ready() -> void:
 	_build_panel()
 	_build_end()
 	_build_lang()
-	_build_lab()
+	_build_help()
 	Locale.changed.connect(_on_language)
 	_on_language()
 	get_viewport().size_changed.connect(_layout)
@@ -138,6 +144,7 @@ func refresh(wood: int, gold: int, people: int, housed: int, beds: int, walls: i
 
 func show_end(win: bool) -> void:
 	close_panel()
+	_set_menu(false)
 	_won = win
 	_end.visible = true
 	if win:
@@ -164,24 +171,38 @@ func _layout() -> void:
 	if view.x < 8.0 or view.y < 8.0:
 		return
 	_narrow = view.x < 760.0
-	var font_size := 16 if _narrow else 18
+	var font_size := 20 if _narrow else 22
 	_theme.default_font_size = font_size
-	var top_h := 78.0 if _narrow else 64.0
+	var top_h := 58.0 if _narrow else 68.0
 	var bot_h := 96.0 if _narrow else 72.0
 	_top.offset_bottom = top_h
 	_bottom.offset_top = -bot_h
-	_hint.add_theme_font_size_override("font_size", 15 if _narrow else 16)
+	_hint.add_theme_font_size_override("font_size", 16 if _narrow else 18)
+	var margin := 10.0
+	var lang_w := 84.0 if _narrow else 96.0
+	var lang_h := 42.0 if _narrow else 48.0
+	var help_s := 42.0 if _narrow else 48.0
+	var chrome_gap := 8.0
+	var lang_top := (top_h - lang_h) * 0.5
+	_lang.offset_right = -margin
+	_lang.offset_left = -(margin + lang_w)
+	_lang.offset_top = lang_top
+	_lang.offset_bottom = lang_top + lang_h
+	_lang.add_theme_font_size_override("font_size", 20 if _narrow else 22)
+	var help_top := (top_h - help_s) * 0.5
+	var help_right := margin + lang_w + chrome_gap
+	_help.offset_right = -help_right
+	_help.offset_left = -(help_right + help_s)
+	_help.offset_top = help_top
+	_help.offset_bottom = help_top + help_s
+	var reserve := help_right + help_s + 14.0
 	if _top_box:
-		_top_box.offset_right = -86
-	_lang.offset_right = -10
-	_lang.offset_left = -78
-	_lang.offset_top = 12
-	_lang.offset_bottom = 52
-	var lab_top := top_h + 8.0
-	_lab.offset_right = -10
-	_lab.offset_left = -118
-	_lab.offset_top = lab_top
-	_lab.offset_bottom = lab_top + 40.0
+		_top_box.offset_right = -reserve
+		_top_box.add_theme_constant_override("separation", 8 if _narrow else 16)
+	var num := 20 if _narrow else 22
+	for chip in [_wood, _gold, _pop, _beds, _walls, _wave, _core]:
+		chip.set_number_size(num)
+	_place_menu(top_h)
 	var icon := 64.0
 	var gap := 10.0
 	_place_icon(_start, 12.0, bot_h + gap + icon, icon)
@@ -193,7 +214,7 @@ func _layout() -> void:
 	_place_icon(_zoom_in, zoom_x + icon + gap, bot_h + gap + icon, icon)
 	var panel_w := minf(300.0, maxf(168.0, view.x * (0.46 if _narrow else 0.28)))
 	_panel.offset_left = -panel_w
-	_panel.offset_top = lab_top + 48.0
+	_panel.offset_top = top_h + 8.0
 	_panel.offset_bottom = -(bot_h + 8.0)
 
 func _place_icon(button: Button, left: float, above_bottom: float, icon: float) -> void:
@@ -204,26 +225,22 @@ func _place_icon(button: Button, left: float, above_bottom: float, icon: float) 
 
 func _build_top() -> void:
 	_top = Panel.new()
+	_top.name = "TopBar"
 	_top.theme = _theme
 	_top.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	_top.offset_bottom = 72
+	_top.offset_bottom = 68
 	_top.add_theme_stylebox_override("panel", _box(Color(0.07, 0.11, 0.08, 0.92), Color(0.35, 0.28, 0.14)))
 	add_child(_top)
-	var col := VBoxContainer.new()
-	col.set_anchors_preset(Control.PRESET_FULL_RECT)
-	col.offset_left = 10
-	col.offset_top = 4
-	col.offset_right = -86
-	col.offset_bottom = -4
-	_top_box = col
-	col.add_theme_constant_override("separation", 0)
-	_top.add_child(col)
-	var row_a := HBoxContainer.new()
-	var row_b := HBoxContainer.new()
-	row_a.add_theme_constant_override("separation", 12)
-	row_b.add_theme_constant_override("separation", 12)
-	col.add_child(row_a)
-	col.add_child(row_b)
+	var row := HBoxContainer.new()
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 12
+	row.offset_top = 6
+	row.offset_right = -168
+	row.offset_bottom = -6
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 16)
+	_top_box = row
+	_top.add_child(row)
 	_wood = _chip("wood", Locale.text("tip.wood"), Color(0.86, 0.62, 0.32))
 	_gold = _chip("gold", Locale.text("tip.gold"), Color(0.98, 0.82, 0.28))
 	_pop = _chip("people", Locale.text("tip.people"), Color(0.65, 0.86, 0.98))
@@ -231,13 +248,13 @@ func _build_top() -> void:
 	_walls = _chip("wall", Locale.text("tip.walls"), Color(0.9, 0.75, 0.5))
 	_wave = _chip("wave", Locale.text("tip.wave"), Color(0.9, 0.92, 0.84))
 	_core = _chip("clock", Locale.text("tip.refugees"), Color(1, 0.86, 0.4))
-	row_a.add_child(_wood)
-	row_a.add_child(_gold)
-	row_a.add_child(_pop)
-	row_b.add_child(_beds)
-	row_b.add_child(_walls)
-	row_b.add_child(_wave)
-	row_b.add_child(_core)
+	row.add_child(_wood)
+	row.add_child(_gold)
+	row.add_child(_pop)
+	row.add_child(_beds)
+	row.add_child(_walls)
+	row.add_child(_wave)
+	row.add_child(_core)
 
 func _build_bottom() -> void:
 	_bottom = Panel.new()
@@ -353,16 +370,101 @@ func _build_lang() -> void:
 	_lang.pressed.connect(func() -> void: Locale.toggle())
 	add_child(_lang)
 
-func _build_lab() -> void:
-	_lab = Button.new()
-	_lab.name = "LabButton"
-	_lab.theme = _theme
-	_lab.focus_mode = Control.FOCUS_NONE
-	_lab.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_lab.add_theme_font_size_override("font_size", 16)
-	_style_button(_lab, Color(0.16, 0.22, 0.18), Color(0.55, 0.62, 0.5))
-	_lab.pressed.connect(func() -> void: lab_pressed.emit())
-	add_child(_lab)
+func _build_help() -> void:
+	_catcher = ColorRect.new()
+	_catcher.name = "HelpCatcher"
+	_catcher.color = Color(0, 0, 0, 0)
+	_catcher.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_catcher.visible = false
+	_catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_catcher.gui_input.connect(_on_catcher_input)
+	add_child(_catcher)
+	_menu = Panel.new()
+	_menu.name = "HelpMenu"
+	_menu.theme = _theme
+	_menu.visible = false
+	_menu.mouse_filter = Control.MOUSE_FILTER_STOP
+	_menu.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_menu.add_theme_stylebox_override("panel", _box(Color(0.08, 0.12, 0.09, 0.98), Color(0.72, 0.58, 0.28)))
+	add_child(_menu)
+	var list := VBoxContainer.new()
+	list.set_anchors_preset(Control.PRESET_FULL_RECT)
+	list.offset_left = 8
+	list.offset_top = 8
+	list.offset_right = -8
+	list.offset_bottom = -8
+	list.add_theme_constant_override("separation", 8)
+	_menu.add_child(list)
+	_codex_btn = _menu_button("CodexButton")
+	_codex_btn.pressed.connect(_on_codex)
+	list.add_child(_codex_btn)
+	_bench_btn = _menu_button("BenchButton")
+	_bench_btn.pressed.connect(_on_bench)
+	list.add_child(_bench_btn)
+	_help = _icon_button("HelpButton", "help", Color(0.16, 0.22, 0.18), Color(0.55, 0.62, 0.5))
+	_help.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_help.custom_minimum_size = Vector2(0, 0)
+	_help.pressed.connect(_toggle_menu)
+	add_child(_help)
+
+func _menu_button(node_name: String) -> Button:
+	var btn := Button.new()
+	btn.name = node_name
+	btn.theme = _theme
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.add_theme_font_size_override("font_size", 22)
+	_style_button(btn, Color(0.16, 0.22, 0.18), Color(0.55, 0.62, 0.5))
+	return btn
+
+func _place_menu(top_h: float) -> void:
+	if _menu == null:
+		return
+	var menu_w := 196.0 if _narrow else 228.0
+	var item_h := 52.0 if _narrow else 56.0
+	var pad := 8.0
+	# Sit entirely under the resource bar so chips stay visible.
+	_menu.offset_right = -10.0
+	_menu.offset_left = -(10.0 + menu_w)
+	_menu.offset_top = top_h + 8.0
+	_menu.offset_bottom = top_h + 8.0 + pad * 2.0 + item_h * 2.0 + 8.0
+	if _codex_btn:
+		_codex_btn.custom_minimum_size = Vector2(0, item_h)
+		_codex_btn.add_theme_font_size_override("font_size", 20 if _narrow else 22)
+	if _bench_btn:
+		_bench_btn.custom_minimum_size = Vector2(0, item_h)
+		_bench_btn.add_theme_font_size_override("font_size", 20 if _narrow else 22)
+
+func _toggle_menu() -> void:
+	_set_menu(not _menu_open)
+
+func _set_menu(open: bool) -> void:
+	_menu_open = open
+	if _menu:
+		_menu.visible = open
+	if _catcher:
+		_catcher.visible = open
+		_catcher.mouse_filter = Control.MOUSE_FILTER_STOP if open else Control.MOUSE_FILTER_IGNORE
+	if open:
+		move_child(_catcher, get_child_count() - 1)
+		move_child(_menu, get_child_count() - 1)
+		move_child(_help, get_child_count() - 1)
+		move_child(_lang, get_child_count() - 1)
+
+func _on_catcher_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		_set_menu(false)
+	elif event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed:
+		_set_menu(false)
+
+func _on_codex() -> void:
+	_set_menu(false)
+	codex_pressed.emit()
+
+func _on_bench() -> void:
+	_set_menu(false)
+	bench_pressed.emit()
 
 func _apply_copy() -> void:
 	_wood.tooltip_text = Locale.text("tip.wood")
@@ -378,8 +480,11 @@ func _apply_copy() -> void:
 	_zoom_in.tooltip_text = Locale.text("tip.zoom_in")
 	_lang.text = Locale.text("lang.switch")
 	_lang.tooltip_text = Locale.text("tip.lang")
-	_lab.text = Locale.text("lab.open")
-	_lab.tooltip_text = Locale.text("tip.lab")
+	_help.tooltip_text = Locale.text("tip.help")
+	_codex_btn.text = Locale.text("menu.codex")
+	_codex_btn.tooltip_text = Locale.text("tip.codex")
+	_bench_btn.text = Locale.text("menu.bench")
+	_bench_btn.tooltip_text = Locale.text("tip.bench")
 	if _again:
 		_again.tooltip_text = Locale.text("tip.again")
 	if _flash_t <= 0.0:
@@ -551,6 +656,7 @@ func _chip(kind: String, tip: String, color: Color) -> StatChip:
 	chip.tooltip_text = tip
 	chip.number_color = color
 	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	return chip
 
 func _style_button(btn: Button, bg: Color, border: Color) -> void:
@@ -604,6 +710,24 @@ class IconMark:
 			if kind == "plus":
 				draw_line(c + Vector2(0, -12), c + Vector2(0, 12), col, 4.0)
 			return
+		if kind == "help":
+			var s := minf(size.x, size.y)
+			var u := s / 48.0
+			draw_arc(c, 16.0 * u, 0, TAU, 28, col, 2.6 * u)
+			var hook := PackedVector2Array([
+				c + Vector2(-6.2, -1.2) * u,
+				c + Vector2(-6.4, -5.4) * u,
+				c + Vector2(-3.2, -8.6) * u,
+				c + Vector2(1.6, -8.8) * u,
+				c + Vector2(5.6, -6.2) * u,
+				c + Vector2(5.8, -2.6) * u,
+				c + Vector2(2.2, 0.6) * u,
+				c + Vector2(0.2, 3.0) * u,
+				c + Vector2(0.2, 5.6) * u,
+			])
+			draw_polyline(hook, col, 2.6 * u, true)
+			draw_circle(c + Vector2(0.2, 9.4) * u, 1.7 * u, col)
+			return
 		draw_rect(Rect2(c + Vector2(-18, -16), Vector2(20, 32)), col, false, 3.0)
 		draw_line(c + Vector2(4, 0), c + Vector2(18, 0), col, 3.0)
 		draw_line(c + Vector2(12, -6), c + Vector2(18, 0), col, 3.0)
@@ -619,17 +743,18 @@ class StatChip:
 	var _icon: StatIcon
 
 	func _ready() -> void:
-		add_theme_constant_override("separation", 4)
+		alignment = BoxContainer.ALIGNMENT_CENTER
+		add_theme_constant_override("separation", 6)
 		_icon = StatIcon.new()
 		_icon.kind = kind
-		_icon.custom_minimum_size = Vector2(22, 22)
+		_icon.custom_minimum_size = Vector2(28, 28)
 		_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(_icon)
 		_label = Label.new()
 		_label.theme = theme
 		_label.add_theme_color_override("font_color", number_color)
-		_label.add_theme_font_size_override("font_size", 16)
+		_label.add_theme_font_size_override("font_size", 22)
 		_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_label.clip_text = true
@@ -639,6 +764,13 @@ class StatChip:
 	func set_value(text: String) -> void:
 		if _label:
 			_label.text = text
+
+	func set_number_size(px: int) -> void:
+		if _label:
+			_label.add_theme_font_size_override("font_size", px)
+		if _icon:
+			var side := float(px + 8)
+			_icon.custom_minimum_size = Vector2(side, side)
 
 
 class StatIcon:

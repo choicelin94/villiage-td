@@ -34,8 +34,9 @@ scenes/main.tscn
     scripts/spine_actor.gd 读 data/characters.json，播序列帧
     scripts/iso_volume.gd  读 data/iso_volumes.json，算占地
     scripts/depth_solver.gd 两段排序
-scenes/depth_lab.tscn      景深试验，网页入口 docs/depth-lab/
-scenes/depth_stress.tscn   压力页，网页入口 docs/stress/
+scenes/depth_lab.tscn      景深试验。网页深链 docs/depth-lab/，游戏里从工作台进入
+scenes/depth_stress.tscn   压力页。网页深链 docs/stress/，游戏里从工作台进入
+scenes/workbench.tscn      工作台，把上面两页收成一个入口
 ```
 
 `Balance` 在启动时加载 `data/units.json`、`data/enemies.json`、`data/buildings.json`。伤害是 `max(1, round(attack * 100 / (100 + defense)))`。工坊的 `tower_damage` 先乘在攻击上，再对每个目标套一次这个公式。村民被感染仍是接触，不走这个公式。
@@ -50,7 +51,7 @@ scenes/depth_stress.tscn   压力页，网页入口 docs/stress/
 
 | 路径 | 内容 |
 | --- | --- |
-| `docs/index.html` | 游戏网页包。左上角链到景深、压力页、图鉴。 |
+| `docs/index.html` | 游戏网页包。图鉴和工作台在游戏内右上角问号菜单，不在网页角上再挂按钮。 |
 | `docs/depth-lab/` | 跳到 `../index.html?lab=1` |
 | `docs/stress/` | 跳到 `../index.html?stress=300` |
 | `docs/codex/` | 图鉴。由 `tools/build_codex.py` 生成。 |
@@ -83,7 +84,7 @@ scenes/depth_stress.tscn   压力页，网页入口 docs/stress/
 | `scripts/main.gd` 的 `WAVE_CLEAR_WOOD`（8）和 `WAVE_CLEAR_GOLD`（14） | 没有对应 JSON | 清波底薪仍是这两个常量。农场每波木材是 `buildings.json` 里 `farm.produces.rate`。 |
 | `units.json` 里村民的 `attack` / `attack_speed` / `attack_range` | 对局还没花 | 感染仍是碰到就变。这些攻击数值已经在 Balance 里，还没有挥出去。 |
 | `units.json` 的 `spearman`、`engineer` | `main.gd` 只调用 `Balance.unit("villager")` | 配置已有。房屋的 `recruits` 列了他们，还不是训练按钮。 |
-| `docs/index.html` 的 `<nav id="site-links">` | Godot 重新导出会盖掉 | 景深、压力页、图鉴三个链接是手写的，导出后要放回去。 |
+| `docs/index.html` | Godot 重新导出会盖掉手改 | 游戏页不再手写左上角链接。问号菜单在 `scripts/hud.gd`。 |
 
 波次表里的 `speed` 是缩放用的作者值，还没乘 `WORLD_SCALE`。卡片上的 `move_speed` 已经是第 1 波的世界单位。后面的波次用 `move_speed * wave.speed / waves[0].speed`，不要把表里的 `speed` 再乘一次比例之外的东西。
 
@@ -116,7 +117,7 @@ python3 -m http.server -d docs 8765
 
 ### Godot 导出不在 CI 里
 
-Godot **4.7.2** 的 Linux 编辑器压缩包在发布页上。配套的 export templates（`Godot_v4.7.2-stable_export_templates.tpz`）大约 **1.28 GB**。每次推送都下载这份模板太重，而且一次全新导出会盖掉 `docs/index.html` 里手写的三个链接（景深、压力页、图鉴）。
+Godot **4.7.2** 的 Linux 编辑器压缩包在发布页上。配套的 export templates（`Godot_v4.7.2-stable_export_templates.tpz`）大约 **1.28 GB**。每次推送都下载这份模板太重。图鉴和工作台的入口在游戏 HUD 里，不靠 `docs/index.html` 上的外链。
 
 所以 CI **不**重新导出 wasm。`docs/index.js`、`docs/index.wasm`、`docs/index.pck` 和图标是本地导出后提交的。Actions 原样发布它们，只负责重新生成图鉴并上传 `docs/`。
 
@@ -126,6 +127,6 @@ Godot **4.7.2** 的 Linux 编辑器压缩包在发布页上。配套的 export t
 godot --headless --path . --export-release "Web" docs/index.html
 ```
 
-导出预设 **Web** 写着默认路径 `build/web/index.html`，线程和 GDExtension 都是关的。上面的命令把结果直接写进 `docs/`。写完后把这三个链接放回 `docs/index.html` 的 `<nav id="site-links">`：`depth-lab/`、`stress/`、`codex/`。没放回去的话，Pages 上的游戏页就进不了图鉴。
+导出预设 **Web** 写着默认路径 `build/web/index.html`，线程和 GDExtension 都是关的。上面的命令把结果直接写进 `docs/`。不要再往 `docs/index.html` 加左上角的景深、压力页、图鉴链接；这三项从游戏右上角的问号菜单进。
 
-The 4.7.2 export templates are about 1.28 GB, and a fresh export overwrites the hand-maintained links on `docs/index.html`. CI deploys the committed web build and regenerates the codex. It does not run Godot.
+The 4.7.2 export templates are about 1.28 GB. CI deploys the committed web build and regenerates the codex. It does not run Godot. The codex and the workbench are opened from the in-game help menu, not from links pasted onto `docs/index.html`.

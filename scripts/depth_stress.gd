@@ -38,13 +38,14 @@ var _done := false
 var _font: Font
 var _title: Label
 var _body: Label
+var hosted := false
 
 func _ready() -> void:
 	process_priority = 50
 	Engine.max_fps = 0
 	_font = load("res://assets/fonts/NotoSansSC-Regular.otf")
 	_web = OS.has_feature("web")
-	_check = not _web
+	_check = not _web and not hosted
 	_n = int(Engine.get_meta("stress_n", 100))
 	_only = str(Engine.get_meta("stress_only", ""))
 	if _n < 1:
@@ -412,14 +413,16 @@ func _build_ui() -> void:
 	var top := Panel.new()
 	top.theme = theme
 	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top.offset_bottom = 132
+	var shift := 64.0 if hosted else 0.0
+	top.offset_top = shift
+	top.offset_bottom = 132.0 + shift
 	top.add_theme_stylebox_override("panel", _box(Color(0.07, 0.11, 0.08, 0.92), Color(0.35, 0.28, 0.14)))
 	layer.add_child(top)
 	var box := VBoxContainer.new()
 	box.set_anchors_preset(Control.PRESET_FULL_RECT)
 	box.offset_left = 12
 	box.offset_top = 8
-	box.offset_right = -108
+	box.offset_right = -12 if hosted else -108
 	box.offset_bottom = -8
 	box.add_theme_constant_override("separation", 4)
 	top.add_child(box)
@@ -434,6 +437,8 @@ func _build_ui() -> void:
 	_body.add_theme_font_size_override("font_size", 16)
 	_body.add_theme_color_override("font_color", Color(0.9, 0.88, 0.75))
 	box.add_child(_body)
+	if hosted:
+		return
 	var back := Button.new()
 	back.name = "BackButton"
 	back.theme = theme

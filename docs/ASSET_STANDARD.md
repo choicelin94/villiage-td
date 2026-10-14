@@ -16,7 +16,7 @@ The match loads those three catalogs through the `Balance` autoload. `characters
 | `assets/` | PNG、字体、可选 Spine。 | 改图的人。不要改已经在用的文件名。 |
 | `scripts/` | 玩法，以及仍写死的清波底薪、占地后备表。 | 改行为的人。 |
 | `docs/codex/` | 图鉴生成结果。 | 只跑 `python3 tools/build_codex.py`，不要手改。 |
-| `docs/index.html` 顶部三个链接 | 导出壳上的手写入口。 | Godot 重新导出后要把「图鉴」、景深、压力页放回去。 |
+| `docs/index.html` | 网页包外壳。 | 不要再手写左上角入口。问号菜单在游戏 HUD。 |
 
 ## 目录 / Layout
 
@@ -171,4 +171,4 @@ Distances and speeds are already world units. Do not scale them again. `attack_s
 - 建筑和树、岩石用 `assets/village/` 里的 PNG
 - 写出 `docs/codex/catalog.json` 和 `docs/codex/index.html`
 
-页面是静态的。推到 `main` 时，GitHub Actions 会再跑一次生成器，并发布整个 `docs/`。入口在游戏页左上角的「图鉴」，和景深、压力页一样。草地 `grass_*.png` 和 `road.png` 不是卡片；新的景物 PNG 要先写进 `tools/build_codex.py` 的 `SCENERY_LABELS`，否则生成器会停下来。发布细节在 [ARCHITECTURE.md](ARCHITECTURE.md)。
+页面是静态的。推到 `main` 时，GitHub Actions 会再跑一次生成器，并发布整个 `docs/`。游戏里右上角问号菜单的「图鉴」打开这一页。草地 `grass_*.png` 和 `road.png` 不是卡片；新的景物 PNG 要先写进 `tools/build_codex.py` 的 `SCENERY_LABELS`，否则生成器会停下来。发布细节在 [ARCHITECTURE.md](ARCHITECTURE.md)。

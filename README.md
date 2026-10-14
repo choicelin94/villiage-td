@@ -24,7 +24,7 @@ The web export leaves GDExtension off (`extensions_support` stays false). The of
 
 线上页面是 `main` 里的 `docs/`，由 GitHub Actions 发布。地图是正面俯视的正方形格子。房屋和木墙是同一套 CC0 模型从南边俯视渲染的，树和岩石仍用原来的图。前后仍由体积决定：人的落点是一块椭圆，树干、岩石和房子各用自己的凸多边形或椭圆。整块椭圆到了占地北侧，人才被挡住。空心的农场和木墙用一块盖住内部的凸多边形，椭圆不能走进去，人与人之间也保持椭圆不相交。选中线跟着物件的深度。
 
-排序仍是两段。每件东西先按椭圆或多边形算出紧的包围盒。屏幕上的盒子先扫一遍，对不上的对子直接丢掉。盒子在东西、南北或高度上已经分开的，用包围盒就能定前后。只有盒子真的叠在一起，才问整块是不是在北侧。房屋、木墙、树和岩石的结果会留着，人挪动了才重算涉及到的对子。景深试验页：
+排序仍是两段。每件东西先按椭圆或多边形算出紧的包围盒。屏幕上的盒子先扫一遍，对不上的对子直接丢掉。盒子在东西、南北或高度上已经分开的，用包围盒就能定前后。只有盒子真的叠在一起，才问整块是不是在北侧。房屋、木墙、树和岩石的结果会留着，人挪动了才重算涉及到的对子。游戏右上角的问号打开菜单，里面是「图鉴」和「工作台」。工作台把景深试验和压力测试收在一处。旧的深链仍然可用：
 
 **https://choicelin94.github.io/villiage-td/depth-lab/**
 
@@ -36,11 +36,11 @@ The web export leaves GDExtension off (`extensions_support` stays false). The of
 
 **https://choicelin94.github.io/villiage-td/codex/**
 
-游戏里右上角的「景深」打开试验页。推到 `main` 时，Actions 先跑图鉴生成器，再把 `docs/` 发布到 Pages。仓库需要把 Pages 的 Source 设成 **GitHub Actions**，见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。网页包里的 wasm 仍是本地用 Godot 导出后提交的。
+问号菜单在语言按钮左边。顶栏不再单独放景深、Depth lab、Stress 或图鉴。推到 `main` 时，Actions 先跑图鉴生成器，再把 `docs/` 发布到 Pages。仓库需要把 Pages 的 Source 设成 **GitHub Actions**，见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。网页包里的 wasm 仍是本地用 Godot 导出后提交的。
 
 The live site is the `docs/` directory on `main`, published by GitHub Actions. The map is a square top-down grid. Houses and walls are CC0 models rendered from the south. Trees and rocks keep their previous pictures. Depth still comes from volumes: a person stands on an oval, and each tree, rock, and building has its own convex polygon or ellipse. The whole oval has to sit north of a footprint before that object covers the person. The open farm and wall use one convex polygon over the interior. An oval cannot enter a footprint, and walkers keep their ovals apart. Selection lines use that depth.
 
-The sort stays two-phase. Each footprint first becomes a tight box around its ellipse or polygon. A sweep drops pairs whose screen boxes miss. Pairs whose boxes already separate in x, y, or height take their order from the box. Only a real overlap asks whether one footprint is entirely to the north. Houses, walls, trees, and rocks keep that result; a pair is redone when someone in it moves. The depth lab is at:
+The sort stays two-phase. Each footprint first becomes a tight box around its ellipse or polygon. A sweep drops pairs whose screen boxes miss. Pairs whose boxes already separate in x, y, or height take their order from the box. Only a real overlap asks whether one footprint is entirely to the north. Houses, walls, trees, and rocks keep that result; a pair is redone when someone in it moves. The help menu beside the language button opens the codex or the workbench. The workbench holds the depth lab and the stress test together. The old direct pages still work:
 
 **https://choicelin94.github.io/villiage-td/depth-lab/**
 
@@ -52,7 +52,7 @@ The codex lists the current ally units, enemies, and buildings, plus the trees a
 
 **https://choicelin94.github.io/villiage-td/codex/**
 
-The in-game **Depth** button opens the lab. A push to `main` runs the codex generator, then publishes `docs/` to Pages. The repository has to set the Pages source to **GitHub Actions**. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The game wasm is still exported locally with Godot and committed.
+The help control sits just left of the language button. The top bar no longer has separate Depth, Stress, codex, or occlusion chips. A push to `main` runs the codex generator, then publishes `docs/` to Pages. The repository has to set the Pages source to **GitHub Actions**. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The game wasm is still exported locally with Godot and committed.
 
 ## 架构与维护 / Architecture and upkeep
 
