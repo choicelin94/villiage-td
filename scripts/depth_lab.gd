@@ -30,6 +30,7 @@ var _index := 0
 var _scenarios: Array[Dictionary] = []
 var _blocked := {}
 var _auto := false
+var hosted := false
 
 func _ready() -> void:
 	process_priority = 50
@@ -63,6 +64,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif key.keycode == KEY_BRACKETRIGHT:
 		_show_scenario(posmod(_index + 1, _scenarios.size()))
 	elif key.keycode == KEY_ESCAPE:
+		if hosted:
+			return
 		_back_to_game()
 
 func _steer(delta: float) -> void:
@@ -231,7 +234,9 @@ func _build_ui() -> void:
 	var top := Panel.new()
 	top.theme = theme
 	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top.offset_bottom = 228
+	var shift := 64.0 if hosted else 0.0
+	top.offset_top = shift
+	top.offset_bottom = 228.0 + shift
 	top.add_theme_stylebox_override("panel", _box(Color(0.07, 0.11, 0.08, 0.92), Color(0.35, 0.28, 0.14)))
 	layer.add_child(top)
 	var box := VBoxContainer.new()
@@ -268,6 +273,8 @@ func _build_ui() -> void:
 		btn.pressed.connect(func() -> void: _show_scenario(idx))
 		flow.add_child(btn)
 		_buttons.append(btn)
+	if hosted:
+		return
 	var back := Button.new()
 	back.name = "BackButton"
 	back.theme = theme

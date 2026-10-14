@@ -92,7 +92,8 @@ func _ready() -> void:
 	hud.place_requested.connect(_on_place_requested)
 	hud.sell_pressed.connect(_on_sell_requested)
 	hud.staff_selected.connect(_on_staff_selected)
-	hud.lab_pressed.connect(_open_depth_lab)
+	hud.codex_pressed.connect(_open_codex)
+	hud.bench_pressed.connect(_open_workbench)
 	get_viewport().size_changed.connect(_on_viewport_resized)
 	_sync_pixels()
 	_apply_fit_zoom(true)
@@ -127,6 +128,10 @@ func _ready() -> void:
 		_char_shot()
 	elif OS.get_environment("TD_LANG") == "1":
 		_lang_shot()
+	elif OS.get_environment("TD_HUD") == "1":
+		_hud_shot()
+	elif OS.get_environment("TD_BENCH") == "1":
+		call_deferred("_open_workbench")
 	elif OS.get_environment("TD_MOVE") == "1":
 		_move_shot()
 	elif OS.get_environment("TD_SHOT") == "1":
@@ -1283,8 +1288,94 @@ func _open_lab_now() -> bool:
 		return query.contains("lab=1")
 	return false
 
-func _open_depth_lab() -> void:
-	get_tree().change_scene_to_file("res://scenes/depth_lab.tscn")
+func _open_codex() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.location.assign(new URL('codex/', window.location.href).href)", true)
+		return
+	OS.shell_open("https://choicelin94.github.io/villiage-td/codex/")
+
+func _open_workbench() -> void:
+	get_tree().change_scene_to_file("res://scenes/workbench.tscn")
+
+func _hud_shot() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	hud._layout()
+	var wide_ok := _hud_bar_ok("wide")
+	var help := hud.get_node_or_null("HelpButton") as Button
+	if help:
+		help.emit_signal("pressed")
+	await get_tree().process_frame
+	var menu_ok := _hud_menu_ok("wide")
+	await _capture("/opt/cursor/artifacts/hud-menu.png")
+	if help:
+		help.emit_signal("pressed")
+	get_window().size = Vector2i(390, 844)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	hud._layout()
+	var narrow_ok := _hud_bar_ok("narrow")
+	if help:
+		help.emit_signal("pressed")
+	await get_tree().process_frame
+	var narrow_menu := _hud_menu_ok("narrow")
+	await _capture("/opt/cursor/artifacts/hud-menu-phone.png")
+	var passed := wide_ok and menu_ok and narrow_ok and narrow_menu
+	print("HUD_OK ", passed)
+	get_tree().quit(0 if passed else 1)
+
+func _hud_bar_ok(tag: String) -> bool:
+	var bar := hud.get_node_or_null("TopBar") as Control
+	var help := hud.get_node_or_null("HelpButton") as Button
+	var lang := hud.get_node_or_null("LangButton") as Button
+	var no_lab := hud.get_node_or_null("LabButton") == null
+	var icon_only := help != null and help.text.strip_edges() == ""
+	var row := bar.get_child(0) as HBoxContainer if bar != null else null
+	var ys: Array[float] = []
+	var font_ok := false
+	if row:
+		for child in row.get_children():
+			if not (child is Control) or not (child as Control).visible:
+				continue
+			var rect := (child as Control).get_global_rect()
+			ys.append(rect.position.y)
+			var label := child.get_child(1) as Label if child.get_child_count() > 1 else null
+			if label:
+				font_ok = label.get_theme_font_size("font_size") >= 20
+	var same_row := ys.size() >= 4
+	if same_row:
+		var y0 := ys[0]
+		for y in ys:
+			if absf(y - y0) > 1.5:
+				same_row = false
+	var lang_font := lang.get_theme_font_size("font_size") >= 20 if lang else false
+	var beside := false
+	var inside := false
+	if help and lang and bar:
+		var help_rect := help.get_global_rect()
+		var lang_rect := lang.get_global_rect()
+		var bar_rect := bar.get_global_rect()
+		beside = lang_rect.position.x >= help_rect.end.x - 2.0
+		inside = help_rect.position.y >= bar_rect.position.y - 1.0 and help_rect.end.y <= bar_rect.end.y + 1.0
+	print("HUD_BAR ", tag, " chips=", ys.size(), " row=", same_row, " font=", font_ok, " lang=", lang_font, " icon=", icon_only, " nolab=", no_lab, " beside=", beside, " inside=", inside)
+	return same_row and font_ok and lang_font and icon_only and no_lab and beside and inside and lang != null
+
+func _hud_menu_ok(tag: String) -> bool:
+	var bar := hud.get_node_or_null("TopBar") as Control
+	var menu := hud.get_node_or_null("HelpMenu") as Control
+	var codex := hud.find_child("CodexButton", true, false) as Button
+	var bench := hud.find_child("BenchButton", true, false) as Button
+	if bar == null or menu == null or codex == null or bench == null or not menu.visible:
+		print("HUD_MENU ", tag, " missing")
+		return false
+	var bar_rect := bar.get_global_rect()
+	var menu_rect := menu.get_global_rect()
+	var clear := menu_rect.position.y >= bar_rect.end.y - 0.5 and not menu_rect.intersects(bar_rect)
+	var labels := codex.text == Locale.text("menu.codex") and bench.text == Locale.text("menu.bench")
+	var only_two := menu.get_child(0).get_child_count() == 2
+	var codex_font := codex.get_theme_font_size("font_size") >= 20
+	print("HUD_MENU ", tag, " clear=", clear, " labels=", labels, " two=", only_two, " font=", codex_font, " codex=", codex.text, " bench=", bench.text, " menu_y=", menu_rect.position.y, " bar_end=", bar_rect.end.y)
+	return clear and labels and only_two and codex_font
 
 func _apply_iso_sort() -> void:
 	if actors == null:
