@@ -108,7 +108,21 @@ Distances and speeds are already world units. Do not scale them again. `attack_s
 | `spear_barracks` | `SPEAR_BARRACKS` | recruit | `spear_barracks` | `spear_barracks.png` |
 | `gun_barracks` | `GUN_BARRACKS` | recruit | `gun_barracks` | `gun_barracks.png` |
 
-塔立着就会攻击。房屋的 `beds` 与 `provides.slots` 都是村民空缺，盖下不加人。矛兵营、枪兵营、工坊的 `provides` 是对应兵种空缺。农场的 `produces.rate` 是每清一波加的木材，不用派人。木坊按驻守村民数产木，空坊为 0。工坊的 `bonus.tower_damage` 先乘攻击，不叠加。木墙 `place_cap` 含开局已经放好的墙。清波底薪在 `data/setup.json` 的 `economy`，`main.gd` 的 `WAVE_CLEAR_WOOD` 和 `WAVE_CLEAR_GOLD` 只是缺字段时的兜底。难度、刷怪点、开局人口和 `config_version` 也在 `setup.json`。工作台把覆盖写到 `user://setup.json`。图鉴刷新发现本地 `config_version` 更低时，用出厂配置补齐后再升版本。
+塔立着就会攻击。房屋的 `beds` 与 `provides.slots` 都是村民空缺，盖下不加人。矛兵营、枪兵营、工坊的 `provides` 是对应兵种空缺。农场的 `produces.rate` 是每清一波加的木材，不用派人。木坊按驻守村民数产木，空坊为 0。工坊的 `bonus.tower_damage` 先乘攻击，不叠加。木墙 `place_cap` 含开局已经放好的墙。清波底薪在 `data/setup.json` 的 `economy`，`main.gd` 的 `WAVE_CLEAR_WOOD` 和 `WAVE_CLEAR_GOLD` 只是缺字段时的兜底。难度、出怪长方形、开局人口和 `config_version` 也在 `setup.json`。工作台把覆盖写到 `user://setup.json`。图鉴刷新发现本地 `config_version` 更低时，用出厂配置补齐后再升版本。
+
+### `setup.json` 地图字段（config_version 2）
+
+格子与对局相同：20×20，一格 128，`(0, 0)` 在西北角，`+x` 向东，`+y` 向南。工作台保存的是下面这些字段，开局由 `Balance` 读入。
+
+| 字段 | 含义 |
+| --- | --- |
+| `spawn_rects[]` | 出怪长方形。每条是 `{edge, middle, length, width}`。`edge` 为 `north` / `south` / `west` / `east`，即最外一圈的上、下、左、右。`middle` 是 `[x, y]`，用户点击的那一格，也是长方形正中。`length` 固定 3，`width` 固定 1。上、下边沿 x 横放，左、右边沿 y 竖放。宽的方向朝内，但只占边上一格，不向地图里面再进一格。四个角 `(0,0)`、`(19,0)`、`(0,19)`、`(19,19)` 不能当正中。 |
+| `spawns[]` | 由 `spawn_rects` 展开的出生格 `[x, y]`，重复的格子只留一次。加载时会按长方形重写，不要单独改这一份。 |
+| `starter_buildings[]` | 开局建筑 `{kind, cell}`。`kind` 用 `WALL`、`SPEAR`、`FIRE`、`HOUSE`、`FARM`、`WORKSHOP`、`LUMBER`、`SPEAR_BARRACKS`、`GUN_BARRACKS`。`cell` 是内侧空格。 |
+| `starter_units[]` | 开局站位 `{unit, cell, sex}`。`unit` 为 `villager`、`spearman`、`gunner`、`engineer`。`sex` 为 `m` 或 `f`。 |
+| `starter_props[]` | 额外景物 `{kind, cell}`。`kind` 为 `tree` 或 `rock`，只能放在内侧、不是固定岩石、也不是出怪格的位置。最外圈的林子和四块固定岩石仍由对局生成。 |
+
+The match grid is 20×20 cells of 128. `spawn_rects` is the authored enemy gate: `edge`, `middle` (the clicked center cell), `length` 3, `width` 1. North and south run along x; west and east run along y; the short side points inward and stays on the border. `spawns` is rebuilt from those rects. `starter_buildings`, `starter_units`, and `starter_props` are the opening placements.
 
 ### `characters.json`
 

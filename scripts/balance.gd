@@ -20,6 +20,7 @@ const BUILDINGS_PATH := "res://data/buildings.json"
 const CHARACTERS_PATH := "res://data/characters.json"
 const SETUP_PATH := "res://data/setup.json"
 const USER_SETUP_PATH := "user://setup.json"
+const _Plan := preload("res://scripts/map_plan.gd")
 
 const _KIND_ALIAS := {
 	"normal": "spear_normal",
@@ -266,12 +267,20 @@ func spawns() -> Array:
 	var raw = _setup.get("spawns", [])
 	return raw if raw is Array else []
 
+func spawn_rects() -> Array:
+	var raw = _setup.get("spawn_rects", [])
+	return raw if raw is Array else []
+
 func starter_buildings() -> Array:
 	var raw = _setup.get("starter_buildings", [])
 	return raw if raw is Array else []
 
 func starter_units() -> Array:
 	var raw = _setup.get("starter_units", [])
+	return raw if raw is Array else []
+
+func starter_props() -> Array:
+	var raw = _setup.get("starter_props", [])
 	return raw if raw is Array else []
 
 func difficulty_id() -> String:
@@ -327,8 +336,10 @@ func editor_state() -> Dictionary:
 		"combat": combat().duplicate(true),
 		"economy": economy().duplicate(true),
 		"spawns": spawns().duplicate(true),
+		"spawn_rects": spawn_rects().duplicate(true),
 		"starter_buildings": starter_buildings().duplicate(true),
 		"starter_units": starter_units().duplicate(true),
+		"starter_props": starter_props().duplicate(true),
 		"slots": slots,
 		"lumber": {
 			"rate_per_villager": int(produced.get("rate_per_villager", 1)),
@@ -407,15 +418,17 @@ func _default_setup() -> Dictionary:
 			"wave_clear_wood": 8,
 			"wave_clear_gold": 14,
 		},
-		"spawns": [[8, 0], [9, 0], [10, 0], [11, 0], [12, 0]],
+		"spawns": [[9, 0], [10, 0], [11, 0]],
+		"spawn_rects": _Plan.default_rects(),
 		"starter_buildings": [],
 		"starter_units": [],
+		"starter_props": [],
 	}
 
 func _overlay_setup(doc: Dictionary) -> void:
 	if doc.is_empty():
 		return
-	for key in ["config_version", "difficulty_id", "presets", "settlement", "combat", "economy", "spawns", "starter_buildings", "starter_units", "slots", "lumber", "waves", "units", "enemies", "buildings"]:
+	for key in ["config_version", "difficulty_id", "presets", "settlement", "combat", "economy", "spawns", "spawn_rects", "starter_buildings", "starter_units", "starter_props", "slots", "lumber", "waves", "units", "enemies", "buildings"]:
 		if doc.has(key):
 			_setup[key] = doc[key]
 	_normalize_setup()
@@ -448,6 +461,19 @@ func _normalize_setup() -> void:
 	if not (_setup.presets as Dictionary).has(id):
 		id = "normal"
 	_setup["difficulty_id"] = id
+	var layout: Dictionary = _Plan.resolve_layout(_setup.get("spawn_rects", []), _setup.get("spawns", []))
+	_setup["spawn_rects"] = layout.get("spawn_rects", [])
+	_setup["spawns"] = layout.get("spawns", [])
+	var blocked: Dictionary = _Plan.spawn_lookup(_setup["spawn_rects"])
+	_setup["starter_buildings"] = _Plan.clean_placed(_setup.get("starter_buildings", []), "kind", _Plan.build_ids(), blocked)
+	_setup["starter_units"] = _Plan.clean_placed(_setup.get("starter_units", []), "unit", _Plan.unit_ids(), blocked)
+	for item in _setup["starter_buildings"]:
+		if item is Dictionary:
+			blocked[_Plan._cell_from(item)] = true
+	for item in _setup["starter_units"]:
+		if item is Dictionary:
+			blocked[_Plan._cell_from(item)] = true
+	_setup["starter_props"] = _Plan.clean_props(_setup.get("starter_props", []), blocked)
 
 func _apply_setup_stats() -> void:
 	var unit_patch = _setup.get("units", {})
@@ -544,6 +570,15 @@ func _upgrade_user_setup(shipped: Dictionary) -> bool:
 		if str(key) == "config_version" or str(key) == "_comment":
 			continue
 		merged[key] = user[key]
+	if local_v < 2 and not user.has("spawn_rects"):
+		var source = user.get("spawns", [])
+		if source is Array and not source.is_empty():
+			var derived: Array = _Plan.rects_from_cells(source)
+			if not derived.is_empty():
+				merged["spawn_rects"] = derived
+				merged["spawns"] = _Plan.cells_from_rects(derived)
+	if not merged.has("starter_props"):
+		merged["starter_props"] = []
 	merged["config_version"] = _shipped_version
 	_write_user_setup(merged)
 	return true

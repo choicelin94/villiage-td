@@ -5,7 +5,7 @@ const ROWS := 20
 const TILE := Vector2i(128, 128)
 const HEART := Vector2i(10, 14)
 const DEFAULT_SPAWNS: Array[Vector2i] = [
-	Vector2i(8, 0), Vector2i(9, 0), Vector2i(10, 0), Vector2i(11, 0), Vector2i(12, 0)
+	Vector2i(9, 0), Vector2i(10, 0), Vector2i(11, 0)
 ]
 var spawns: Array[Vector2i] = []
 const DIRS: Array[Vector2i] = [
@@ -288,17 +288,11 @@ func _build_world() -> void:
 	add_child(fx)
 
 func _paint_map() -> void:
-	for y in ROWS:
-		for x in COLS:
-			var cell := Vector2i(x, y)
-			if _is_border(cell) and not _is_spawn(cell):
-				scenery[cell] = true
-	for rock_cell in [Vector2i(4, 8), Vector2i(16, 8), Vector2i(4, 16), Vector2i(16, 16)]:
-		scenery[rock_cell] = true
-	var trail := {}
-	for spawn in spawns:
-		for cell in _astar(spawn, HEART).path:
-			trail[cell] = true
+	var spawn_lookup := {}
+	for cell in spawns:
+		spawn_lookup[cell] = true
+	scenery = MapPlan.scenery_cells(spawn_lookup, Balance.starter_props())
+	var trail := MapPlan.road_cells(scenery, spawns)
 	for y in ROWS:
 		for x in COLS:
 			var cell := Vector2i(x, y)
@@ -306,21 +300,35 @@ func _paint_map() -> void:
 			if trail.has(cell) and not scenery.has(cell):
 				source = 2
 			ground.set_cell(cell, source, Vector2i.ZERO)
-	for rock_cell in [Vector2i(4, 8), Vector2i(16, 8), Vector2i(4, 16), Vector2i(16, 16)]:
+	for rock_cell in MapPlan.ROCKS:
 		_place_prop(rock_cell, load("res://assets/village/rock.png"), "rock")
+	var trees := [
+		"res://assets/village/tree.png",
+		"res://assets/village/tree_b.png",
+		"res://assets/village/tree_c.png",
+	]
 	for y in ROWS:
 		for x in COLS:
 			var cell := Vector2i(x, y)
-			if not scenery.has(cell) or _is_spawn(cell):
+			if not scenery.has(cell) or _is_spawn(cell) or MapPlan.is_fixed_rock(cell):
 				continue
 			if not _is_border(cell):
 				continue
-			var trees := [
-				"res://assets/village/tree.png",
-				"res://assets/village/tree_b.png",
-				"res://assets/village/tree_c.png",
-			]
 			_place_prop(cell, load(trees[(x + y) % trees.size()]), "tree")
+	for item in Balance.starter_props():
+		if not (item is Dictionary):
+			continue
+		var raw = item.get("cell", [])
+		if not (raw is Array) or raw.size() < 2:
+			continue
+		var cell := Vector2i(int(raw[0]), int(raw[1]))
+		if not scenery.has(cell) or _is_spawn(cell) or _is_border(cell) or MapPlan.is_fixed_rock(cell):
+			continue
+		var kind := str(item.get("kind", "tree"))
+		if kind == "rock":
+			_place_prop(cell, load("res://assets/village/rock.png"), "rock")
+		else:
+			_place_prop(cell, load(trees[(cell.x + cell.y) % trees.size()]), "tree")
 	_invalidate_props()
 
 func _place_starter() -> void:
@@ -1482,6 +1490,14 @@ func _balance_probe() -> int:
 		failed = true
 	if absf(float(Balance.settlement().get("chance", 0.0)) - 0.65) > 0.001 or int(Balance.settlement().get("max_per_wave", 0)) != 3:
 		failed = true
+	var rects := Balance.spawn_rects()
+	var gate: Dictionary = rects[0] if rects.size() == 1 and rects[0] is Dictionary else {}
+	var mid = gate.get("middle", [])
+	var gate_ok: bool = str(gate.get("edge", "")) == "north" and mid is Array and mid.size() >= 2 and int(mid[0]) == 10 and int(mid[1]) == 0
+	if not gate_ok or Balance.spawns().size() != 3 or spawns.size() != 3:
+		failed = true
+	if not _is_spawn(Vector2i(9, 0)) or not _is_spawn(Vector2i(10, 0)) or not _is_spawn(Vector2i(11, 0)) or _is_spawn(Vector2i(8, 0)):
+		failed = true
 	var spear_slots: Dictionary = Balance.building("spear_barracks").get("provides", {})
 	var gun_slots: Dictionary = Balance.building("gun_barracks").get("provides", {})
 	var shop_slots: Dictionary = Balance.building("workshop").get("provides", {})
@@ -1560,7 +1576,7 @@ func _balance_probe() -> int:
 		Balance.reload()
 		if Balance.difficulty_id() != "normal" or Balance.config_version() < 1:
 			failed = true
-	print("BALANCE units=", units, " enemies=", enemies, " buildings=", buildings_ids)
+	print("BALANCE units=", units, " enemies=", enemies, " buildings=", buildings_ids, " spawns=", Balance.spawns(), " rects=", Balance.spawn_rects().size())
 	print("BALANCE dmg=", Balance.damage(24.0, 0.0), "/", Balance.damage(22.5, 0.0), " beds=", _bed_cap(), " bonus=", tower_bonus(), " shots=", shots, " boss=", Balance.scaled_enemy("shooter_boss", 9).hp, " normal_hp=", normal.hp)
 	print("BALANCE_OK" if not failed else "BALANCE_FAIL")
 	return 0 if not failed else 1

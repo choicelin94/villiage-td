@@ -36,7 +36,7 @@ scenes/main.tscn
     scripts/depth_solver.gd 两段排序
 scenes/depth_lab.tscn      景深试验。只留网页深链 docs/depth-lab/，工作台不再进入
 scenes/depth_stress.tscn   压力页。只留网页深链 docs/stress/，工作台不再进入
-scenes/workbench.tscn      工作台。编辑难度、数值、初始地图、刷怪点和开局人口，写入 user://setup.json
+scenes/workbench.tscn      工作台。编辑难度、数值、初始地图、出怪长方形和开局站位，写入 user://setup.json
 ```
 
 `Balance` 在启动时加载 `data/units.json`、`data/enemies.json`、`data/buildings.json`，再叠 `data/setup.json` 和本机 `user://setup.json`。伤害是 `max(1, round(attack * 100 / (100 + defense)))`。工坊的 `tower_damage` 先乘在攻击上，再对每个目标套一次这个公式。村民被感染仍是接触，不走这个公式。击杀只加 `gold_reward`，`wood_reward` 读入后强制为 0。
@@ -67,7 +67,7 @@ scenes/workbench.tscn      工作台。编辑难度、数值、初始地图、�
 | `data/units.json` | 会。`scripts/balance.gd` | 会 |
 | `data/enemies.json` | 会。`scripts/balance.gd`，含波次表 | 会 |
 | `data/buildings.json` | 会。`scripts/balance.gd` | 会 |
-| `data/setup.json` | 会。难度、清波入驻、锁敌、经济、刷怪点、开局人口。`config_version` 给出厂版本 | 会。刷新时用来比对本地配置 |
+| `data/setup.json` | 会。难度、清波入驻、锁敌、经济、出怪长方形、开局建筑、开局站位、额外景物。`config_version` 给出厂版本 | 会。刷新时用来比对本地配置 |
 | `data/characters.json` | 会。`spine_actor.gd`。`Balance` 只用它把皮肤名换成图序号 | 会。用来裁第 0 帧 |
 | `data/iso_volumes.json` | 会。`iso_volume.gd` 读到就用 | 会。核对体积键还在 |
 | `assets/characters/*.png` | 会。路径写在 `characters.json` | 会 |
