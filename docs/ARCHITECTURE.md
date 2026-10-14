@@ -43,7 +43,7 @@ scenes/workbench.tscn      工作台。编辑难度、数值、初始地图、�
 
 塔立着就攻击，不用先派人。房屋的 `beds` / `provides.slots` 是村民空缺。矛兵营、枪兵营、工坊分别提供矛兵、枪兵、工兵空缺。木坊按驻守村民产木，`staff_slots` 默认 4，空坊为 0。农场按 `produces.rate` 在清波时加木材。工坊加成不叠加，取还立着的最高一座。`attack_speed` 是每秒攻击次数，冷却是 `1 / attack_speed`。
 
-本机配置带 `config_version`。打开图鉴或图鉴页点「刷新」时，若本地版本低于出厂 `data/setup.json`，先补上出厂字段并升版本，再刷新图鉴。图鉴不编辑数值。锁敌默认在 `setup.json` 的 `combat`：`target_hold` 1.2 秒、`switch_margin` 0.72、`repath` 0.6 秒、`stuck` 0.9 秒、`wander_hold` 2.4 秒、`panic_hold` 1.3 秒。清波入驻默认 `settlement.chance` 0.65、`max_per_wave` 3。
+本机配置带 `config_version`。打开玩法指南或页内点「刷新」时，若本地版本低于出厂 `data/setup.json`，先补上出厂字段并升版本，再刷新这一页。玩法指南不编辑数值。锁敌默认在 `setup.json` 的 `combat`：`target_hold` 1.2 秒、`switch_margin` 0.72、`repath` 0.6 秒、`stuck` 0.9 秒、`wander_hold` 2.4 秒、`panic_hold` 1.3 秒。清波入驻默认 `settlement.chance` 0.65、`max_per_wave` 3。
 
 `project.godot` 的主场景是 `scenes/main.tscn`，渲染器是 GL Compatibility。网页导出关闭了线程和 GDExtension。字体是 `assets/fonts/NotoSansSC-Regular.otf`。
 
@@ -53,10 +53,10 @@ scenes/workbench.tscn      工作台。编辑难度、数值、初始地图、�
 
 | 路径 | 内容 |
 | --- | --- |
-| `docs/index.html` | 游戏网页包。图鉴和工作台在游戏内右上角问号菜单，不在网页角上再挂按钮。 |
+| `docs/index.html` | 游戏网页包。玩法指南和工作台在游戏内右上角问号菜单，不在网页角上再挂按钮。 |
 | `docs/depth-lab/` | 跳到 `../index.html?lab=1` |
 | `docs/stress/` | 跳到 `../index.html?stress=300` |
-| `docs/codex/` | 图鉴。由 `tools/build_codex.py` 生成。 |
+| `docs/codex/` | 玩法指南。由 `tools/build_codex.py` 生成。首页是背景和玩法，资料卡片在后面。 |
 
 ## 配置和资源 / Config versus art
 
@@ -130,6 +130,6 @@ Godot **4.7.2** 的 Linux 编辑器压缩包在发布页上。配套的 export t
 godot --headless --path . --export-release "Web" docs/index.html
 ```
 
-导出预设 **Web** 写着默认路径 `build/web/index.html`，线程和 GDExtension 都是关的。上面的命令把结果直接写进 `docs/`。不要再往 `docs/index.html` 加左上角的景深、压力页、图鉴链接；这三项从游戏右上角的问号菜单进。
+导出预设 **Web** 写着默认路径 `build/web/index.html`，线程和 GDExtension 都是关的。上面的命令把结果直接写进 `docs/`。不要再往 `docs/index.html` 加左上角的景深、压力页、玩法指南链接；这三项从游戏右上角的问号菜单进。
 
 The 4.7.2 export templates are about 1.28 GB. CI deploys the committed web build and regenerates the codex. It does not run Godot. The codex and the workbench are opened from the in-game help menu, not from links pasted onto `docs/index.html`.

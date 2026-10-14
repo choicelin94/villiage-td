@@ -157,16 +157,19 @@ WAVE_GROUPS = (
         "缩放基准",
         (
             ("hp", "基准生命", "和第 1 波的生命比"),
-            ("speed", "基准移速", "还没乘 WORLD_SCALE"),
+            ("speed", "基准移速", "和第 1 波的移速比"),
             ("gap", "间隔", "出怪间隔，秒"),
         ),
     ),
 )
-WAVE_FOOTNOTE = (
-    "卡片上的生命和移速已经是第 1 波的世界单位。后面每一波按相对第 1 波的比例缩放："
+WAVE_PLAYER_NOTE = (
+    "卡片上的生命和移速是第 1 波的数值。后面每一波按相对第 1 波的比例变化。"
+    "被感染的村民是单独的一种敌人。"
+)
+WAVE_DEV_NOTE = (
     "生命取 round(卡片生命 × 本波基准生命 / 第 1 波基准生命)，"
     "移速取卡片移速 × 本波基准移速 / 第 1 波基准移速。"
-    "这里的基准移速还没有乘 WORLD_SCALE，它只用来算这个比例。"
+    "波次表里的基准移速还没有乘 WORLD_SCALE，它只用来算这个比例。"
     "被感染的村民是单独的 spear_infected，不再在普通僵尸上再乘 0.65。"
 )
 # Level-1 modules. Scenery stays its own module: those cards are props, not buildings.
@@ -174,7 +177,7 @@ CODEX_MODULES = (
     ("units", "角色", "村民、矛兵、枪兵和工兵都会出场。空缺由房屋、兵营和工坊决定，清波后按概率补上，不是把村民转成兵。"),
     ("enemies", "敌人", "卡片是第 1 波的世界单位。后面的波次在「波次」模块里按比例缩放。击杀只掉金币。"),
     ("buildings", "建筑", "塔立着就会攻击。房屋床位是村民空缺。矛兵营、枪兵营和工坊提供对应单位空缺。木坊按驻守村民产木材。"),
-    ("scenery", "场景", "树和岩石挡住建造。草地和道路是地面，不进图鉴。"),
+    ("scenery", "场景", "树和岩石挡住建造。草地和道路是地面，不会列在这里。"),
     ("waves", "波次", "十波都在这一页。点左侧条目，页面滚到那一波。"),
 )
 
@@ -415,7 +418,7 @@ def unit_card(entry: dict, skins: list, spawned: bool) -> dict:
     badge, tone = badge_for("live" if spawned else "configured")
     role = ROLE_ZH.get(entry["role"], entry["role"])
     stats = [
-        stat("职责", f"{role} · {entry['role']}"),
+        stat("职责", role),
         stat("生命", fmt_num(entry["hp"])),
         stat("防御", fmt_num(entry["defense"])),
         stat("攻击", fmt_num(entry["attack"])),
@@ -424,10 +427,15 @@ def unit_card(entry: dict, skins: list, spawned: bool) -> dict:
         stat("射程", fmt_distance(entry["attack_range"])),
         stat("费用", fmt_cost(entry["cost"])),
         stat("训练", "—" if float(entry["train_time"]) == 0 else f"{fmt_num(entry['train_time'])} 秒"),
-        stat("形象", entry["character"]),
-        stat("体积", entry["volume"]),
     ]
-    return card(entry, "units", badge, tone, stats, skins)
+    dev = [
+        f"英文名 {entry['name']['en']}",
+        f"id {entry['id']}",
+        f"职责键 {entry['role']}",
+        f"形象 {entry['character']}",
+        f"体积 {entry['volume']}",
+    ]
+    return card(entry, "units", badge, tone, stats, skins, dev)
 
 
 def enemy_card(entry: dict, skins: list) -> dict:
@@ -442,18 +450,20 @@ def enemy_card(entry: dict, skins: list) -> dict:
         stat("射程", fmt_distance(entry["attack_range"])),
         stat("体型", f"×{fmt_num(entry['scale'])}"),
         stat("赏金", f"{int(entry['gold_reward'])} 金"),
-        stat("木材", f"{int(entry['wood_reward'])} 木"),
     ]
+    if int(entry.get("wood_reward") or 0):
+        stats.append(stat("木材", f"{int(entry['wood_reward'])} 木"))
     if int(entry.get("xp_reward") or 0):
         stats.append(stat("经验", str(int(entry["xp_reward"]))))
-    stats.extend(
-        [
-            stat("标签", tags),
-            stat("形象", entry["character"]),
-            stat("体积", entry["volume"]),
-        ]
-    )
-    return card(entry, "enemies", badge, tone, stats, skins)
+    stats.append(stat("标签", tags))
+    dev = [
+        f"英文名 {entry['name']['en']}",
+        f"id {entry['id']}",
+        f"形象 {entry['character']}",
+        f"体积 {entry['volume']}",
+        f"标签键 {', '.join(str(tag) for tag in entry['tags'])}",
+    ]
+    return card(entry, "enemies", badge, tone, stats, skins, dev)
 
 
 def building_role(entry: dict, locale: dict) -> str:
@@ -478,7 +488,6 @@ def building_card(entry: dict, locale: dict) -> dict:
     badge, tone = badge_for("live")
     stats = [
         stat("类别", building_role(entry, locale)),
-        stat("种类", entry["kind"]),
         stat("生命", fmt_num(entry["hp"])),
         stat("防御", fmt_num(entry["defense"])),
         stat("费用", fmt_cost(entry["cost"])),
@@ -513,10 +522,15 @@ def building_card(entry: dict, locale: dict) -> dict:
         stats.append(stat("加成", f"塔攻击 ×{fmt_num(bonus['tower_damage'])}"))
     if int(entry.get("place_cap") or 0) > 0:
         stats.append(stat("上限", str(int(entry["place_cap"]))))
-    stats.append(stat("体积", entry["volume"]))
+    dev = [
+        f"英文名 {entry['name']['en']}",
+        f"id {entry['id']}",
+        f"种类 {entry['kind']}",
+        f"体积 {entry['volume']}",
+    ]
     portrait = THUMBS / f"{entry['id']}.png"
     save_thumb(Image.open(res_path(entry["tex"])), portrait)
-    return card(entry, "buildings", badge, tone, stats, [])
+    return card(entry, "buildings", badge, tone, stats, [], dev)
 
 
 def scenery_cards(building_names: set, volumes: dict) -> list:
@@ -535,16 +549,18 @@ def scenery_cards(building_names: set, volumes: dict) -> list:
         portrait = THUMBS / f"{sid}.png"
         save_thumb(Image.open(village / filename), portrait)
         entry = {"id": sid, "name": {"zh": zh, "en": en}, "note": note, "volume": volume}
-        stats = [
-            stat("体积", volume),
-            stat("贴图", filename),
-            stat("建造", "不能"),
+        stats = [stat("建造", "不能")]
+        dev = [
+            f"英文名 {en}",
+            f"id {sid}",
+            f"体积 {volume}",
+            f"贴图 {filename}",
         ]
-        cards.append(card(entry, "scenery", "挡建造", "scene", stats, []))
+        cards.append(card(entry, "scenery", "挡建造", "scene", stats, [], dev))
     return cards
 
 
-def card(entry: dict, section: str, badge: str, tone: str, stats: list, skins: list) -> dict:
+def card(entry: dict, section: str, badge: str, tone: str, stats: list, skins: list, dev: list | None = None) -> dict:
     shown = skins if len(skins) > 1 else []
     return {
         "id": entry["id"],
@@ -556,6 +572,7 @@ def card(entry: dict, section: str, badge: str, tone: str, stats: list, skins: l
         "badge_tone": tone,
         "stats": stats,
         "note": entry.get("note", ""),
+        "dev": list(dev or []),
         "skins": shown,
         "volume": entry.get("volume", ""),
     }
@@ -585,6 +602,7 @@ GLYPHS = {
     "buildings": '<path d="M4 11 12 4l8 7"/><path d="M6.5 10.5V20h11v-9.5"/><path d="M10 20v-5h4v5"/>',
     "scenery": '<path d="M12 21v-6"/><path d="M12 15c-4 .2-6.2-2.4-4.6-6 1.2-3.6 7.2-5 8.2-.4 1.6 3.4-.2 6.2-3.6 6.4z"/>',
     "waves": '<path d="M3 8c1.6 0 1.6 2.4 3.2 2.4S7.8 8 9.4 8s1.6 2.4 3.2 2.4 1.6-2.4 3.2-2.4 1.6 2.4 3.2 2.4 1.6-2.4 3.2-2.4"/><path d="M3 14.5c1.6 0 1.6 2.4 3.2 2.4s1.6-2.4 3.2-2.4 1.6 2.4 3.2 2.4 1.6-2.4 3.2-2.4 1.6 2.4 3.2 2.4 1.6-2.4 3.2-2.4"/>',
+    "home": '<path d="M5 5.5h9.2A2.8 2.8 0 0 1 17 8.3V19H8.2A3.2 3.2 0 0 0 5 15.8z"/><path d="M5 5.5A3.2 3.2 0 0 1 8.2 8.7H17"/><path d="M8.2 8.7v10.3"/>',
     "menu": '<path d="M4 7h16M4 12h16M4 17h10"/>',
     "close": '<path d="M6 6l12 12M18 6 6 18"/>',
 }
@@ -601,19 +619,13 @@ def glyph(name: str) -> str:
 
 def render_page(catalog: dict) -> str:
     shell, codex_css = build_codex_view(catalog)
-    counts = catalog["counts"]
-    total = sum(counts.values())
-    summary = (
-        f"{counts['units']} 个友方 · {counts['enemies']} 个敌人 · "
-        f"{counts['buildings']} 座建筑 · {counts['scenery']} 个场景"
-    )
     return f"""<!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>图鉴 · 部落村落塔防</title>
-<meta name="description" content="部落村落塔防的友方单位、敌人和建筑图鉴。">
+<title>玩法指南 · 部落村落塔防</title>
+<meta name="description" content="部落村落塔防的玩法指南：背景、操作、经济和开局建议。">
 <link rel="icon" href="thumbs/villager.png">
 <style>
 :root {{
@@ -720,6 +732,7 @@ tr + tr td, tr + tr th {{ border-top: 1px solid var(--line); }}
   background: var(--chip); border: 1px solid var(--line);
 }}
 footer {{ margin-bottom: 32px; color: var(--muted); font-size: 13px; }}
+footer .dev-notes {{ margin-top: 12px; }}
 .refresh-row {{ display: flex; align-items: center; gap: 12px; margin: 0 0 8px; flex-wrap: wrap; }}
 .refresh-row button {{
   font: inherit; font-size: 15px; color: var(--text); cursor: pointer;
@@ -741,8 +754,8 @@ a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
 <body>
 <header class="top">
   <p class="kicker">部落村落塔防</p>
-  <h1>图鉴</h1>
-  <p class="summary">{esc(summary)}，共 {total} 张。</p>
+  <h1>玩法指南</h1>
+  <p class="summary">守住十波尸潮。点选村民，把他们派进建筑，再把塔和墙立起来。</p>
   <p class="refresh-row">
     <button type="button" id="codex-refresh">刷新</button>
     <span id="codex-refresh-note"></span>
@@ -750,8 +763,12 @@ a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
 </header>
 {shell}
 <footer>
-  <p>头像是序列帧左上角第 0 帧，或建筑的俯视图，透明边已裁掉。数值来自 data/units.json、data/enemies.json、data/buildings.json，对局由 scripts/balance.gd 加载同一份。攻速是每秒攻击次数。伤害是 max(1, round(attack × 100 / (100 + defense)))。移速、射程、溅射和弹速是世界单位。卡片上的小数最多显示 4 位。</p>
-  <p>此页由 tools/build_codex.py 生成。改目录后重新运行脚本，再提交 docs/codex/。点「刷新」会读取 catalog.json 的 config_version。本地配置版本更低时，先用出厂配置补齐并升版本，再重新载入这一页。图鉴本身不编辑数值。</p>
+  <p>点「刷新」会读取 catalog.json 的 config_version。本地配置版本更低时，先用出厂配置补齐并升版本，再重新载入这一页。这一页不编辑数值。</p>
+  <details class="dev-notes">
+    <summary>开发备注</summary>
+    <p>头像是序列帧左上角第 0 帧，或建筑的俯视图，透明边已裁掉。数值来自 data/units.json、data/enemies.json、data/buildings.json，对局由 scripts/balance.gd 加载同一份。攻速是每秒攻击次数。伤害是 max(1, round(attack × 100 / (100 + defense)))。移速、射程、溅射和弹速是世界单位。卡片上的小数最多显示 4 位。</p>
+    <p>此页由 tools/build_codex.py 生成。改目录后重新运行脚本，再提交 docs/codex/。</p>
+  </details>
 </footer>
 <script>
 (function () {{
@@ -847,7 +864,7 @@ def _preview_html(item: dict) -> str:
     frames = []
     options = []
     for index, skin in enumerate(skins):
-        label = f"{zh} · {skin['name']}"
+        label = f"{zh}，外观 {index + 1}"
         checked = " checked" if index == primary else ""
         frames.append(
             f'<img class="skin-frame" src="{esc(skin["thumb"])}" alt="{esc(label)}">'
@@ -866,8 +883,36 @@ def _preview_html(item: dict) -> str:
     )
 
 
+def _player_note(note: str) -> bool:
+    """Chinese copy stays on the card. Formulas and English author notes do not."""
+    text = note.strip()
+    if not text or "WORLD_SCALE" in text:
+        return False
+    cjk = sum(1 for ch in text if "\u4e00" <= ch <= "\u9fff")
+    return cjk >= 4
+
+
+def _dev_block(lines: list) -> str:
+    cleaned = []
+    for line in lines:
+        text = str(line).strip()
+        if text and text not in cleaned:
+            cleaned.append(text)
+    if not cleaned:
+        return ""
+    body = "".join(f"<p>{esc(line)}</p>" for line in cleaned)
+    return f'<details class="dev-notes"><summary>开发备注</summary>{body}</details>'
+
+
 def _detail_panel(item: dict, section: str, item_id: str) -> str:
-    note = f'<p class="note">{esc(item["note"])}</p>' if item["note"] else ""
+    dev_lines = [str(line) for line in item.get("dev") or []]
+    note = str(item.get("note") or "").strip()
+    player = ""
+    if note:
+        if _player_note(note):
+            player = f'<p class="note">{esc(note)}</p>'
+        else:
+            dev_lines.append(note)
     anchor = _anchor(section, item_id)
     return (
         f'<article class="item-panel" id="{esc(anchor)}" data-item="{esc(section)}-{esc(item_id)}">'
@@ -876,12 +921,11 @@ def _detail_panel(item: dict, section: str, item_id: str) -> str:
         '<div class="detail-copy">'
         '<div class="identity">'
         f'<h3>{esc(item["name_zh"])}</h3>'
-        f'<p class="en">{esc(item["name_en"])}</p>'
-        f'<p class="wid">{esc(item["id"])}</p>'
         f'<span class="badge {esc(item["badge_tone"])}">{esc(item["badge"])}</span>'
         "</div>"
         f'{_stat_tiles(item["stats"])}'
-        f"{note}</div></div></article>"
+        f'<div class="detail-extra">{player}{_dev_block(dev_lines)}</div>'
+        "</div></div></article>"
     )
 
 
@@ -952,6 +996,149 @@ def _mark_anchor(anchor: str) -> str:
     )
 
 
+def fmt_percent(value) -> str:
+    pct = float(value) * 100.0
+    nearest = round(pct)
+    if abs(pct - nearest) < 1e-6:
+        return f"{int(nearest)}%"
+    return f"{pct:.1f}%"
+
+
+def cn_count(number: int) -> str:
+    if number == 2:
+        return "两"
+    if 0 <= number <= 10:
+        return "零一二三四五六七八九十"[number]
+    return str(number)
+
+
+def _join_zh(parts: list) -> str:
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    return "、".join(parts[:-1]) + "和" + parts[-1]
+
+
+_OPENING_KINDS = (
+    ("HOUSE", "房屋"),
+    ("FARM", "农场"),
+    ("WORKSHOP", "工坊"),
+    ("LUMBER", "木坊"),
+    ("SPEAR", "矛塔"),
+    ("FIRE", "火塔"),
+    ("SPEAR_BARRACKS", "矛兵营"),
+    ("GUN_BARRACKS", "枪兵营"),
+    ("WALL", "木墙"),
+)
+_OPENING_UNITS = (
+    ("villager", "村民"),
+    ("spearman", "矛兵"),
+    ("gunner", "枪兵"),
+    ("engineer", "工兵"),
+)
+
+
+def _opening_roster(setup: dict) -> tuple:
+    buildings = setup.get("starter_buildings") or []
+    units = setup.get("starter_units") or []
+    kinds = {}
+    for item in buildings:
+        kind = str(item.get("kind", ""))
+        kinds[kind] = kinds.get(kind, 0) + 1
+    people = {}
+    for item in units:
+        unit_id = str(item.get("unit", "villager"))
+        people[unit_id] = people.get(unit_id, 0) + 1
+    person_bits = [
+        f"{cn_count(people[unit_id])}名{label}"
+        for unit_id, label in _OPENING_UNITS
+        if people.get(unit_id)
+    ]
+    place_bits = [
+        f"{cn_count(kinds[kind])}座{label}"
+        for kind, label in _OPENING_KINDS
+        if kinds.get(kind)
+    ]
+    who = _join_zh(person_bits)
+    where = _join_zh(place_bits)
+    if who and where:
+        roster = f"{who}，场上已经有{where}"
+    else:
+        roster = who or where or "一座还空着的村子"
+    return roster, kinds
+
+
+def _early_waves(waves: list) -> tuple:
+    first = waves[0]
+    second = waves[1] if len(waves) > 1 else {}
+    if int(first.get("fast", 0)) == 0 and int(first.get("elite", 0)) == 0 and int(first.get("boss", 0)) == 0:
+        opening = f"第一波只有{cn_count(int(first['normal']))}只持矛的普通僵尸，先别急着铺兵营。"
+    else:
+        opening = "第一波先看清来的是哪一种，先别急着铺兵营。"
+    if int(second.get("fast", 0)) > 0:
+        later = "第二波会混进跑得更快的僵尸，塔的位置比多盖一间空房子要紧。"
+    else:
+        later = "后面的波次会更密，塔的位置比多盖一间空房子要紧。"
+    return opening, later
+
+
+def render_home(catalog: dict) -> str:
+    economy = catalog["economy"]
+    roster, kinds = _opening_roster(catalog.get("setup") or {})
+    first_line, later_line = _early_waves(catalog["waves"])
+    if kinds.get("LUMBER"):
+        mill = "先把村民派进木坊，木材才会转起来。"
+    else:
+        mill = "先盖一座木坊，把村民派进去，木材才会转起来。"
+    if kinds.get("FARM"):
+        farm = "农场清完一波就给木材，可以再补一座，但别把木坊里的人全抽走。"
+    else:
+        farm = "再盖一座农场。它不用派人，清完一波就有木材，但别把木坊里的人全抽走。"
+    slots = int(economy["lumber_slots"])
+    interval = fmt_num(economy["lumber_interval"])
+    rate = fmt_num(economy["lumber_rate"])
+    farm_wood = fmt_num(economy["farm_wood"])
+    clear_wood = int(economy["wave_clear_wood"])
+    clear_gold = int(economy["wave_clear_gold"])
+    chance = fmt_percent(economy["settle_chance"])
+    settle_max = int(economy["settle_max"])
+    tower = fmt_num(economy["workshop_tower_damage"])
+    return (
+        '<article class="guide-card" id="story">'
+        "<h3>背景故事</h3>"
+        "<p>山坳里的村子本来只听见木杵和鸡叫。北坡那条路是猎人和换粮的人走的，一入秋就该安静。今年雾先贴着林线停了几天，雾里随后有了脚步，一下一下，不赶路，也不停。</p>"
+        "<p>先到的是持矛的尸群。它们还握得住杆，却已经不记得自己是谁。跑在前面的更瘦，咬得也更急。再往后，林子里钻出扛枪的哥布林，个子高，走得慢，到了跟前还是用牙。部落把这些一拨一拨涌来的东西都叫做尸潮。它们从北面几块空地里出来，一波接一波。</p>"
+        "<p>村子没有城。挡在前面的是木桩、矛塔，还有还热着的火。村民挨上一口，就会变成新的尸。矛兵、枪兵和工兵不是把邻居临时改行，而是清完一波之后，顺着空出来的铺位自己走进来的人。房子空着，人才有地方落脚。</p>"
+        "<p>十波过去，北路才会重新安静。在那之前，木材要有人去砍，塔立着就自己开火，墙要立在它们必经的格子上。人还在，村子就还在。</p>"
+        "</article>"
+        '<article class="guide-card" id="howto">'
+        "<h3>玩法简介</h3>"
+        "<h4>目标</h4>"
+        "<p>守住十波。村民被感染光了，村落就算陷落；第十波清掉，尸潮退去。僵尸碰到村民就会感染，被感染的人会加入尸群。矛兵、枪兵和工兵则是打到生命耗尽才倒下。</p>"
+        "<h4>操作</h4>"
+        "<p>村民平时会自己在村子里走动。点一个村民，他就被选中；再点房屋、木坊或其他能进人的建筑，他会走进去。木墙不收人。矛兵、枪兵和工兵留在场上自己作战，收不进建筑。点一块空地，右侧会列出可以盖的东西。按住画面拖动可以移动视野，滚轮可以缩放。这一波准备好了，再点开始。</p>"
+        "<h4>经济</h4>"
+        "<p>击杀只掉金币，不掉木材。木材主要靠木坊：派村民驻守，最多 "
+        f"{slots} 人。备战和战斗的时候，每 {interval} 秒，每名村民产 {rate} 木。一个人都不派，木坊就什么都不产。"
+        f"农场不用派人，每清完一波，每座农场额外 +{farm_wood} 木。清波时还会再给 {clear_wood} 木和 {clear_gold} 金。</p>"
+        "<h4>人口与空缺</h4>"
+        "<p>房屋的床位是村民空缺。矛兵营、枪兵营和工坊分别提供矛兵、枪兵和工兵的空缺。建筑盖下去不会马上加人。"
+        f"房屋、兵营和工坊各自算一类。清完一波，某一类还有空位，就有 {chance} 的机会补进新人，"
+        f"这一类一次是 1 到 {settle_max} 人，也不会超过剩下的空位。这不是把现有的村民改成兵。</p>"
+        "<h4>塔</h4>"
+        f"<p>矛塔和火塔只要还立着就会自己攻击，不用派人。工坊会把塔的攻击提高到 {tower} 倍。"
+        "场上有好几座工坊时，只取最高的一座，不会叠在一起。</p>"
+        '<h4 id="opening">新手开局建议</h4>'
+        '<div class="advice">'
+        f"<p>开局有{roster}。{first_line}{mill}{farm}</p>"
+        f"<p>墙用来把尸潮引到塔前面。{later_line}金币和木材都有了，再盖矛兵营或枪兵营，给后面的波次留出空缺。村民别往尸群里送，挨上一口就会被感染。</p>"
+        "</div>"
+        "<p>单位、敌人、建筑、挡路的树和岩石，以及十波的数字，都收在左侧「资料」里。</p>"
+        "</article>"
+    )
+
+
 def build_codex_view(catalog: dict) -> tuple:
     """Left rail: module icons, then anchors into that module's page.
 
@@ -963,21 +1150,23 @@ def build_codex_view(catalog: dict) -> tuple:
     if NARROW_MQ not in CODEX_LAYOUT_CSS:
         die("layout CSS is missing the drawer breakpoint")
     _wave_columns()
-    modules = []
+    modules = [("home", "首页", "先看村子从哪来，再看这一局怎么打。", None)]
     for key, title, blurb in CODEX_MODULES:
         items = catalog["waves"] if key == "waves" else catalog["sections"][key]
         modules.append((key, title, blurb, items))
 
-    module_btns = []
+    guide_btns = []
+    data_btns = []
     item_navs = []
     sections = []
     rules = []
     for index, (key, title, blurb, items) in enumerate(modules):
         checked = " checked" if index == 0 else ""
-        module_btns.append(
+        button = (
             _icon_toggle(f"sec-{key}", title, key, "mod-btn", checked, "codex-sec")
             .replace("</label>", f"<span>{esc(title)}</span></label>", 1)
         )
+        (guide_btns if key == "home" else data_btns).append(button)
         links = []
         panels = []
         rules.append(
@@ -986,7 +1175,17 @@ def build_codex_view(catalog: dict) -> tuple:
         rules.append(
             f'.codex:has(#sec-{key}:checked) .codex-section[data-section="{key}"] {{ display: block; }}'
         )
-        if key == "waves":
+        if key == "home":
+            for anchor, label in (("story", "背景故事"), ("howto", "玩法简介"), ("opening", "新手开局")):
+                links.append(
+                    f'<a class="item-link plain" href="#{anchor}" title="{label}">'
+                    f"<span>{label}</span></a>"
+                )
+                rules.append(_mark_anchor(anchor))
+            panels.append(render_home(catalog))
+            extra = ""
+            eyebrow = ""
+        elif key == "waves":
             ref = items[0]
             for row in items:
                 number = int(row["wave"])
@@ -1001,7 +1200,11 @@ def build_codex_view(catalog: dict) -> tuple:
                     f'.codex:has(#{anchor}:target) a[href="#{anchor}"] .wave-mark '
                     "{ background: var(--bg); color: var(--text); }"
                 )
-            extra = f'<p class="footnote">{esc(WAVE_FOOTNOTE)}</p>'
+            extra = (
+                f'<p class="footnote">{esc(WAVE_PLAYER_NOTE)}</p>'
+                f"{_dev_block([WAVE_DEV_NOTE])}"
+            )
+            eyebrow = '<p class="eyebrow">资料</p>'
         else:
             for item in items:
                 item_id = str(item["id"])
@@ -1014,12 +1217,13 @@ def build_codex_view(catalog: dict) -> tuple:
                 panels.append(_detail_panel(item, key, item_id))
                 rules.append(_mark_anchor(anchor))
             extra = render_economy(catalog["economy"]) if key == "buildings" else ""
+            eyebrow = '<p class="eyebrow">资料</p>'
         item_navs.append(
             f'<div class="item-nav" data-for="{esc(key)}">{"".join(links)}</div>'
         )
         sections.append(
             f'<section class="codex-section" id="{esc(key)}" data-section="{esc(key)}">'
-            f"<header><h2>{esc(title)}</h2><p>{esc(blurb)}</p></header>"
+            f"<header>{eyebrow}<h2>{esc(title)}</h2><p>{esc(blurb)}</p></header>"
             f'{"".join(panels)}{extra}</section>'
         )
     shell = (
@@ -1027,14 +1231,16 @@ def build_codex_view(catalog: dict) -> tuple:
         '<input class="codex-drawer" type="checkbox" id="codex-drawer" aria-label="打开目录">'
         '<div class="codex-shell">'
         '<label class="codex-backdrop" for="codex-drawer" aria-hidden="true"></label>'
-        '<aside class="codex-aside" aria-label="图鉴目录">'
+        '<aside class="codex-aside" aria-label="玩法指南目录">'
         '<div class="drawer-bar">'
         '<p class="rail-kicker">目录</p>'
         '<label class="drawer-close" for="codex-drawer" title="关闭">'
         f'<span class="sr">关闭</span>{glyph("close")}</label>'
         "</div>"
-        '<div class="rail-block"><p class="rail-kicker">模块</p>'
-        f'<div class="mod-row">{"".join(module_btns)}</div></div>'
+        '<div class="rail-block"><p class="rail-kicker">指南</p>'
+        f'<div class="mod-row">{"".join(guide_btns)}</div></div>'
+        '<div class="rail-block"><p class="rail-kicker">资料</p>'
+        f'<div class="mod-row">{"".join(data_btns)}</div></div>'
         '<div class="rail-block"><p class="rail-kicker">条目</p>'
         f'{"".join(item_navs)}</div>'
         "</aside>"
@@ -1149,9 +1355,30 @@ CODEX_LAYOUT_CSS = """
 .codex-section > header h2 {
   margin: 0; font-size: clamp(28px, 2.4vw, 36px); line-height: 1.15;
 }
+.eyebrow {
+  margin: 0 0 4px; color: var(--gold); font-size: 12px; letter-spacing: .12em;
+}
 .codex-section > header p {
   margin: 8px 0 16px; max-width: 68ch; color: var(--muted);
 }
+.guide-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: var(--shadow); padding: 18px 20px 6px; scroll-margin-top: 16px;
+}
+.guide-card + .guide-card { margin-top: 16px; }
+.guide-card h3 { margin: 0 0 10px; font-size: 22px; }
+.guide-card h4 { margin: 18px 0 6px; font-size: 17px; scroll-margin-top: 16px; }
+.guide-card p { margin: 0 0 12px; max-width: 68ch; }
+.guide-card .advice {
+  margin: 8px 0 16px; padding: 12px 14px; border-radius: 14px;
+  background: var(--chip); border: 1px solid var(--line);
+}
+.guide-card .advice p:last-child { margin-bottom: 0; }
+.item-link.plain { padding-left: 12px; }
+.dev-notes { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.dev-notes summary { cursor: pointer; color: var(--gold); }
+.dev-notes summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.dev-notes p { margin: 8px 0 0; max-width: 68ch; }
 .codex .item-panel { padding: 16px; }
 .item-panel { scroll-margin-top: 16px; }
 .item-panel + .item-panel { margin-top: 16px; }
@@ -1225,7 +1452,7 @@ dl.card-stats {
     border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--text);
     box-shadow: var(--shadow);
   }
-  .item-panel { scroll-margin-top: 88px; }
+  .item-panel, .guide-card, .guide-card h4 { scroll-margin-top: 88px; }
   .drawer-bar {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     position: sticky; top: 0; z-index: 2;
@@ -1287,6 +1514,7 @@ dl.card-stats {
   .skins { grid-area: skins; justify-content: flex-start; width: auto; gap: 10px; }
   .detail .card-stats { grid-area: stats; margin: 0; }
   .detail .note { grid-area: note; margin: 0; }
+  .detail-extra { grid-area: note; min-width: 0; }
   .skin-opt { width: 48px; height: 48px; flex-basis: 48px; }
   .skin-opt img { width: 34px; height: 34px; }
   dl.card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -1382,6 +1610,16 @@ def _check_skin_switcher(html: str) -> None:
         die("codex page needs a 刷新 button")
     if "vtd.setup" not in html or "config_version" not in html:
         die("codex refresh must compare the local config version")
+    for needle in ("玩法指南", "背景故事", "玩法简介", "新手开局建议", "开发备注", "资料"):
+        if needle not in html:
+            die(f"player guide is missing {needle}")
+    if "<h1>图鉴</h1>" in html or "<title>图鉴" in html or "图鉴" in html:
+        die("player page should not say 图鉴")
+    if 'id="sec-home" name="codex-sec" checked' not in html:
+        die("首页 should be the default section")
+    visible = re.sub(r"<details\b[^>]*>.*?</details>", "", html, flags=re.S)
+    if "WORLD_SCALE" in visible or "max(1, round" in visible:
+        die("developer formulas must stay inside 开发备注")
 
 
 def main() -> None:
