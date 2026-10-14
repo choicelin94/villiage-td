@@ -1,0 +1,11 @@
+{
+  "config_version": 2,
+  "files": [
+    {"path": "balance/units.json", "role": "balance", "schema": "schema/units.schema.json"},
+    {"path": "balance/enemies.json", "role": "balance", "schema": "schema/enemies.schema.json"},
+    {"path": "balance/buildings.json", "role": "balance", "schema": "schema/buildings.schema.json"},
+    {"path": "layout/setup.json", "role": "layout", "schema": "schema/setup.schema.json"},
+    {"path": "presentation/characters.json", "role": "presentation", "schema": "schema/characters.schema.json"},
+    {"path": "presentation/volumes.json", "role": "presentation", "schema": "schema/volumes.schema.json"}
+  ]
+}

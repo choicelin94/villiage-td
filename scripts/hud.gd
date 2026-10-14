@@ -54,7 +54,7 @@ var _ground_open := false
 var _inspected: Building = null
 
 func _ready() -> void:
-	_font = load("res://assets/fonts/NotoSansSC-Regular.otf")
+	_font = CatalogPaths.load_font()
 	layer = 10
 	_theme = Theme.new()
 	_theme.default_font = _font

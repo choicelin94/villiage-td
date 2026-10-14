@@ -6,8 +6,9 @@ Run from anywhere:
     python3 tools/build_codex.py
 
 Requires Pillow. Writes docs/codex/index.html, catalog.json, and thumbs/.
-Stats come from data/units.json, data/enemies.json, and data/buildings.json,
+Stats come from config/balance/units.json, enemies.json, and buildings.json,
 the same files scripts/balance.gd reads. Names come from scripts/locale.gd.
+Missing config files fall back to the old data/ paths.
 """
 
 from __future__ import annotations
@@ -195,13 +196,32 @@ def load_json(path: Path):
         die(f"{path.relative_to(ROOT)} is not valid JSON ({exc})")
 
 
+def catalog_file(modern: str, legacy: str) -> Path:
+    primary = ROOT / modern
+    if primary.is_file():
+        return primary
+    old = ROOT / legacy
+    if old.is_file():
+        return old
+    die(f"missing {modern}")
+
+
 def res_path(res: str) -> Path:
     if not str(res).startswith("res://"):
         die(f"expected a res:// path, got {res}")
-    path = ROOT / str(res)[len("res://") :]
-    if not path.is_file():
-        die(f"missing file for {res}")
-    return path
+    rel = str(res)[len("res://") :]
+    path = ROOT / rel
+    if path.is_file():
+        return path
+    if rel.startswith("art/"):
+        alt = ROOT / "assets" / rel[len("art/") :]
+        if alt.is_file():
+            return alt
+    if rel.startswith("assets/"):
+        alt = ROOT / "art" / rel[len("assets/") :]
+        if alt.is_file():
+            return alt
+    die(f"missing file for {res}")
 
 
 def require_fields(entry: dict, fields: tuple, label: str) -> None:
@@ -534,7 +554,9 @@ def building_card(entry: dict, locale: dict) -> dict:
 
 
 def scenery_cards(building_names: set, volumes: dict) -> list:
-    village = ROOT / "assets" / "village"
+    village = ROOT / "art" / "village"
+    if not village.is_dir():
+        village = ROOT / "assets" / "village"
     pngs = {path.name for path in village.glob("*.png")}
     props = pngs - GROUND_TILES - building_names
     if props != set(SCENERY_LABELS):
@@ -766,7 +788,7 @@ a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
   <p>点「刷新」会读取 catalog.json 的 config_version。本地配置版本更低时，先用出厂配置补齐并升版本，再重新载入这一页。这一页不编辑数值。</p>
   <details class="dev-notes">
     <summary>开发备注</summary>
-    <p>头像是序列帧左上角第 0 帧，或建筑的俯视图，透明边已裁掉。数值来自 data/units.json、data/enemies.json、data/buildings.json，对局由 scripts/balance.gd 加载同一份。攻速是每秒攻击次数。伤害是 max(1, round(attack × 100 / (100 + defense)))。移速、射程、溅射和弹速是世界单位。卡片上的小数最多显示 4 位。</p>
+    <p>头像是序列帧左上角第 0 帧，或建筑的俯视图，透明边已裁掉。数值来自 config/balance/units.json、config/balance/enemies.json、config/balance/buildings.json，对局由 scripts/balance.gd 加载同一份。攻速是每秒攻击次数。伤害是 max(1, round(attack × 100 / (100 + defense)))。移速、射程、溅射和弹速是世界单位。卡片上的小数最多显示 4 位。</p>
     <p>此页由 tools/build_codex.py 生成。改目录后重新运行脚本，再提交 docs/codex/。</p>
   </details>
 </footer>
@@ -1665,7 +1687,7 @@ def economy_from(main_gd: str, buildings: list, setup: dict) -> dict:
     if mill_out.get("mode") != "staff" or mill_out.get("rate_per_villager") is None:
         die("lumber_mill.produces must be mode staff with rate_per_villager")
     if "chance" not in settle or "max_per_wave" not in settle:
-        die("data/setup.json settlement needs chance and max_per_wave")
+        die("config/layout/setup.json settlement needs chance and max_per_wave")
     return {
         "wave_clear_wood": int(wood),
         "wave_clear_gold": int(gold),
@@ -1714,17 +1736,22 @@ def _check_skin_switcher(html: str) -> None:
 
 
 def main() -> None:
-    units_doc = load_json(ROOT / "data" / "units.json")
-    enemies_doc = load_json(ROOT / "data" / "enemies.json")
-    buildings_doc = load_json(ROOT / "data" / "buildings.json")
-    characters = load_json(ROOT / "data" / "characters.json")
-    volumes = load_json(ROOT / "data" / "iso_volumes.json")
+    units_doc = load_json(catalog_file("config/balance/units.json", "data/units.json"))
+    enemies_doc = load_json(catalog_file("config/balance/enemies.json", "data/enemies.json"))
+    buildings_doc = load_json(catalog_file("config/balance/buildings.json", "data/buildings.json"))
+    characters = load_json(catalog_file("config/presentation/characters.json", "data/characters.json"))
+    volumes = load_json(catalog_file("config/presentation/volumes.json", "data/iso_volumes.json"))
     main_gd = (ROOT / "scripts" / "main.gd").read_text(encoding="utf-8")
     building_gd = (ROOT / "scripts" / "building.gd").read_text(encoding="utf-8")
     balance_gd = (ROOT / "scripts" / "balance.gd").read_text(encoding="utf-8")
     locale = parse_locale((ROOT / "scripts" / "locale.gd").read_text(encoding="utf-8"))
 
-    for name in ("data/units.json", "data/enemies.json", "data/buildings.json", "data/setup.json"):
+    for name in (
+        "config/balance/units.json",
+        "config/balance/enemies.json",
+        "config/balance/buildings.json",
+        "config/layout/setup.json",
+    ):
         if name not in balance_gd:
             die(f"scripts/balance.gd no longer loads {name}")
     if PEOPLE_VOLUME not in volumes:
@@ -1761,9 +1788,9 @@ def main() -> None:
         missing = [name for name in WAVE_FIELDS if name not in wave]
         if missing:
             die(f"wave {index} missing {', '.join(missing)}")
-    setup = load_json(ROOT / "data" / "setup.json")
+    setup = load_json(catalog_file("config/layout/setup.json", "data/setup.json"))
     if int(setup.get("config_version", 0)) < 1:
-        die("data/setup.json needs config_version")
+        die("config/layout/setup.json needs config_version")
     economy = economy_from(main_gd, buildings, setup)
 
     if THUMBS.exists():

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "enemies.schema.json",
+  "type": "object",
+  "required": ["waves", "enemies"],
+  "properties": {
+    "_comment": {"type": "string"},
+    "waves": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["hp", "speed", "gap", "normal", "fast", "elite", "boss"],
+        "properties": {
+          "hp": {"type": "number", "exclusiveMinimum": 0},
+          "speed": {"type": "number", "exclusiveMinimum": 0},
+          "gap": {"type": "number", "exclusiveMinimum": 0},
+          "normal": {"type": "integer", "minimum": 0},
+          "fast": {"type": "integer", "minimum": 0},
+          "elite": {"type": "integer", "minimum": 0},
+          "boss": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "enemies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "display_key", "character", "hp", "defense", "attack", "attack_speed", "move_speed", "attack_range", "scale", "gold_reward", "wood_reward", "tags"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "display_key": {"type": "string"},
+          "character": {"type": "string"},
+          "hp": {"type": "number", "exclusiveMinimum": 0},
+          "defense": {"type": "number", "minimum": 0},
+          "attack": {"type": "number", "minimum": 0},
+          "attack_speed": {"type": "number", "exclusiveMinimum": 0},
+          "move_speed": {"type": "number", "minimum": 0},
+          "attack_range": {"type": "number", "minimum": 0},
+          "scale": {"type": "number", "exclusiveMinimum": 0},
+          "gold_reward": {"type": "number", "minimum": 0},
+          "wood_reward": {"type": "number", "minimum": 0},
+          "xp_reward": {"type": "number", "minimum": 0},
+          "tags": {"type": "array", "items": {"type": "string"}},
+          "notes": {"type": "string"}
+        }
+      }
+    }
+  }
+}

@@ -448,7 +448,7 @@ dl.card-stats {
   <p>点「刷新」会读取 catalog.json 的 config_version。本地配置版本更低时，先用出厂配置补齐并升版本，再重新载入这一页。这一页不编辑数值。</p>
   <details class="dev-notes">
     <summary>开发备注</summary>
-    <p>头像是序列帧左上角第 0 帧，或建筑的俯视图，透明边已裁掉。数值来自 data/units.json、data/enemies.json、data/buildings.json，对局由 scripts/balance.gd 加载同一份。攻速是每秒攻击次数。伤害是 max(1, round(attack × 100 / (100 + defense)))。移速、射程、溅射和弹速是世界单位。卡片上的小数最多显示 4 位。</p>
+    <p>头像是序列帧左上角第 0 帧，或建筑的俯视图，透明边已裁掉。数值来自 config/balance/units.json、config/balance/enemies.json、config/balance/buildings.json，对局由 scripts/balance.gd 加载同一份。攻速是每秒攻击次数。伤害是 max(1, round(attack × 100 / (100 + defense)))。移速、射程、溅射和弹速是世界单位。卡片上的小数最多显示 4 位。</p>
     <p>此页由 tools/build_codex.py 生成。改目录后重新运行脚本，再提交 docs/codex/。</p>
   </details>
 </footer>

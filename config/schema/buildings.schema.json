@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "buildings.schema.json",
+  "type": "object",
+  "required": ["buildings"],
+  "properties": {
+    "_comment": {"type": "string"},
+    "buildings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "kind", "category", "display_key", "tex", "hp", "defense", "can_attack", "cost"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "kind": {"type": "string"},
+          "category": {"enum": ["recruit", "production", "defense"]},
+          "display_key": {"type": "string"},
+          "tex": {"type": "string", "pattern": "^res://"},
+          "hp": {"type": "number", "exclusiveMinimum": 0},
+          "defense": {"type": "number", "minimum": 0},
+          "can_attack": {"type": "boolean"},
+          "attack": {"type": "number", "minimum": 0},
+          "attack_speed": {"type": "number", "minimum": 0},
+          "attack_range": {"type": "number", "minimum": 0},
+          "splash": {"type": "number", "minimum": 0},
+          "shot_speed": {"type": "number", "minimum": 0},
+          "cost": {
+            "type": "object",
+            "required": ["wood", "gold"],
+            "properties": {
+              "wood": {"type": "number", "minimum": 0},
+              "gold": {"type": "number", "minimum": 0}
+            }
+          },
+          "beds": {"type": "integer", "minimum": 0},
+          "staff_slots": {"type": "integer", "minimum": 0},
+          "place_cap": {"type": "integer", "minimum": 0},
+          "produces": {"type": ["object", "null"]},
+          "provides": {"type": "object"},
+          "bonus": {"type": "object"},
+          "recruits": {"type": "array", "items": {"type": "string"}},
+          "notes": {"type": "string"}
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {"can_attack": {"const": true}},
+              "required": ["can_attack"]
+            },
+            "then": {"required": ["attack", "attack_speed", "attack_range"]}
+          }
+        ]
+      }
+    }
+  }
+}

@@ -43,7 +43,7 @@ var hosted := false
 func _ready() -> void:
 	process_priority = 50
 	Engine.max_fps = 0
-	_font = load("res://assets/fonts/NotoSansSC-Regular.otf")
+	_font = CatalogPaths.load_font()
 	_web = OS.has_feature("web")
 	_check = not _web and not hosted
 	_n = int(Engine.get_meta("stress_n", 100))
@@ -261,7 +261,7 @@ func _build_ground() -> void:
 	tileset.tile_layout = TileSet.TILE_LAYOUT_STACKED
 	tileset.tile_size = TILE
 	var atlas := TileSetAtlasSource.new()
-	var tex: Texture2D = load("res://assets/village/grass_a.png")
+	var tex: Texture2D = CatalogPaths.load_tex("village/grass_a.png")
 	atlas.texture = tex
 	atlas.texture_region_size = Vector2i(tex.get_width(), tex.get_height())
 	atlas.create_tile(Vector2i.ZERO)
@@ -274,9 +274,9 @@ func _build_ground() -> void:
 
 func _build_props() -> void:
 	var trees := [
-		"res://assets/village/tree.png",
-		"res://assets/village/tree_b.png",
-		"res://assets/village/tree_c.png",
+		"res://art/village/tree.png",
+		"res://art/village/tree_b.png",
+		"res://art/village/tree_c.png",
 	]
 	var placed := 0
 	for y in range(1, ROWS - 1):
@@ -287,7 +287,7 @@ func _build_props() -> void:
 				_prop(cell, trees[placed % trees.size()], "tree")
 				placed += 1
 			elif h == 1:
-				_prop(cell, "res://assets/village/rock.png", "rock")
+				_prop(cell, "res://art/village/rock.png", "rock")
 			elif h == 2 and x % 2 == 0:
 				_building(cell, Building.Kind.HOUSE)
 			elif h == 3:
@@ -310,7 +310,7 @@ func _prop(cell: Vector2i, path: String, key: String) -> void:
 	node.cell = cell
 	node.volume_key = key
 	var sprite := Sprite2D.new()
-	sprite.texture = load(path)
+	sprite.texture = CatalogPaths.load_tex(path)
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	sprite.position = IsoVolume.ROCK_ANCHOR if key == "rock" else IsoVolume.TREE_ANCHOR

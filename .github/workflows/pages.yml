@@ -1,6 +1,6 @@
 # Publish docs/ to GitHub Pages.
 #
-# The codex is regenerated from data/ and assets/ before deploy. The Godot
+# The codex is regenerated from config/ and art/ before deploy. The Godot
 # web export is not run here: the 4.7.2 export templates are about 1.28 GB,
 # and a fresh export overwrites the hand-maintained links on docs/index.html.
 # Commit docs/index.js, docs/index.wasm, and docs/index.pck from a local
@@ -32,8 +32,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install Pillow
-        run: pip install pillow
+      - name: Install Pillow and jsonschema
+        run: pip install pillow jsonschema
+      - name: Validate config and art
+        run: |
+          python3 tools/validate_config.py
+          python3 tools/validate_art.py
       - name: Regenerate the codex
         run: python3 tools/build_codex.py
       - name: Codex page must match the catalogs
@@ -56,8 +60,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install Pillow
-        run: pip install pillow
+      - name: Install Pillow and jsonschema
+        run: pip install pillow jsonschema
+      - name: Validate config and art
+        run: |
+          python3 tools/validate_config.py
+          python3 tools/validate_art.py
       - name: Regenerate the codex into the site
         run: python3 tools/build_codex.py
       - uses: actions/configure-pages@v5

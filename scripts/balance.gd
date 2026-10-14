@@ -1,8 +1,12 @@
 extends Node
 
-# Loads data/units.json, data/enemies.json, and data/buildings.json once.
-# data/characters.json stays visual (sheets, clips, skins). It is read here
-# only to turn a skin name into a sheet index.
+# Loads config/balance/units.json, config/balance/enemies.json, and
+# config/balance/buildings.json once. config/presentation/characters.json
+# stays visual (sheets, clips, skins). It is read here only to turn a skin
+# name into a sheet index. If a config file is missing, the matching
+# data/*.json is used so an older checkout still loads.
+# The workbench saves a layout override and a balance override. There is
+# no second combat table in this script.
 #
 # Damage formula for every hit that spends attack against defense
 # (tower shots into zombies, zombie bites into buildings):
@@ -14,12 +18,26 @@ extends Node
 # runs once per target. Villager infection is still contact, not this formula.
 # Spearman and engineer are catalogued, and they do not swing yet.
 
-const UNITS_PATH := "res://data/units.json"
-const ENEMIES_PATH := "res://data/enemies.json"
-const BUILDINGS_PATH := "res://data/buildings.json"
-const CHARACTERS_PATH := "res://data/characters.json"
-const SETUP_PATH := "res://data/setup.json"
+const UNITS_PATH := "res://config/balance/units.json"
+const ENEMIES_PATH := "res://config/balance/enemies.json"
+const BUILDINGS_PATH := "res://config/balance/buildings.json"
+const CHARACTERS_PATH := "res://config/presentation/characters.json"
+const SETUP_PATH := "res://config/layout/setup.json"
+const UNITS_LEGACY := "res://data/units.json"
+const ENEMIES_LEGACY := "res://data/enemies.json"
+const BUILDINGS_LEGACY := "res://data/buildings.json"
+const CHARACTERS_LEGACY := "res://data/characters.json"
+const SETUP_LEGACY := "res://data/setup.json"
 const USER_SETUP_PATH := "user://setup.json"
+const USER_LAYOUT_PATH := "user://layout.json"
+const USER_BALANCE_PATH := "user://balance.json"
+const LAYOUT_KEYS: Array[String] = [
+	"config_version", "difficulty_id", "presets", "settlement", "combat", "economy",
+	"spawns", "spawn_rects", "starter_buildings", "starter_units", "starter_props",
+]
+const BALANCE_KEYS: Array[String] = [
+	"config_version", "slots", "lumber", "waves", "units", "enemies", "buildings",
+]
 const _Plan := preload("res://scripts/map_plan.gd")
 
 const _KIND_ALIAS := {
@@ -54,7 +72,7 @@ func reload() -> void:
 	_building_order.clear()
 	_waves.clear()
 	_skins.clear()
-	var units_doc := _read(UNITS_PATH)
+	var units_doc := _read(_cfg(UNITS_PATH, UNITS_LEGACY))
 	for raw in units_doc.get("units", []):
 		if raw is Dictionary:
 			var def := _norm_unit(raw)
@@ -63,7 +81,7 @@ func reload() -> void:
 				continue
 			_units[id] = def
 			_unit_order.append(id)
-	var enemies_doc := _read(ENEMIES_PATH)
+	var enemies_doc := _read(_cfg(ENEMIES_PATH, ENEMIES_LEGACY))
 	for raw in enemies_doc.get("waves", []):
 		if raw is Dictionary:
 			_waves.append(raw)
@@ -75,7 +93,7 @@ func reload() -> void:
 				continue
 			_enemies[id] = def
 			_enemy_order.append(id)
-	var buildings_doc := _read(BUILDINGS_PATH)
+	var buildings_doc := _read(_cfg(BUILDINGS_PATH, BUILDINGS_LEGACY))
 	for raw in buildings_doc.get("buildings", []):
 		if raw is Dictionary:
 			var def := _norm_building(raw)
@@ -87,12 +105,12 @@ func reload() -> void:
 			var kind := str(def.get("kind", ""))
 			if kind != "":
 				_by_kind[kind] = def
-	var characters := _read(CHARACTERS_PATH)
+	var characters := _read(_cfg(CHARACTERS_PATH, CHARACTERS_LEGACY))
 	for key in characters.keys():
 		var row = characters[key]
 		if row is Dictionary and row.has("skins"):
 			_skins[str(key)] = row.skins
-	var shipped := _read(SETUP_PATH)
+	var shipped := _read(_cfg(SETUP_PATH, SETUP_LEGACY))
 	_shipped_version = maxi(int(shipped.get("config_version", 1)), 1)
 	_pull_web_setup()
 	_upgrade_user_setup(shipped)
@@ -237,7 +255,7 @@ func _norm_building(raw: Dictionary) -> Dictionary:
 		def["bonus"] = {}
 	def["kind"] = str(def.get("kind", ""))
 	def["category"] = str(def.get("category", ""))
-	def["tex"] = str(def.get("tex", ""))
+	def["tex"] = CatalogPaths.resolve(str(def.get("tex", "")))
 	return def
 
 func _fill_combat(def: Dictionary) -> void:
@@ -352,24 +370,20 @@ func editor_state() -> Dictionary:
 	}
 
 func save_editor_state(state: Dictionary) -> void:
-	var file := FileAccess.open(USER_SETUP_PATH, FileAccess.WRITE)
-	if file == null:
-		push_error("Could not write %s" % USER_SETUP_PATH)
-		return
-	file.store_string(JSON.stringify(state, "\t"))
-	file.close()
+	_write_user_setup(state)
 	reload()
 
 func reset_editor_state() -> void:
-	if FileAccess.file_exists(USER_SETUP_PATH):
-		DirAccess.remove_absolute(USER_SETUP_PATH)
+	for path in [USER_SETUP_PATH, USER_LAYOUT_PATH, USER_BALANCE_PATH]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
 	reload()
 
 func config_version() -> int:
 	return _shipped_version
 
 func prepare_codex_refresh() -> void:
-	var shipped := _read(SETUP_PATH)
+	var shipped := _read(_cfg(SETUP_PATH, SETUP_LEGACY))
 	_shipped_version = maxi(int(shipped.get("config_version", 1)), 1)
 	_pull_web_setup()
 	if _upgrade_user_setup(shipped):
@@ -606,20 +620,53 @@ func _publish_web_setup() -> void:
 	JavaScriptBridge.eval("localStorage.setItem('vtd.setup', %s)" % JSON.stringify(JSON.stringify(payload)), true)
 
 func _write_user_setup(state: Dictionary) -> void:
-	var file := FileAccess.open(USER_SETUP_PATH, FileAccess.WRITE)
+	_write_user_file(USER_SETUP_PATH, state)
+	var layout := _slice(state, LAYOUT_KEYS)
+	var balance := _slice(state, BALANCE_KEYS)
+	layout["config_version"] = int(state.get("config_version", _shipped_version))
+	balance["config_version"] = int(state.get("config_version", _shipped_version))
+	_write_user_file(USER_LAYOUT_PATH, layout)
+	_write_user_file(USER_BALANCE_PATH, balance)
+
+func _read_user_setup() -> Dictionary:
+	var layout := _read_user_file(USER_LAYOUT_PATH)
+	var balance := _read_user_file(USER_BALANCE_PATH)
+	if not layout.is_empty() or not balance.is_empty():
+		var merged := layout.duplicate(true)
+		for key in balance.keys():
+			merged[key] = balance[key]
+		return merged
+	return _read_user_file(USER_SETUP_PATH)
+
+func _write_user_file(path: String, state: Dictionary) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
-		push_error("Could not write %s" % USER_SETUP_PATH)
+		push_error("Could not write %s" % path)
 		return
 	file.store_string(JSON.stringify(state, "\t"))
 	file.close()
 
-func _read_user_setup() -> Dictionary:
-	if not FileAccess.file_exists(USER_SETUP_PATH):
+func _read_user_file(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
 		return {}
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(USER_SETUP_PATH))
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if parsed is Dictionary:
 		return parsed
 	return {}
+
+func _slice(state: Dictionary, keys: Array[String]) -> Dictionary:
+	var out := {}
+	for key in keys:
+		if state.has(key):
+			out[key] = state[key]
+	return out
+
+func _cfg(modern: String, legacy: String) -> String:
+	if FileAccess.file_exists(modern):
+		return modern
+	if FileAccess.file_exists(legacy):
+		return legacy
+	return modern
 
 func _read(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):

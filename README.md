@@ -32,7 +32,7 @@ The web export leaves GDExtension off (`extensions_support` stays false). The of
 
 **https://choicelin94.github.io/villiage-td/stress/**
 
-玩法指南先讲背景和怎么打，下面的资料列出当前的友方单位、敌人和建筑，也带上挡路的树和岩石。头像从现有序列帧和建筑图裁出，数值来自 `data/units.json`、`data/enemies.json`、`data/buildings.json`，和对局里的 Balance 是同一份。页首的「刷新」读取 `catalog.json` 的 `config_version`。浏览器里保存的本地配置版本更低时，先用出厂配置补上缺的字段并升版本，再重新载入页面。这一页不提供数值编辑。资源约定见 [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md)。改完目录后运行 `python3 tools/build_codex.py`，再提交 `docs/codex/`。
+玩法指南先讲背景和怎么打，下面的资料列出当前的友方单位、敌人和建筑，也带上挡路的树和岩石。头像从现有序列帧和建筑图裁出，数值来自 `config/balance/units.json`、`config/balance/enemies.json`、`config/balance/buildings.json`，和对局里的 Balance 是同一份。页首的「刷新」读取 `catalog.json` 的 `config_version`。浏览器里保存的本地配置版本更低时，先用出厂配置补上缺的字段并升版本，再重新载入页面。这一页不提供数值编辑。资源约定见 [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md)。改完目录后运行 `python3 tools/build_codex.py`，再提交 `docs/codex/`。
 
 **https://choicelin94.github.io/villiage-td/codex/**
 
@@ -48,7 +48,7 @@ The stress page spawns many moving people and times the old sort against the two
 
 **https://choicelin94.github.io/villiage-td/stress/**
 
-The player guide opens with the backstory and how to play. Its appendix lists the current ally units, enemies, and buildings, plus the trees and rocks that block building. Portraits are cropped from the existing sheets and building pictures. Stats come from `data/units.json`, `data/enemies.json`, and `data/buildings.json`, the same files Balance loads in a match. Refresh reads `config_version` from `catalog.json`. When the browser's saved config is older, the page fills missing fields from the shipped setup, bumps the version, and reloads. The guide does not edit numbers. The resource rules are in [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md). After a catalog edit, run `python3 tools/build_codex.py` and commit `docs/codex/`.
+The player guide opens with the backstory and how to play. Its appendix lists the current ally units, enemies, and buildings, plus the trees and rocks that block building. Portraits are cropped from the existing sheets and building pictures. Stats come from `config/balance/units.json`, `config/balance/enemies.json`, and `config/balance/buildings.json`, the same files Balance loads in a match. Refresh reads `config_version` from `catalog.json`. When the browser's saved config is older, the page fills missing fields from the shipped setup, bumps the version, and reloads. The guide does not edit numbers. The resource rules are in [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md). After a catalog edit, run `python3 tools/build_codex.py` and commit `docs/codex/`.
 
 **https://choicelin94.github.io/villiage-td/codex/**
 
@@ -56,9 +56,9 @@ The help control sits just left of the language button. The top bar no longer ha
 
 ## 架构与维护 / Architecture and upkeep
 
-配置在 `data/`，图在 `assets/`，玩法在 `scripts/`。对局通过 `scripts/balance.gd` 读取单位、敌人和建筑 JSON。怎么改、改完要跑什么、还有哪些数仍写在脚本里（占地后备表、清波底薪），见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。每条资源的字段和 id 见 [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md)。
+配置在 `config/`，图在 `art/`，玩法在 `scripts/`。对局通过 `scripts/balance.gd` 读取单位、敌人和建筑 JSON。怎么改、改完要跑什么、还有哪些数仍写在脚本里（占地后备表、清波底薪），见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。每条资源的字段和 id 见 [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md)。
 
-Balance and catalogs live in `data/`. Art lives in `assets/`. Behavior lives in `scripts/`. A match loads the unit, enemy, and building JSON through `scripts/balance.gd`. What to edit, which leftovers are still script constants (the footprint fallback and the flat wave payout), and how publishing works are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Field rules are in [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md).
+Balance and catalogs live in `config/`. Art lives in `art/`. Behavior lives in `scripts/`. A match loads the unit, enemy, and building JSON through `scripts/balance.gd`. What to edit, which leftovers are still script constants (the footprint fallback and the flat wave payout), and how publishing works are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Field rules are in [docs/ASSET_STANDARD.md](docs/ASSET_STANDARD.md).
 
 本地先看网页包 / preview the export locally:
 
@@ -130,7 +130,7 @@ Contact with a zombie infects them. They become a zombie on the spot, with a sho
 
 房屋的床位只是村民空缺，每座 4 个。盖房屋不会立刻加人。矛兵营提供矛兵空缺，枪兵营提供枪兵空缺，工坊提供工兵空缺，开局数值都是每座 2 个。这三类人不是由村民转化来的。村民被感染才会变成僵尸；兵种被打倒就离场，不占床。
 
-清完一波，某一类还有空缺时，以概率 **0.65** 入驻随机 **1～min(3, 空缺)** 人。村民看房屋空床，矛兵、枪兵、工兵各看自己的空缺。参数在 `data/setup.json` 的 `settlement`。
+清完一波，某一类还有空缺时，以概率 **0.65** 入驻随机 **1～min(3, 空缺)** 人。村民看房屋空床，矛兵、枪兵、工兵各看自己的空缺。参数在 `config/layout/setup.json` 的 `settlement`。
 
 清完一波：木材 `8 + 农场 × 6`，金币 `+14`。击杀只掉金币，不再掉木材。
 
@@ -138,7 +138,7 @@ Towers attack while they stand. Nobody has to be stationed first. Walls still bl
 
 House beds are the villager vacancy, 4 per house. Building a house does not add people. A spear barracks opens spearman vacancies, a gun barracks opens gunner vacancies, and a workshop opens engineer vacancies, 2 each in the shipped data. Those fighters are not converted villagers. Only a villager who is infected becomes a zombie. A fighter who falls leaves the field and does not use a bed.
 
-After a wave, each role with a free slot settles a random **1..min(3, free)** people with probability **0.65**. Villagers use free beds. Spearmen, gunners, and engineers use their own vacancies. The knobs are `settlement` in `data/setup.json`.
+After a wave, each role with a free slot settles a random **1..min(3, free)** people with probability **0.65**. Villagers use free beds. Spearmen, gunners, and engineers use their own vacancies. The knobs are `settlement` in `config/layout/setup.json`.
 
 A cleared wave pays `8 + 6 per farm` wood and `14` gold. Kills pay gold only.
 
@@ -174,9 +174,9 @@ Towers fire on their own. Villagers left outside can still be infected, and the 
 
 ## 数值 / Balance data
 
-攻击、防御、生命、攻速、移速和射程写在 `data/units.json`、`data/enemies.json`、`data/buildings.json`。`data/characters.json` 只留皮肤和序列帧。距离和速度已经是世界单位（乘过 `IsoVolume.WORLD_SCALE`），改完保存，重新开始一局就会生效。伤害公式在 `scripts/balance.gd` 开头。
+攻击、防御、生命、攻速、移速和射程写在 `config/balance/units.json`、`config/balance/enemies.json`、`config/balance/buildings.json`。`config/presentation/characters.json` 只留皮肤和序列帧。距离和速度已经是世界单位（乘过 `IsoVolume.WORLD_SCALE`），改完保存，重新开始一局就会生效。伤害公式在 `scripts/balance.gd` 开头。
 
-Attack, defense, hp, attack speed, move speed, and range live in `data/units.json`, `data/enemies.json`, and `data/buildings.json`. `data/characters.json` is only skins and frame clips. Distances and speeds are already world units (multiplied by `IsoVolume.WORLD_SCALE`). Save the file and start a new game to see the change. The damage formula is at the top of `scripts/balance.gd`.
+Attack, defense, hp, attack speed, move speed, and range live in `config/balance/units.json`, `config/balance/enemies.json`, and `config/balance/buildings.json`. `config/presentation/characters.json` is only skins and frame clips. Distances and speeds are already world units (multiplied by `IsoVolume.WORLD_SCALE`). Save the file and start a new game to see the change. The damage formula is at the top of `scripts/balance.gd`.
 
 ## 本地运行 / Run locally
 
@@ -185,9 +185,9 @@ Attack, defense, hp, attack speed, move speed, and range live in `data/units.jso
 1. 用 Godot 打开本目录的 `project.godot`。
 2. 按 `F5` 运行主场景 `scenes/main.tscn`。
 
-渲染器是 **GL Compatibility**，方便网页导出。地图是 Godot 的正方形 `TileMapLayer`（正面俯视，不是 45° 菱形）。房屋、木墙、树、岩石和走动的人仍走同一段排序。每人的占地写在 `data/iso_volumes.json`：`ellipse` 用 `rx`/`ry`（可加 `ox`/`oy`），`poly` 必须是凸多边形，顶点相对格子中心，`z` 是高度。空心的农场和木墙写成盖住内部的实心凸多边形。人必须是椭圆，不能收成一个点。只有整块都在北侧（或整段更矮）才算在后面。并排没有几何先后，就绪队列再用南缘键和输入顺序排队，这条不写进依赖图。屏幕上的包围盒先筛掉碰不到的对子，盒子在东西、南北或高度上分开就直接定前后，真正重叠才做同一次比较。没挪动的景物会留下比较结果。树只算树干接触地面的那一小块椭圆。椭圆不能进入任何占地，走动的人之间也保持椭圆不相交。网页地址加上 `?stress=300` 可以给排序计时。调试彩线和建造高亮挂在被描述的物件上。躲在建筑里的人只出现在建筑详情里。
+渲染器是 **GL Compatibility**，方便网页导出。地图是 Godot 的正方形 `TileMapLayer`（正面俯视，不是 45° 菱形）。房屋、木墙、树、岩石和走动的人仍走同一段排序。每人的占地写在 `config/presentation/volumes.json`：`ellipse` 用 `rx`/`ry`（可加 `ox`/`oy`），`poly` 必须是凸多边形，顶点相对格子中心，`z` 是高度。空心的农场和木墙写成盖住内部的实心凸多边形。人必须是椭圆，不能收成一个点。只有整块都在北侧（或整段更矮）才算在后面。并排没有几何先后，就绪队列再用南缘键和输入顺序排队，这条不写进依赖图。屏幕上的包围盒先筛掉碰不到的对子，盒子在东西、南北或高度上分开就直接定前后，真正重叠才做同一次比较。没挪动的景物会留下比较结果。树只算树干接触地面的那一小块椭圆。椭圆不能进入任何占地，走动的人之间也保持椭圆不相交。网页地址加上 `?stress=300` 可以给排序计时。调试彩线和建造高亮挂在被描述的物件上。躲在建筑里的人只出现在建筑详情里。
 
-Open `project.godot` in Godot 4.7.x and press `F5`. The project uses the GL Compatibility renderer. The ground is a square `TileMapLayer` (top-down, not a 45° diamond). Houses, walls, trees, rocks, and walkers still share one sort. Each footprint is authored in `data/iso_volumes.json`: `ellipse` uses `rx`/`ry` (optional `ox`/`oy`), `poly` must be a convex polygon around the cell center, and `z` is the height. The open farm and wall are one solid convex cover over the interior. Walkers are an ellipse with area, not a point. A footprint is behind another only when it sits entirely to the north, or entirely below in height. Side-by-side pairs have no geometric edge; the ready queue orders them by the south-rim key and then input order, and that order is not a graph edge. A sweep on screen boxes rejects pairs that cannot overlap. Boxes that already separate in x, y, or height take that order, and a real overlap runs the same compare. Unmoved props keep their pair result. A tree uses the small ellipse where the trunk meets the ground. An oval cannot enter a footprint, and walkers keep their ovals apart. Debug lines and the build-tile highlight are drawn with the object they describe. Someone sheltering in a building still appears only in that building's panel. Add `?stress=300` to the web build to time the sort.
+Open `project.godot` in Godot 4.7.x and press `F5`. The project uses the GL Compatibility renderer. The ground is a square `TileMapLayer` (top-down, not a 45° diamond). Houses, walls, trees, rocks, and walkers still share one sort. Each footprint is authored in `config/presentation/volumes.json`: `ellipse` uses `rx`/`ry` (optional `ox`/`oy`), `poly` must be a convex polygon around the cell center, and `z` is the height. The open farm and wall are one solid convex cover over the interior. Walkers are an ellipse with area, not a point. A footprint is behind another only when it sits entirely to the north, or entirely below in height. Side-by-side pairs have no geometric edge; the ready queue orders them by the south-rim key and then input order, and that order is not a graph edge. A sweep on screen boxes rejects pairs that cannot overlap. Boxes that already separate in x, y, or height take that order, and a real overlap runs the same compare. Unmoved props keep their pair result. A tree uses the small ellipse where the trunk meets the ground. An oval cannot enter a footprint, and walkers keep their ovals apart. Debug lines and the build-tile highlight are drawn with the object they describe. Someone sheltering in a building still appears only in that building's panel. Add `?stress=300` to the web build to time the sort.
 
 ### 导出网页 / Export web
 
