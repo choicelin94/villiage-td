@@ -606,44 +606,27 @@ def render_page(catalog: dict) -> str:
 <link rel="icon" href="thumbs/villager.png">
 <style>
 :root {{
-  color-scheme: dark;
-  --bg: #141a14;
-  --card: #222c22;
-  --line: #3d4d39;
-  --text: #f4f0e4;
-  --muted: #b7b39a;
-  --gold: #e6c56a;
-  --live-bg: #1e6b45;
-  --live-ink: #e7fff1;
-  --soon-bg: #8a5a16;
-  --soon-ink: #fff3d8;
-  --scene-bg: #24506a;
-  --scene-ink: #e7f6ff;
-  --well: #1a261c;
-  --chip: #2c382c;
-  --shadow: 0 12px 28px rgba(0, 0, 0, .28);
+  color-scheme: light;
+  /* Warm light only: honey cream page, parchment cards, amber chrome, warm sage wells. */
+  --bg: #f6ead8;
+  --card: #fff7ec;
+  --line: #e6cfaa;
+  --text: #3e2c1c;
+  --muted: #6b5340;
+  --gold: #8f5612;
+  --live-bg: #e4efd2;
+  --live-ink: #355428;
+  --soon-bg: #f8ddb0;
+  --soon-ink: #7a4510;
+  --scene-bg: #f3d2a4;
+  --scene-ink: #6a3d12;
+  --well: #e6edd4;
+  --chip: #f8e6c8;
+  --portrait: #73824a;
+  --scrim: rgba(62, 40, 18, .42);
+  --shadow: 0 10px 24px rgba(92, 54, 16, .10);
   --gutter: 16px;
   --content-max: 1120px;
-}}
-@media (prefers-color-scheme: light) {{
-  :root {{
-    color-scheme: light;
-    --bg: #f4f0e6;
-    --card: #fffdf8;
-    --line: #e2d6c0;
-    --text: #1d2418;
-    --muted: #5c6556;
-    --gold: #8a5a12;
-    --live-bg: #d9f5e4;
-    --live-ink: #145c38;
-    --soon-bg: #fff1d6;
-    --soon-ink: #7a4e0d;
-    --scene-bg: #d9edf8;
-    --scene-ink: #18445c;
-    --well: #e5f0df;
-    --chip: #f6efe2;
-    --shadow: 0 10px 24px rgba(70, 50, 10, .08);
-  }}
 }}
 @media (min-width: 768px) {{
   :root {{ --gutter: 24px; --content-max: 1160px; }}
@@ -670,18 +653,6 @@ header.top {{ padding: 28px 0 12px; }}
 .kicker {{ margin: 0; color: var(--muted); letter-spacing: .08em; font-size: 13px; }}
 h1 {{ margin: 4px 0; font-size: clamp(32px, 5vw, 48px); line-height: 1.1; }}
 .summary {{ margin: 0 0 8px; color: var(--muted); }}
-nav {{ display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 8px; }}
-nav a {{
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  text-decoration: none;
-  background: var(--chip);
-  color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 8px 16px;
-}}
 section {{ margin: 28px 0 36px; }}
 section > header h2 {{ margin: 0; font-size: 28px; }}
 section > header h2 span {{ color: var(--muted); font-size: 16px; font-weight: 500; }}
@@ -696,7 +667,7 @@ article {{
   min-width: 0;
 }}
 .portrait {{
-  background: radial-gradient(circle at 50% 78%, #3e5c3c, var(--well) 68%);
+  background: radial-gradient(circle at 50% 78%, var(--portrait), var(--well) 68%);
   border-radius: 14px;
   aspect-ratio: 1;
   display: grid;
@@ -743,7 +714,6 @@ a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
   header.top {{ padding: 18px 0 12px; }}
   h1 {{ font-size: 34px; }}
   .summary {{ font-size: 15px; }}
-  nav {{ margin-top: 14px; }}
 }}
 {codex_css}
 </style>
@@ -753,7 +723,6 @@ a:focus-visible {{ outline: 2px solid var(--gold); outline-offset: 2px; }}
   <p class="kicker">部落村落塔防</p>
   <h1>图鉴</h1>
   <p class="summary">{esc(summary)}，共 {total} 张。</p>
-  <nav><a href="../">返回游戏</a></nav>
 </header>
 {shell}
 <footer>
@@ -1207,13 +1176,13 @@ dl.card-stats {
   }
   .codex-drawer:checked ~ .codex-shell .codex-backdrop {
     display: block; position: fixed; inset: 0; z-index: 40;
-    background: rgba(20, 26, 20, .45);
+    background: var(--scrim);
   }
   .codex-aside {
     position: fixed; z-index: 41; top: 0; left: 0; right: auto;
     width: min(22rem, calc(100vw - 48px)); height: 100vh; height: 100dvh; max-height: none;
     border-radius: 0 18px 18px 0;
-    box-shadow: 16px 0 40px rgba(0, 0, 0, .22);
+    box-shadow: 16px 0 40px rgba(70, 42, 14, .22);
     transform: translateX(-105%); visibility: hidden;
     transition: transform .18s ease, visibility .18s ease;
     overscroll-behavior: contain;
@@ -1327,6 +1296,8 @@ def _check_skin_switcher(html: str) -> None:
         die("skin thumbnail list must follow the preview")
     if "max-width: 767px" not in html or NARROW_MQ not in html:
         die("responsive breakpoints missing from the codex page")
+    if "返回游戏" in html:
+        die("codex page must not include 返回游戏")
 
 
 def main() -> None:
