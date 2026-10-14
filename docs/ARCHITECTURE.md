@@ -36,7 +36,7 @@ scenes/main.tscn
     scripts/depth_solver.gd 两段排序
 scenes/depth_lab.tscn      景深试验。只留网页深链 docs/depth-lab/，工作台不再进入
 scenes/depth_stress.tscn   压力页。只留网页深链 docs/stress/，工作台不再进入
-scenes/workbench.tscn      工作台。编辑难度、数值、初始地图、出怪长方形和开局站位，写入 user://setup.json
+scenes/workbench.tscn      工作台。编辑难度、数值、初始地图、出怪长方形和开局站位，写入 user://setup.json。地图页用对局同一套地面、树、岩石、建筑和单位贴图预览，出怪点是盖在这些格子上的红色半透明遮罩
 ```
 
 `Balance` 在启动时加载 `data/units.json`、`data/enemies.json`、`data/buildings.json`，再叠 `data/setup.json` 和本机 `user://setup.json`。伤害是 `max(1, round(attack * 100 / (100 + defense)))`。工坊的 `tower_damage` 先乘在攻击上，再对每个目标套一次这个公式。村民被感染仍是接触，不走这个公式。击杀只加 `gold_reward`，`wood_reward` 读入后强制为 0。

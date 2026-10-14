@@ -1,8 +1,9 @@
 class_name MapBoard
 extends Control
 
-# The workbench map. Same 20×20 cell grid, tile size, and ground rules as the match.
-# Friend units, buildings, and props are IsoVolume prisms. Enemy gates are red masks.
+# The workbench map. Same 20×20 cell grid, tile size, and pictures as the match.
+# Ground, trees, rocks, buildings, and units use the match textures. Enemy gates
+# are a red translucent mask on those cells.
 
 signal place_requested(cell: Vector2i, at: Vector2)
 signal hint_changed(text: String)
@@ -13,8 +14,6 @@ var _font: Font
 var _grass_a: Texture2D
 var _grass_b: Texture2D
 var _road: Texture2D
-var _trees: Array[Texture2D] = []
-var _rock: Texture2D
 var _pressing := false
 var _press_pos := Vector2.ZERO
 var _press_cell := Vector2i(-1, -1)
@@ -39,12 +38,6 @@ func setup(p_state: Dictionary, p_font: Font) -> void:
 	_grass_a = load("res://assets/village/grass_a.png")
 	_grass_b = load("res://assets/village/grass_b.png")
 	_road = load("res://assets/village/road.png")
-	_rock = load("res://assets/village/rock.png")
-	_trees = [
-		load("res://assets/village/tree.png"),
-		load("res://assets/village/tree_b.png"),
-		load("res://assets/village/tree_c.png"),
-	]
 	queue_redraw()
 
 func place_payload(payload: Dictionary, cell: Vector2i) -> bool:
@@ -96,8 +89,9 @@ func probe_edits() -> bool:
 	var border_reject := not place_payload({"layer": "build", "id": "WALL", "volume": "wall"}, Vector2i(5, 0))
 	var rock_reject := not place_payload({"layer": "prop", "id": "tree", "volume": "tree"}, Vector2i(4, 8))
 	var prop_ok := place_payload({"layer": "prop", "id": "rock", "volume": "rock"}, Vector2i(6, 6))
-	var ok := corner == "corner" and spawned == "spawn" and cell_ok and pick == "pick" and placed and border_reject and rock_reject and prop_ok
-	print("BENCH_EDIT corner=", corner, " spawn=", spawned, " cell=", cell_ok, " pick=", pick, " placed=", placed, " border=", border_reject, " rock=", rock_reject, " prop=", prop_ok)
+	var art_ok := CubeThumb.has_art("build", "HOUSE") and CubeThumb.has_art("unit", "villager") and CubeThumb.has_art("unit", "spearman") and CubeThumb.has_art("prop", "tree") and CubeThumb.has_art("prop", "rock")
+	var ok := corner == "corner" and spawned == "spawn" and cell_ok and pick == "pick" and placed and border_reject and rock_reject and prop_ok and art_ok
+	print("BENCH_EDIT corner=", corner, " spawn=", spawned, " cell=", cell_ok, " pick=", pick, " placed=", placed, " border=", border_reject, " rock=", rock_reject, " prop=", prop_ok, " art=", art_ok)
 	return ok
 
 func _gui_input(event: InputEvent) -> void:
@@ -185,19 +179,10 @@ func _draw_world() -> void:
 		var at := float(i) * tile
 		draw_line(Vector2(at, 0), Vector2(at, span), grid, 1.0)
 		draw_line(Vector2(0, at), Vector2(span, at), grid, 1.0)
-	for y in MapPlan.ROWS:
-		for x in MapPlan.COLS:
-			var cell := Vector2i(x, y)
-			if MapPlan.is_border(cell) and not spawns.has(cell) and _trees.size() == 3:
-				_draw_sprite(_trees[(x + y) % 3], cell, IsoVolume.TREE_ANCHOR)
-			if MapPlan.is_fixed_rock(cell) and _rock:
-				_draw_sprite(_rock, cell, IsoVolume.ROCK_ANCHOR)
-	_draw_placements()
+	_draw_actors()
 	_draw_spawn_masks()
 	if not _ghost.is_empty() and MapPlan.in_bounds(_ghost_cell):
-		var ghost_tint: Color = MapPlan.tint_for(str(_ghost.get("layer", "")), str(_ghost.get("id", "")))
-		ghost_tint.a = 0.72
-		CubeThumb.draw_world(self, _ghost_cell, MapPlan.volume_for(str(_ghost.get("layer", "")), str(_ghost.get("id", ""))), ghost_tint)
+		CubeThumb.draw_actor(self, _ghost_cell, str(_ghost.get("layer", "")), str(_ghost.get("id", "")), 0.72, -1)
 	if not _dragging and _ghost.is_empty() and MapPlan.is_border(_hover) and not MapPlan.is_corner(_hover) and not _middle_exists(_hover):
 		var ghost := MapPlan.rect_from_middle(_hover)
 		if not ghost.is_empty():
@@ -207,9 +192,10 @@ func _draw_world() -> void:
 	if MapPlan.in_bounds(_hover):
 		draw_rect(Rect2(float(_hover.x) * tile, float(_hover.y) * tile, tile, tile), Color(1, 0.95, 0.7, 0.95), false, 4.0)
 
-func _draw_placements() -> void:
+func _draw_actors() -> void:
 	var skip := _drag if _dragging and str(_drag.get("layer", "")) != "spawn" else {}
 	var entries: Array = []
+	_collect_scenery(entries)
 	_collect(entries, "starter_props", "prop", "kind", skip)
 	_collect(entries, "starter_buildings", "build", "kind", skip)
 	_collect(entries, "starter_units", "unit", "unit", skip)
@@ -222,17 +208,13 @@ func _draw_placements() -> void:
 	)
 	for entry in entries:
 		var placed: Dictionary = entry
-		var cell: Vector2i = placed["cell"]
-		var layer := str(placed["layer"])
-		var id := str(placed["id"])
-		CubeThumb.draw_world(self, cell, MapPlan.volume_for(layer, id), MapPlan.tint_for(layer, id))
+		CubeThumb.draw_actor(self, placed["cell"], str(placed["layer"]), str(placed["id"]), 1.0, _cycle_of(placed))
 	if _dragging and not skip.is_empty():
 		var target := _hover if _can_place(_hover, skip) else _press_cell
 		if MapPlan.in_bounds(target):
 			var id := _id_of(skip)
-			var tint := MapPlan.tint_for(str(skip.get("layer", "")), id)
-			tint.a = 0.8
-			CubeThumb.draw_world(self, target, MapPlan.volume_for(str(skip.get("layer", "")), id), tint)
+			var ghost := {"layer": str(skip.get("layer", "")), "id": id, "index": int(skip.get("index", -1))}
+			CubeThumb.draw_actor(self, target, str(ghost["layer"]), id, 0.8, _cycle_of(ghost))
 
 func _draw_spawn_masks() -> void:
 	var rects: Array = _ensure("spawn_rects")
@@ -306,11 +288,32 @@ func _visible_rects() -> Array:
 			rects[index] = preview
 	return rects
 
-func _draw_sprite(tex: Texture2D, cell: Vector2i, anchor: Vector2) -> void:
-	if tex == null:
-		return
-	var center := Vector2(MapPlan.TILE * (float(cell.x) + 0.5), MapPlan.TILE * (float(cell.y) + 0.5))
-	draw_texture_rect(tex, Rect2(center + anchor, tex.get_size()), false)
+func _collect_scenery(into: Array) -> void:
+	var spawns := _spawn_cells()
+	for y in MapPlan.ROWS:
+		for x in MapPlan.COLS:
+			var cell := Vector2i(x, y)
+			if MapPlan.is_border(cell) and not spawns.has(cell):
+				into.append({"layer": "prop", "id": "tree", "cell": cell, "index": -1})
+			if MapPlan.is_fixed_rock(cell):
+				into.append({"layer": "prop", "id": "rock", "cell": cell, "index": -1})
+
+func _cycle_of(entry: Dictionary) -> int:
+	if str(entry.get("layer", "")) != "unit" or str(entry.get("id", "")) != "villager":
+		return -1
+	return _villager_cycle(int(entry.get("index", -1)))
+
+func _villager_cycle(index: int) -> int:
+	var n := 0
+	var rows: Array = _ensure("starter_units")
+	for i in rows.size():
+		var item = rows[i]
+		if not (item is Dictionary) or str(item.get("unit", "")) != "villager":
+			continue
+		if i == index:
+			return n
+		n += 1
+	return 0
 
 func _click(cell: Vector2i, local_pos: Vector2) -> void:
 	if not MapPlan.in_bounds(cell):
@@ -405,6 +408,7 @@ func _collect(into: Array, key: String, layer: String, id_key: String, skip: Dic
 			"layer": layer,
 			"id": str(item.get(id_key, "")),
 			"cell": Vector2i(int(raw[0]), int(raw[1])),
+			"index": i,
 		})
 
 func _hit_item(cell: Vector2i) -> Dictionary:
