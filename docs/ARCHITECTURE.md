@@ -36,7 +36,7 @@ scenes/main.tscn
     scripts/depth_solver.gd 两段排序
 scenes/depth_lab.tscn      景深试验。只留网页深链 docs/depth-lab/，工作台不再进入
 scenes/depth_stress.tscn   压力页。只留网页深链 docs/stress/，工作台不再进入
-scenes/workbench.tscn      工作台。只编辑配置文档。保存写入 user://layout.json 与 user://balance.json，并同步 user://setup.json。地图由 SetupDocument、MapCommands、MapView、MapInteraction 组成，ActorPainter 贴 art/ 的图，出怪点是红色半透明遮罩
+scenes/workbench.tscn      工作台。只编辑配置文档。保存写入 user://layout.json 与 user://balance.json，并同步 user://setup.json。地图由 SetupDocument、MapCommands、MapView、MapInteraction 组成，ActorPainter 贴 art/ 的图，出怪点是红色半透明遮罩。窗口逻辑宽度低于 900，或短边低于 480 时，盖一层灰罩挡住编辑，只留返回游戏
 ```
 
 `Balance` 在启动时加载 `config/balance/units.json`、`config/balance/enemies.json`、`config/balance/buildings.json`，再叠 `config/layout/setup.json`、本机 `user://layout.json` 和 `user://balance.json`。只有旧存档时才读 `user://setup.json`。伤害是 `max(1, round(attack * 100 / (100 + defense)))`。工坊的 `tower_damage` 先乘在攻击上，再对每个目标套一次这个公式。村民被感染仍是接触，不走这个公式。击杀只加 `gold_reward`，`wood_reward` 读入后强制为 0。
