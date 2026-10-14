@@ -199,6 +199,10 @@ The **Web** preset is included, with thread support off so GitHub Pages can host
 godot --headless --path . --export-release "Web" docs/index.html
 ```
 
+预设里的 `include_filter` 要带上 `config/*`、`art/fonts/*` 和 `art/characters/spine/*`，否则 JSON 和 Spine 文本不会进 `docs/index.pck`。
+
+The preset `include_filter` must cover `config/*`, `art/fonts/*`, and `art/characters/spine/*`, or the JSON and Spine text stay out of `docs/index.pck`.
+
 静态文件在 `docs/`。用任意静态服务器打开 `docs/index.html`（不要直接用 `file://`）。
 
 The static files live in `docs/`. Serve that folder over HTTP. Do not open `index.html` via `file://`.

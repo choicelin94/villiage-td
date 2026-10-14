@@ -130,6 +130,8 @@ Godot **4.7.2** 的 Linux 编辑器压缩包在发布页上。配套的 export t
 godot --headless --path . --export-release "Web" docs/index.html
 ```
 
+预设 **Web** 的 `include_filter` 要把原始文本打进包：`config/` 里的 JSON、`art/fonts/`、`art/characters/spine/`。贴图走导入资源，不靠这条过滤。过滤仍写旧的 `data/`、`assets/` 时，网页包里没有新路径，线上只会落到已经不存在的回退。
+
 导出预设 **Web** 写着默认路径 `build/web/index.html`，线程和 GDExtension 都是关的。上面的命令把结果直接写进 `docs/`。不要再往 `docs/index.html` 加左上角的景深、压力页、玩法指南链接；这三项从游戏右上角的问号菜单进。
 
 The 4.7.2 export templates are about 1.28 GB. CI deploys the committed web build and regenerates the codex. It does not run Godot. The codex and the workbench are opened from the in-game help menu, not from links pasted onto `docs/index.html`.
