@@ -18,6 +18,12 @@ static func apply(doc: SetupDocument, cmd: Dictionary) -> Dictionary:
 			return set_spawn(doc, cell)
 		"move_spawn":
 			return move_spawn(doc, int(cmd.get("index", -1)), cell)
+		"toggle_road":
+			return _road(doc, cell)
+		"inspect":
+			return {"ok": true, "action": "inspect", "cell": cell}
+		"none":
+			return {"ok": true, "action": "none", "cell": cell}
 		"pick":
 			return {"ok": true, "action": "pick", "cell": cell}
 		"reject":
@@ -89,9 +95,14 @@ static func set_spawn(doc: SetupDocument, cell: Vector2i) -> Dictionary:
 	var rect := MapPlan.rect_from_middle(cell)
 	if rect.is_empty():
 		return _no("corner" if MapPlan.is_corner(cell) else "outside", cell)
+	var block := doc.footprint_block(cell)
+	if block != "":
+		return _no(block, cell)
 	if doc.middle_exists(cell):
 		return {"ok": false, "action": "spawn_have", "cell": cell}
-	doc.spawn_rects().append(rect)
+	var rows := doc.spawn_rects()
+	rows.clear()
+	rows.append(rect)
 	doc.touch_spawns()
 	return {"ok": true, "action": "spawn", "cell": cell}
 
@@ -101,11 +112,21 @@ static func move_spawn(doc: SetupDocument, index: int, cell: Vector2i) -> Dictio
 	var rows := doc.spawn_rects()
 	if rect.is_empty() or index < 0 or index >= rows.size():
 		return _no("corner" if MapPlan.is_corner(cell) else "outside", cell)
+	var block := doc.footprint_block(cell)
+	if block != "":
+		return _no(block, cell)
 	if doc.middle_exists(cell) and not doc.same_middle(index, cell):
 		return {"ok": false, "action": "spawn_have", "cell": cell}
-	rows[index] = rect
+	rows.clear()
+	rows.append(rect)
 	doc.touch_spawns()
 	return {"ok": true, "action": "moved", "cell": cell}
+
+
+static func _road(doc: SetupDocument, cell: Vector2i) -> Dictionary:
+	var action := doc.toggle_road(cell)
+	var ok := action == "road_on" or action == "road_off" or action == "need_road"
+	return {"ok": ok, "action": action, "cell": cell}
 
 
 static func golden() -> bool:
@@ -132,17 +153,17 @@ static func _expect_strategy(failures: Array[String]) -> void:
 	var corner: Dictionary = MapInteraction.op_for(Vector2i(0, 0), empty, false)
 	var corner_drop: Dictionary = MapInteraction.op_for(Vector2i(19, 19), unit, false)
 	var occupied: Dictionary = MapInteraction.op_for(Vector2i(10, 8), unit, true)
-	if str(click_gate.get("op", "")) != "set_spawn":
+	if str(click_gate.get("op", "")) != "inspect":
 		failures.append("click gate")
 	if str(drop_gate.get("op", "")) != "reject":
 		failures.append("drop on gate")
-	if str(click_land.get("op", "")) != "pick":
+	if str(click_land.get("op", "")) != "inspect":
 		failures.append("click land")
 	if str(drop_land.get("op", "")) != "place" or str(drop_land.get("id", "")) != "villager":
 		failures.append("drop land")
 	if str(drop_land.get("op", "")) != str(click_place.get("op", "")) or drop_land.get("cell") != click_place.get("cell") or str(drop_land.get("id", "")) != str(click_place.get("id", "")):
 		failures.append("click-place and drop diverge")
-	if str(corner.get("reason", "")) != "corner" or str(corner_drop.get("reason", "")) != "corner":
+	if str(corner.get("op", "")) != "inspect" or str(corner_drop.get("reason", "")) != "corner":
 		failures.append("corners")
 	if str(occupied.get("reason", "")) != "occupied":
 		failures.append("occupied drop")
@@ -153,27 +174,67 @@ static func _expect_gates(failures: Array[String]) -> void:
 	var north := MapPlan.cells_of_rect(doc.spawn_rects()[0])
 	if not _flat(north, true, Vector2i(10, 0)):
 		failures.append("default north")
-	var added: Dictionary = apply(doc, MapInteraction.op_for(Vector2i(3, 0), {}, false))
-	if str(added.get("action", "")) != "spawn":
+	if not doc.is_road(Vector2i(10, 0)) or doc.is_road(Vector2i(9, 0)) or doc.is_road(Vector2i(11, 0)):
+		failures.append("middle on road")
+	var again: Dictionary = set_spawn(doc, Vector2i(10, 0))
+	if str(again.get("action", "")) != "spawn_have" or doc.spawn_rects().size() != 1:
+		failures.append("duplicate middle")
+	var bare: Dictionary = set_spawn(doc, Vector2i(3, 0))
+	if str(bare.get("action", "")) != "need_road" or doc.spawn_rects().size() != 1:
+		failures.append("need road")
+	if doc.is_road(Vector2i(3, 1)):
+		failures.append("spawn painted a road")
+	var painted: Dictionary = apply(doc, {"op": "toggle_road", "cell": Vector2i(3, 0)})
+	if str(painted.get("action", "")) != "road_on" or not doc.is_road(Vector2i(3, 0)) or doc.is_road(Vector2i(3, 1)):
+		failures.append("paint one cell")
+	var added: Dictionary = set_spawn(doc, Vector2i(3, 0))
+	if str(added.get("action", "")) != "spawn" or doc.spawn_rects().size() != 1:
 		failures.append("set spawn action")
-	var gate := MapPlan.cells_of_rect(doc.spawn_rects()[doc.spawn_rects().size() - 1])
+	var gate := MapPlan.cells_of_rect(doc.spawn_rects()[0])
 	if not _flat(gate, true, Vector2i(3, 0)):
 		failures.append("north 3x1")
+	if doc.is_road(Vector2i(3, 1)) or doc.is_road(Vector2i(2, 0)) or doc.is_road(Vector2i(4, 0)):
+		failures.append("spawn painted a road")
+	doc.starter_props().append({"kind": "tree", "cell": [2, 0]})
+	var blocked: Dictionary = set_spawn(doc, Vector2i(3, 0))
+	if str(blocked.get("action", "")) != "spawn_blocked" or doc.spawn_rects().size() != 1:
+		failures.append("spawn blocked")
+	doc.starter_props().clear()
+	var west_paint: Dictionary = apply(doc, {"op": "toggle_road", "cell": Vector2i(0, 8)})
 	var west: Dictionary = set_spawn(doc, Vector2i(0, 8))
-	if not west.get("ok", false) or not _flat(MapPlan.cells_of_rect(doc.spawn_rects()[doc.spawn_rects().size() - 1]), false, Vector2i(0, 8)):
+	if not west_paint.get("ok", false) or not west.get("ok", false) or doc.spawn_rects().size() != 1 or not _flat(MapPlan.cells_of_rect(doc.spawn_rects()[0]), false, Vector2i(0, 8)):
 		failures.append("west vertical")
+	var south_bare: Dictionary = set_spawn(doc, Vector2i(4, 19))
+	if str(south_bare.get("action", "")) != "need_road":
+		failures.append("south needs road")
+	apply(doc, {"op": "toggle_road", "cell": Vector2i(4, 19)})
 	var south: Dictionary = set_spawn(doc, Vector2i(4, 19))
-	if not south.get("ok", false) or not _flat(MapPlan.cells_of_rect(doc.spawn_rects()[doc.spawn_rects().size() - 1]), true, Vector2i(4, 19)):
+	if not south.get("ok", false) or doc.spawn_rects().size() != 1 or not _flat(MapPlan.cells_of_rect(doc.spawn_rects()[0]), true, Vector2i(4, 19)):
 		failures.append("south horizontal")
+	apply(doc, {"op": "toggle_road", "cell": Vector2i(19, 3)})
 	var east: Dictionary = set_spawn(doc, Vector2i(19, 3))
-	if not east.get("ok", false) or not _flat(MapPlan.cells_of_rect(doc.spawn_rects()[doc.spawn_rects().size() - 1]), false, Vector2i(19, 3)):
+	if not east.get("ok", false) or doc.spawn_rects().size() != 1 or not _flat(MapPlan.cells_of_rect(doc.spawn_rects()[0]), false, Vector2i(19, 3)):
 		failures.append("east vertical")
-	var again: Dictionary = set_spawn(doc, Vector2i(10, 0))
-	if str(again.get("action", "")) != "spawn_have":
-		failures.append("duplicate middle")
+	var cleared: Dictionary = apply(doc, {"op": "toggle_road", "cell": Vector2i(19, 3)})
+	if str(cleared.get("action", "")) != "need_road" or doc.is_road(Vector2i(19, 3)) or doc.spawn_rects().size() != 1:
+		failures.append("clear road keeps spawn")
 	var bad: Dictionary = set_spawn(doc, Vector2i(0, 0))
 	if str(bad.get("action", "")) != "corner":
 		failures.append("corner spawn")
+	var multi := SetupDocument.new()
+	multi.bind({
+		"spawn_rects": [
+			{"edge": "north", "middle": [10, 0], "length": 3, "width": 1},
+			{"edge": "west", "middle": [0, 8], "length": 3, "width": 1},
+		],
+		"spawns": [],
+		"starter_buildings": [],
+		"starter_units": [],
+		"starter_props": [],
+		"roads": [[10, 0], [10, 1]],
+	})
+	if not multi.trimmed or multi.spawn_rects().size() != 1 or multi.is_road(Vector2i(0, 8)) or not multi.is_road(Vector2i(10, 1)):
+		failures.append("collapse keeps roads")
 
 
 static func _expect_pieces(failures: Array[String]) -> void:

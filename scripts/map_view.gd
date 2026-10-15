@@ -7,12 +7,20 @@ extends Control
 
 signal command_issued(cmd: Dictionary)
 
+const ZOOM_MIN := 0.85
+const ZOOM_MAX := 3.5
+const ZOOM_STEP := 1.12
+
 var doc: SetupDocument
 var interaction: MapInteraction
 var _font: Font
 var _grass_a: Texture2D
 var _grass_b: Texture2D
 var _road: Texture2D
+var _zoom := 1.0
+var _pan := Vector2.ZERO
+var _zoom_in: Button
+var _zoom_out: Button
 
 
 func setup(p_doc: SetupDocument, p_interaction: MapInteraction, p_font: Font) -> void:
@@ -20,12 +28,40 @@ func setup(p_doc: SetupDocument, p_interaction: MapInteraction, p_font: Font) ->
 	interaction = p_interaction
 	_font = p_font
 	name = "MapView"
-	custom_minimum_size = Vector2(760, 760)
+	custom_minimum_size = Vector2(760, 860)
+	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	focus_mode = Control.FOCUS_NONE
 	_grass_a = CatalogPaths.load_tex("village/grass_a.png")
 	_grass_b = CatalogPaths.load_tex("village/grass_b.png")
 	_road = CatalogPaths.load_tex("village/road.png")
+	_build_zoom()
+	queue_redraw()
+
+
+func zoom_level() -> float:
+	return _zoom
+
+
+func reset_view() -> void:
+	_zoom = 1.0
+	_pan = Vector2.ZERO
+	_clamp_pan()
+	queue_redraw()
+
+
+func zoom_by(factor: float, anchor: Vector2) -> void:
+	var before := _fit()
+	var world: Vector2 = (anchor - before.origin) / before.scale
+	_zoom = clampf(_zoom * factor, ZOOM_MIN, ZOOM_MAX)
+	var view := _view_size()
+	var world_px := MapPlan.TILE * float(MapPlan.COLS)
+	var base := minf(view.x, view.y) / world_px
+	var new_scale := base * _zoom
+	var new_origin := anchor - world * new_scale
+	var used := world_px * new_scale
+	_pan = new_origin - (view - Vector2(used, used)) * 0.5
+	_clamp_pan()
 	queue_redraw()
 
 
@@ -34,12 +70,21 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
+		var was_dragging := interaction.dragging
 		interaction.note_motion(_cell_at(motion.position), motion.position)
+		if interaction.pressing and interaction.dragging and interaction.drag.is_empty() and was_dragging:
+			_pan += motion.relative
+			_clamp_pan()
 		queue_redraw()
 		accept_event()
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
+		if mb.pressed and (mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+			var factor := ZOOM_STEP if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / ZOOM_STEP
+			zoom_by(factor, mb.position)
+			accept_event()
+			return
 		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			command_issued.emit({"op": "remove", "cell": _cell_at(mb.position)})
 			accept_event()
@@ -53,8 +98,6 @@ func _gui_input(event: InputEvent) -> void:
 		else:
 			var cell := _cell_at(mb.position)
 			var cmd := interaction.release(cell, doc)
-			if str(cmd.get("op", "")) == "pick":
-				cmd["at"] = get_global_transform() * mb.position
 			command_issued.emit(cmd)
 			queue_redraw()
 			accept_event()
@@ -88,6 +131,7 @@ func _notification(what: int) -> void:
 		interaction.clear_ghost()
 		queue_redraw()
 	elif what == NOTIFICATION_RESIZED:
+		_layout_zoom()
 		queue_redraw()
 
 
@@ -106,13 +150,12 @@ func _draw() -> void:
 
 func _draw_world() -> void:
 	var tile := MapPlan.TILE
-	var spawns := doc.spawn_lookup()
-	var blocked := MapPlan.scenery_cells(spawns, doc.starter_props())
-	var roads := MapPlan.road_cells(blocked, MapPlan.cells_from_rects(doc.spawn_rects()))
+	var roads := MapPlan.road_lookup(doc.roads())
 	for y in MapPlan.ROWS:
 		for x in MapPlan.COLS:
 			var cell := Vector2i(x, y)
-			var tex := _road if roads.has(cell) and not blocked.has(cell) else (_grass_a if (x + y) % 2 == 0 else _grass_b)
+			var on_road := roads.has(cell) and not MapPlan.is_fixed_rock(cell)
+			var tex := _road if on_road else (_grass_a if (x + y) % 2 == 0 else _grass_b)
 			if tex:
 				draw_texture_rect(tex, Rect2(float(x) * tile, float(y) * tile, tile, tile), false)
 	var grid := Color(0.05, 0.08, 0.05, 0.16)
@@ -300,10 +343,72 @@ func _cell_at(local_pos: Vector2) -> Vector2i:
 
 func _fit() -> Dictionary:
 	var view := _view_size()
-	var world := MapPlan.TILE * float(MapPlan.COLS)
-	var drawn := minf(view.x, view.y) / world
-	var used := world * drawn
-	return {"scale": drawn, "origin": (view - Vector2(used, used)) * 0.5}
+	var world_px := MapPlan.TILE * float(MapPlan.COLS)
+	var base := minf(view.x, view.y) / world_px
+	var drawn := base * _zoom
+	var used := world_px * drawn
+	return {"scale": drawn, "origin": (view - Vector2(used, used)) * 0.5 + _pan}
+
+
+func _clamp_pan() -> void:
+	var view := _view_size()
+	var world_px := MapPlan.TILE * float(MapPlan.COLS)
+	var base := minf(view.x, view.y) / world_px
+	var drawn := base * _zoom
+	var used := world_px * drawn
+	var margin := 64.0
+	var min_x := margin - used
+	var max_x := view.x - margin
+	if min_x > max_x:
+		var locked := (view.x - used) * 0.5
+		min_x = locked
+		max_x = locked
+	var base_x := (view.x - used) * 0.5
+	_pan.x = clampf(_pan.x, min_x - base_x, max_x - base_x)
+	var min_y := margin - used
+	var max_y := view.y - margin
+	if min_y > max_y:
+		var locked_y := (view.y - used) * 0.5
+		min_y = locked_y
+		max_y = locked_y
+	var base_y := (view.y - used) * 0.5
+	_pan.y = clampf(_pan.y, min_y - base_y, max_y - base_y)
+
+
+func _build_zoom() -> void:
+	_zoom_out = _zoom_button("MapZoomOut", "－", 1.0 / ZOOM_STEP)
+	_zoom_in = _zoom_button("MapZoomIn", "＋", ZOOM_STEP)
+	add_child(_zoom_out)
+	add_child(_zoom_in)
+	_layout_zoom()
+
+
+func _zoom_button(node_name: String, text: String, factor: float) -> Button:
+	var btn := Button.new()
+	btn.name = node_name
+	btn.text = text
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	btn.custom_minimum_size = Vector2(36, 36)
+	btn.add_theme_font_size_override("font_size", 18)
+	if _font:
+		btn.add_theme_font_override("font", _font)
+	btn.pressed.connect(_on_zoom_button.bind(factor))
+	return btn
+
+
+func _on_zoom_button(factor: float) -> void:
+	zoom_by(factor, Vector2(size.x * 0.35, size.y * 0.5))
+
+
+func _layout_zoom() -> void:
+	if _zoom_out == null or _zoom_in == null:
+		return
+	var y := maxf(size.y - 44.0, 8.0)
+	_zoom_out.position = Vector2(8, y)
+	_zoom_out.size = Vector2(36, 36)
+	_zoom_in.position = Vector2(48, y)
+	_zoom_in.size = Vector2(36, 36)
 
 
 func _view_size() -> Vector2:

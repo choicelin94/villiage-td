@@ -33,7 +33,7 @@ const USER_LAYOUT_PATH := "user://layout.json"
 const USER_BALANCE_PATH := "user://balance.json"
 const LAYOUT_KEYS: Array[String] = [
 	"config_version", "difficulty_id", "presets", "settlement", "combat", "economy",
-	"spawns", "spawn_rects", "starter_buildings", "starter_units", "starter_props",
+	"spawns", "spawn_rects", "roads", "starter_buildings", "starter_units", "starter_props",
 ]
 const BALANCE_KEYS: Array[String] = [
 	"config_version", "slots", "lumber", "waves", "units", "enemies", "buildings",
@@ -58,6 +58,7 @@ var _waves: Array[Dictionary] = []
 var _skins := {}
 var _setup := {}
 var _shipped_version := 1
+var _layout_notes: Array[String] = []
 
 func _ready() -> void:
 	reload()
@@ -289,6 +290,13 @@ func spawn_rects() -> Array:
 	var raw = _setup.get("spawn_rects", [])
 	return raw if raw is Array else []
 
+func roads() -> Array:
+	var raw = _setup.get("roads", [])
+	return raw if raw is Array else []
+
+func layout_notes() -> Array[String]:
+	return _layout_notes
+
 func starter_buildings() -> Array:
 	var raw = _setup.get("starter_buildings", [])
 	return raw if raw is Array else []
@@ -355,6 +363,7 @@ func editor_state() -> Dictionary:
 		"economy": economy().duplicate(true),
 		"spawns": spawns().duplicate(true),
 		"spawn_rects": spawn_rects().duplicate(true),
+		"roads": roads().duplicate(true),
 		"starter_buildings": starter_buildings().duplicate(true),
 		"starter_units": starter_units().duplicate(true),
 		"starter_props": starter_props().duplicate(true),
@@ -434,6 +443,7 @@ func _default_setup() -> Dictionary:
 		},
 		"spawns": [[9, 0], [10, 0], [11, 0]],
 		"spawn_rects": _Plan.default_rects(),
+		"roads": _Plan.default_roads(),
 		"starter_buildings": [],
 		"starter_units": [],
 		"starter_props": [],
@@ -442,7 +452,7 @@ func _default_setup() -> Dictionary:
 func _overlay_setup(doc: Dictionary) -> void:
 	if doc.is_empty():
 		return
-	for key in ["config_version", "difficulty_id", "presets", "settlement", "combat", "economy", "spawns", "spawn_rects", "starter_buildings", "starter_units", "starter_props", "slots", "lumber", "waves", "units", "enemies", "buildings"]:
+	for key in ["config_version", "difficulty_id", "presets", "settlement", "combat", "economy", "spawns", "spawn_rects", "roads", "starter_buildings", "starter_units", "starter_props", "slots", "lumber", "waves", "units", "enemies", "buildings"]:
 		if doc.has(key):
 			_setup[key] = doc[key]
 	_normalize_setup()
@@ -475,10 +485,23 @@ func _normalize_setup() -> void:
 	if not (_setup.presets as Dictionary).has(id):
 		id = "normal"
 	_setup["difficulty_id"] = id
+	_layout_notes.clear()
 	var layout: Dictionary = _Plan.resolve_layout(_setup.get("spawn_rects", []), _setup.get("spawns", []))
-	_setup["spawn_rects"] = layout.get("spawn_rects", [])
-	_setup["spawns"] = layout.get("spawns", [])
-	var blocked: Dictionary = _Plan.spawn_lookup(_setup["spawn_rects"])
+	var rects: Array = layout.get("spawn_rects", [])
+	if rects.size() > 1:
+		rects = [rects[0]]
+		_layout_notes.append("spawn_one")
+	_setup["spawn_rects"] = rects
+	_setup["spawns"] = _Plan.cells_from_rects(rects)
+	if not rects.is_empty():
+		var gate_blocked := false
+		for cell in _Plan.cells_of_rect(rects[0]):
+			if _editor_occupies(cell):
+				gate_blocked = true
+				break
+		if gate_blocked:
+			_layout_notes.append("spawn_blocked")
+	var blocked: Dictionary = _Plan.spawn_lookup(rects)
 	_setup["starter_buildings"] = _Plan.clean_placed(_setup.get("starter_buildings", []), "kind", _Plan.build_ids(), blocked)
 	_setup["starter_units"] = _Plan.clean_placed(_setup.get("starter_units", []), "unit", _Plan.unit_ids(), blocked)
 	for item in _setup["starter_buildings"]:
@@ -488,6 +511,16 @@ func _normalize_setup() -> void:
 		if item is Dictionary:
 			blocked[_Plan._cell_from(item)] = true
 	_setup["starter_props"] = _Plan.clean_props(_setup.get("starter_props", []), blocked)
+	if _setup.get("roads") is Array:
+		_setup["roads"] = _Plan.clean_roads(_setup["roads"])
+	else:
+		var middle := Vector2i(-1, -1)
+		if not rects.is_empty():
+			middle = _Plan.middle_of(rects[0])
+		var scenery: Dictionary = _Plan.scenery_cells(_Plan.spawn_lookup(rects), _setup.get("starter_props", []))
+		_setup["roads"] = _Plan.seed_road_cells(middle, scenery)
+	if not rects.is_empty() and not _Plan.road_lookup(_setup["roads"]).has(_Plan.middle_of(rects[0])):
+		_layout_notes.append("need_road")
 
 func _apply_setup_stats() -> void:
 	var unit_patch = _setup.get("units", {})
@@ -552,6 +585,16 @@ func _apply_setup_stats() -> void:
 		produced["interval"] = maxf(float(lumber.get("interval", produced.get("interval", 5.0))), 0.25)
 		_buildings["lumber_mill"]["produces"] = produced
 		_by_kind["LUMBER"] = _buildings["lumber_mill"]
+
+func _editor_occupies(cell: Vector2i) -> bool:
+	for key in ["starter_buildings", "starter_units", "starter_props"]:
+		var rows = _setup.get(key, [])
+		if not (rows is Array):
+			continue
+		for item in rows:
+			if item is Dictionary and _Plan._cell_from(item) == cell:
+				return true
+	return false
 
 func _set_beds(id: String, slots: int) -> void:
 	if not _buildings.has(id):

@@ -102,7 +102,12 @@ def cells_of(rect: dict) -> list[tuple[int, int]]:
     return row
 
 
+ROCKS = {(4, 8), (16, 8), (4, 16), (16, 16)}
+
+
 def check_spawn(setup: dict) -> None:
+    if len(setup["spawn_rects"]) != 1:
+        die("exactly one spawn rect is allowed")
     derived: list[tuple[int, int]] = []
     seen_middle = set()
     for rect in setup["spawn_rects"]:
@@ -133,6 +138,24 @@ def check_spawn(setup: dict) -> None:
     listed = [(int(pair[0]), int(pair[1])) for pair in setup["spawns"]]
     if listed != derived:
         die("spawns must be rebuilt from spawn_rects, in that order, without duplicates")
+    if "roads" not in setup:
+        return
+    roads = setup["roads"]
+    if not isinstance(roads, list):
+        die("roads must be a list of cells")
+    seen = set()
+    for pair in roads:
+        if not isinstance(pair, (list, tuple)) or len(pair) != 2:
+            die("road cell must be [x, y]")
+        cell = (int(pair[0]), int(pair[1]))
+        if not (0 <= cell[0] < COLS and 0 <= cell[1] < ROWS):
+            die(f"road cell {cell} is outside the map")
+        if cell in ROCKS:
+            die(f"road cell {cell} is a fixed rock")
+        seen.add(cell)
+    middle = (int(setup["spawn_rects"][0]["middle"][0]), int(setup["spawn_rects"][0]["middle"][1]))
+    if middle not in seen:
+        die(f"spawn middle {middle} must sit on a road cell")
 
 
 def cross(o, a, b) -> float:
