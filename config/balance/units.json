@@ -17,6 +17,7 @@
       "attack_range": 45.74950976961048,
       "cost": { "wood": 0, "gold": 0 },
       "train_time": 0,
+      "intro_key": "unit.villager.intro",
       "notes": "Cosmetic pool for the auto villagers. move_speed is the old 108 * WORLD_SCALE. Wander still uses 0.72x of it and panic 1.15x, in villager.gd."
     },
     {
@@ -34,6 +35,7 @@
       "attack_range": 60.99934635948064,
       "cost": { "wood": 0, "gold": 40 },
       "train_time": 8.0,
+      "intro_key": "unit.spearman.intro",
       "notes": "Knight sheet (villager_3). move_speed and attack_range are 90 and 48 times WORLD_SCALE. Settles into spear barracks vacancies."
     },
     {
@@ -51,6 +53,7 @@
       "attack_range": 53.37442806454556,
       "cost": { "wood": 10, "gold": 30 },
       "train_time": 10.0,
+      "intro_key": "unit.engineer.intro",
       "notes": "Robot sheet (villager_5). Settles into workshop vacancies. move_speed and attack_range are 100 and 42 times WORLD_SCALE."
     },
     {
@@ -68,6 +71,7 @@
       "attack_range": 279.580337480953,
       "cost": { "wood": 0, "gold": 36 },
       "train_time": 8.0,
+      "intro_key": "unit.gunner.intro",
       "notes": "Raccoon sheet (villager_2). move_speed and attack_range are 105 and 220 times WORLD_SCALE. Settles into gun barracks vacancies."
     }
   ]

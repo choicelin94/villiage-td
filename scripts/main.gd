@@ -101,6 +101,7 @@ func _ready() -> void:
 	hud.sell_pressed.connect(_on_sell_requested)
 	hud.staff_selected.connect(_on_staff_selected)
 	hud.staff_dismissed.connect(_on_staff_dismissed)
+	hud.unit_closed.connect(_on_unit_panel_closed)
 	hud.codex_pressed.connect(_open_codex)
 	hud.bench_pressed.connect(_open_workbench)
 	get_viewport().size_changed.connect(_on_viewport_resized)
@@ -149,6 +150,8 @@ func _ready() -> void:
 		_pass_probe()
 	elif OS.get_environment("TD_STACK") == "1":
 		_stack_probe()
+	elif OS.get_environment("TD_UNIT") == "1":
+		_unit_probe()
 	elif OS.get_environment("TD_SHOT") == "1":
 		_opening_shot()
 
@@ -1145,29 +1148,24 @@ func _left_click(world: Vector2) -> void:
 			if own_cell and hits.size() > 1:
 				person = _next_stacked(hits, person, world)
 			else:
+				hud.open_unit(person)
 				return
 		elif own_cell:
 			if hits.size() > 1:
 				person = _next_stacked(hits, person, world)
 			else:
+				hud.open_unit(person)
 				return
 		else:
 			person = null
 	if person != null:
-		hud.close_panel()
-		_clear_villager_selection()
-		selected_villager = person
-		person.selected = true
-		inspected = null
-		hud.flash(Locale.text("flash.assign_next"))
+		_select_villager(person)
 		return
 	if selected_villager != null and is_instance_valid(selected_villager):
 		if building != null:
-			hud.close_panel()
 			_order_staff(selected_villager, building)
 			return
 		var ordered_cell := world_to_cell(world)
-		hud.close_panel()
 		if not _stand_ok(ordered_cell):
 			hud.flash(Locale.text("flash.no_path"))
 			return
@@ -1208,14 +1206,22 @@ func _place_from_shortcut(kind: int) -> void:
 func _on_place_requested(kind: int) -> void:
 	_place_from_shortcut(kind)
 
-func _on_staff_selected(person: Villager) -> void:
-	if person == null or person.infected or person.leaving or person.fallen:
+func _select_villager(person: Villager) -> void:
+	if person == null or not is_instance_valid(person) or person.infected or person.leaving or person.fallen:
 		return
-	hud.close_panel()
 	_clear_villager_selection()
 	selected_villager = person
 	person.selected = true
+	inspected = null
+	hud.open_unit(person)
 	hud.flash(Locale.text("flash.assign_next"))
+
+func _on_unit_panel_closed() -> void:
+	_clear_villager_selection()
+	inspected = null
+
+func _on_staff_selected(person: Villager) -> void:
+	_select_villager(person)
 
 func _on_staff_dismissed(person: Villager) -> void:
 	var building := hud.inspected_building()
@@ -1279,6 +1285,8 @@ func _can_staff(v: Villager, building: Building) -> bool:
 		return false
 	if building.holds(v):
 		_clear_villager_selection()
+		if hud.inspected_unit() == v:
+			hud.close_panel()
 		return false
 	if building.staff_count() >= building.staff_cap() and building.staff_cap() > 1:
 		hud.flash(Locale.format("flash.mill_full", [building.staff_cap()]))
@@ -1334,6 +1342,8 @@ func _commit_staff(v: Villager, building: Building) -> void:
 	v.pending_job = null
 	v.refugee = false
 	v.claim_left = -1.0
+	if hud.inspected_unit() == v:
+		hud.close_panel()
 	_clear_villager_selection()
 	_popup(building.global_position + Vector2(0, -80), Locale.text("popup.assigned"), Color(0.7, 0.95, 1))
 	_refresh_beds()
@@ -1445,6 +1455,8 @@ func _infect(v: Villager) -> void:
 	v.job = null
 	if selected_villager == v:
 		selected_villager = null
+	if hud != null and hud.inspected_unit() == v:
+		hud.close_panel()
 	var at := v.global_position
 	v.visible = false
 	v.remove_from_group("iso")
@@ -3016,6 +3028,114 @@ func _stack_command_point(person: Villager) -> Vector2:
 			if _villagers_hit(spot).has(person):
 				return spot
 	return Vector2.INF
+
+func _unit_probe() -> void:
+	await get_tree().process_frame
+	if Locale.code != "zh":
+		Locale.set_code("zh")
+	var people := _alive_villagers()
+	if people.is_empty():
+		print("UNIT_OK false missing")
+		get_tree().quit(1)
+		return
+	var walker: Villager = people[0]
+	var park := 0
+	for person in people:
+		person.set_process(false)
+		person.anchored = person != walker
+		person.visible = true
+		person.job = null
+		if person == walker:
+			continue
+		person.global_position = cell_center(Vector2i(2, 2 + park))
+		park += 1
+	walker.global_position = cell_center(Vector2i(6, 15))
+	var failed := false
+	_clear_villager_selection()
+	hud.close_panel()
+	_left_click(_villager_pick_point(walker))
+	var villager_text := hud.panel_text()
+	var villager_ok := selected_villager == walker and walker.selected and hud.inspected_unit() == walker and hud.panel_visible() and villager_text.contains(Locale.text("unit.villager")) and villager_text.contains(Locale.text("unit.villager.intro")) and villager_text.contains(Locale.text("villager.female" if walker.sex == "f" else "villager.male"))
+	if not villager_ok:
+		failed = true
+	camera.position = walker.global_position
+	camera.zoom = Vector2(1.2, 1.2)
+	_cam_user = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await _capture("/opt/cursor/artifacts/unit-panel-villager.png")
+	var spear_ok := _unit_card(walker, "spearman", "unit.spearman", "unit.spearman.intro")
+	await get_tree().process_frame
+	await _capture("/opt/cursor/artifacts/unit-panel-spearman.png")
+	var engineer_ok := _unit_card(walker, "engineer", "unit.engineer", "unit.engineer.intro")
+	var gunner_ok := _unit_card(walker, "gunner", "unit.gunner", "unit.gunner.intro")
+	if not spear_ok or not engineer_ok or not gunner_ok:
+		failed = true
+	var distinct := Locale.text("unit.villager.intro") != Locale.text("unit.spearman.intro") and Locale.text("unit.spearman.intro") != Locale.text("unit.engineer.intro") and Locale.text("unit.engineer.intro") != Locale.text("unit.gunner.intro")
+	if not distinct:
+		failed = true
+	_show_unit(walker, "villager")
+	var goal := Vector2i(6, 13)
+	if not _stand_ok(goal):
+		goal = Vector2i(5, 15)
+	_left_click(cell_center(goal))
+	var kept := walker.ordered and hud.panel_visible() and hud.inspected_unit() == walker and hud.panel_text().contains(Locale.text("unit.villager"))
+	if not kept:
+		failed = true
+	walker.ordered = false
+	walker.global_position = cell_center(Vector2i(2, 17))
+	_clear_villager_selection()
+	hud.close_panel()
+	var house: Building = buildings[Vector2i(8, 14)]
+	_left_click(house.global_position)
+	var building_text := hud.panel_text()
+	var building_ok := hud.inspected_building() == house and hud.inspected_unit() == null and hud.panel_visible() and building_text.contains(Locale.text("build.house")) and not building_text.contains(Locale.text("unit.villager.intro"))
+	if not building_ok:
+		failed = true
+	walker.global_position = cell_center(Vector2i(6, 15))
+	_show_unit(walker, "villager")
+	_right_click(cell_center(Vector2i(2, 12)))
+	var cleared := selected_villager == null and not walker.selected and not hud.panel_visible() and hud.inspected_unit() == null
+	if not cleared:
+		failed = true
+	_left_click(_villager_pick_point(walker))
+	var close := _button_labeled(Locale.text("panel.close"))
+	if close == null:
+		failed = true
+	else:
+		_click_screen(close.get_global_rect().get_center())
+		await get_tree().process_frame
+		await get_tree().process_frame
+	var closed := selected_villager == null and not hud.panel_visible()
+	if not closed:
+		failed = true
+	print("UNIT villager=", villager_ok, " spear=", spear_ok, " engineer=", engineer_ok, " gunner=", gunner_ok, " kept=", kept, " building=", building_ok, " clear=", cleared, " close=", closed)
+	print("UNIT_OK ", not failed)
+	get_tree().quit(0 if not failed else 1)
+
+func _show_unit(person: Villager, id: String) -> void:
+	var def := Balance.unit(id)
+	var sex := person.sex
+	person.configure(def)
+	person.setup(Balance.skin_index("villager", str(def.get("skin", "wolf"))), sex, float(def.get("move_speed", 0.0)))
+	person.global_position = cell_center(Vector2i(6, 15))
+	_clear_villager_selection()
+	hud.close_panel()
+	_left_click(_villager_pick_point(person))
+
+func _unit_card(person: Villager, id: String, name_key: String, intro_key: String) -> bool:
+	_show_unit(person, id)
+	var text := hud.panel_text()
+	var skin := str(Balance.unit(id).get("skin", ""))
+	var skin_ok := Balance.skin_index("villager", skin) == person._skin
+	return selected_villager == person and hud.inspected_unit() == person and hud.panel_visible() and skin_ok and text.contains(Locale.text(name_key)) and text.contains(Locale.text(intro_key)) and not text.contains(Locale.text("unit.villager.intro"))
+
+func _button_labeled(text: String) -> Button:
+	for node in hud.find_children("*", "Button", true, false):
+		var btn := node as Button
+		if btn != null and btn.visible and btn.text == text:
+			return btn
+	return null
 
 func _order_probe() -> void:
 	await get_tree().process_frame

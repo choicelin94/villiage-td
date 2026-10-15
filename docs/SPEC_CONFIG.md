@@ -58,7 +58,7 @@ config/
 
 id 用 snake_case。显示名不写在 JSON 里，`display_key` 指向 `scripts/locale.gd`。
 
-`units.json` 的每条要有 `id`, `display_key`, `faction`（`ally`）, `role`, `character`, `hp`, `defense`, `attack`, `attack_speed`, `move_speed`, `attack_range`, `cost.wood`, `cost.gold`, `train_time`。可选 `skin`, `skins`, `notes`。
+`units.json` 的每条要有 `id`, `display_key`, `faction`（`ally`）, `role`, `character`, `hp`, `defense`, `attack`, `attack_speed`, `move_speed`, `attack_range`, `cost.wood`, `cost.gold`, `train_time`。可选 `skin`, `skins`, `notes`, `intro_key`。`intro_key` 和 `display_key` 一样指向 `scripts/locale.gd`，给右侧单位面板用。
 
 `enemies.json` 根上是 `waves`（正好 10 条）和 `enemies`。每条波次是 `hp`, `speed`, `gap`, `normal`, `fast`, `elite`, `boss`。敌人要有 `id`, `display_key`, `character`, `hp`, `defense`, `attack`, `attack_speed`, `move_speed`, `attack_range`, `scale`, `gold_reward`, `wood_reward`, `tags`。
 

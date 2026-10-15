@@ -15,6 +15,7 @@
         "properties": {
           "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
           "display_key": {"type": "string"},
+          "intro_key": {"type": "string"},
           "faction": {"const": "ally"},
           "role": {"type": "string"},
           "character": {"type": "string"},
