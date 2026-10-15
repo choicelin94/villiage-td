@@ -132,6 +132,34 @@ func _begin_order(cell: Vector2i, goal: Vector2) -> bool:
 		_goal = goal
 	return true
 
+func guide_color() -> Color:
+	if sex == "f":
+		return Color(1.0, 0.46, 0.72, 1.0)
+	return Color(0.32, 0.84, 1.0, 1.0)
+
+
+func guide_points() -> PackedVector2Array:
+	var points := PackedVector2Array()
+	if not ordered or is_fighter():
+		return points
+	var game := _game()
+	if game == null:
+		return points
+	points.append(global_position)
+	var previous := global_position
+	for i in range(_path_i, _path.size()):
+		var center: Vector2 = game.cell_center(_path[i])
+		if center.distance_to(previous) < 6.0:
+			continue
+		points.append(center)
+		previous = center
+	if order_goal.distance_to(previous) >= 6.0:
+		points.append(order_goal)
+	elif points.size() < 2:
+		points.append(order_goal)
+	return points
+
+
 func face_texture() -> AtlasTexture:
 	if _actor:
 		return _actor.portrait()
