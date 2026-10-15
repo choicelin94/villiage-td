@@ -118,13 +118,14 @@ Distances and speeds are already world units. Do not scale them again. `attack_s
 
 | 字段 | 含义 |
 | --- | --- |
-| `spawn_rects[]` | 出怪长方形。每条是 `{edge, middle, length, width}`。`edge` 为 `north` / `south` / `west` / `east`，即最外一圈的上、下、左、右。`middle` 是 `[x, y]`，用户点击的那一格，也是长方形正中。`length` 固定 3，`width` 固定 1。上、下边沿 x 横放，左、右边沿 y 竖放。宽的方向朝内，但只占边上一格，不向地图里面再进一格。四个角 `(0,0)`、`(19,0)`、`(0,19)`、`(19,19)` 不能当正中。 |
+| `spawn_rects[]` | 出怪长方形，全图只有一条。每条是 `{edge, middle, length, width}`。`edge` 为 `north` / `south` / `west` / `east`，即最外一圈的上、下、左、右。`middle` 是 `[x, y]`，用户点击的那一格，也是长方形正中。`length` 固定 3，`width` 固定 1。上、下边沿 x 横放，左、右边沿 y 竖放。宽的方向朝内，但只占边上一格，不向地图里面再进一格。四个角 `(0,0)`、`(19,0)`、`(0,19)`、`(19,19)` 不能当正中。正中格必须是路面。 |
+| `roads[]` | 路面格子 `[x, y]`。只决定画出来的褐色路，不决定怪物怎么走。可以单独铺或去掉。设出怪口不会自动铺一条直线到村子中心。固定岩石上不能铺路。 |
 | `spawns[]` | 由 `spawn_rects` 展开的出生格 `[x, y]`，重复的格子只留一次。加载时会按长方形重写，不要单独改这一份。 |
 | `starter_buildings[]` | 开局建筑 `{kind, cell}`。`kind` 用 `WALL`、`SPEAR`、`FIRE`、`HOUSE`、`FARM`、`WORKSHOP`、`LUMBER`、`SPEAR_BARRACKS`、`GUN_BARRACKS`。`cell` 是内侧空格。 |
 | `starter_units[]` | 开局站位 `{unit, cell, sex}`。`unit` 为 `villager`、`spearman`、`gunner`、`engineer`。`sex` 为 `m` 或 `f`。 |
 | `starter_props[]` | 额外景物 `{kind, cell}`。`kind` 为 `tree` 或 `rock`，只能放在内侧、不是固定岩石、也不是出怪格的位置。最外圈的林子和四块固定岩石仍由对局生成。 |
 
-The match grid is 20×20 cells of 128. `spawn_rects` is the authored enemy gate: `edge`, `middle` (the clicked center cell), `length` 3, `width` 1. North and south run along x; west and east run along y; the short side points inward and stays on the border. `spawns` is rebuilt from those rects. `starter_buildings`, `starter_units`, and `starter_props` are the opening placements.
+The match grid is 20×20 cells of 128. `spawn_rects` is the single authored enemy gate: `edge`, `middle` (the clicked center cell), `length` 3, `width` 1. North and south run along x; west and east run along y; the short side points inward and stays on the border. The middle cell sits on a `roads` cell. `roads` is painted ground and is not the enemy route. `spawns` is rebuilt from that one rect. `starter_buildings`, `starter_units`, and `starter_props` are the opening placements.
 
 ### `characters.json`
 

@@ -2,10 +2,10 @@ class_name MapInteraction
 extends RefCounted
 
 # One pointer policy for click and for drag-drop.
-# Interior empty ground asks for a friendly. The outer ring, except the
-# four corners, sets a 3×1 gate whose middle is the cell under the pointer.
-# North and south run along x. West and east run along y. MapPlan owns
-# that geometry; this class only chooses the command.
+# A click inspects the cell. The docked panel places actors, paints a road
+# cell, or sets the single 3×1 gate. Dragging an actor still moves it.
+# Dragging empty ground pans the map and does not issue a command.
+# North and south gates run along x. West and east run along y.
 
 var pressing := false
 var dragging := false
@@ -32,6 +32,8 @@ static func op_for(cell: Vector2i, carrying: Dictionary, occupied: bool) -> Dict
 	var has_id := carrying.has("id") and str(carrying.get("id", "")) != ""
 	if not MapPlan.in_bounds(cell):
 		return {"op": "reject", "reason": "outside", "cell": cell}
+	if not has_id and layer != "spawn":
+		return {"op": "inspect", "cell": cell}
 	if MapPlan.is_corner(cell):
 		return {"op": "reject", "reason": "corner", "cell": cell}
 	if MapPlan.is_fixed_rock(cell):
@@ -74,15 +76,18 @@ func note_motion(cell: Vector2i, pos: Vector2) -> void:
 
 
 func release(cell: Vector2i, doc: SetupDocument) -> Dictionary:
-	var carrying: Dictionary = {}
-	if dragging and not drag.is_empty():
-		carrying = drag
-	var occupied := doc.blocks_new(cell, carrying)
-	var cmd := op_for(cell, carrying, occupied)
+	var was_dragging := dragging
+	var carried := drag
 	pressing = false
 	dragging = false
 	drag = {}
-	return cmd
+	if not was_dragging:
+		if not MapPlan.in_bounds(cell):
+			return {"op": "reject", "reason": "outside", "cell": cell}
+		return {"op": "inspect", "cell": cell}
+	if carried.is_empty():
+		return {"op": "none", "cell": cell}
+	return op_for(cell, carried, doc.blocks_new(cell, carried))
 
 
 func drop_command(cell: Vector2i, payload: Dictionary, doc: SetupDocument) -> Dictionary:

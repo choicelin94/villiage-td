@@ -40,7 +40,7 @@ config/
 
 ## 布局 / Layout document
 
-`layout/setup.json` 是开局布局的唯一真相。出怪是 `spawn_rects`：`edge` 为 `north` | `south` | `west` | `east`，`middle` 是正中格，`length` 为 3，`width` 为 1。上下沿横轴，左右沿纵轴。四个角不能当正中。`spawns` 由这些长方形展开，不单独手改。
+`layout/setup.json` 是开局布局的唯一真相。出怪是 `spawn_rects`：全图只保留一条。`edge` 为 `north` | `south` | `west` | `east`，`middle` 是正中格，`length` 为 3，`width` 为 1。上下沿横轴，左右沿纵轴。四个角不能当正中。`spawns` 由这一个长方形展开，不单独手改。`roads` 是铺在地上的路面格子 `[x, y]`，和怪物寻路无关；出怪正中必须落在其中一格上。设出怪口不会改写路面。
 
 `starter_buildings` 是 `{kind, cell}`，`starter_units` 是 `{unit, cell, sex}`，`starter_props` 是额外的树或岩石 `{kind, cell}`。边上一圈的树和四块固定岩石仍由对局生成。
 

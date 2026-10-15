@@ -1,11 +1,13 @@
 class_name SetupDocument
 extends RefCounted
 
-# Layout truth for the map editor. Buildings, units, props, and spawn
-# gates live here. The match and the workbench both read this shape
-# from config/layout/setup.json. Map commands are the only writers.
+# Layout truth for the map editor. Buildings, units, props, spawn gates,
+# and painted road cells live here. The match and the workbench both read
+# this shape from config/layout/setup.json. Map commands are the only writers.
+# Roads are ground paint. They are not the enemy movement route.
 
 var _state: Dictionary = {}
+var trimmed := false
 
 
 func bind(state: Dictionary) -> void:
@@ -15,6 +17,24 @@ func bind(state: Dictionary) -> void:
 	_ensure("starter_buildings")
 	_ensure("starter_units")
 	_ensure("starter_props")
+	normalize()
+
+
+func normalize() -> void:
+	var cleaned: Array = MapPlan.clean_rects(spawn_rects())
+	trimmed = cleaned.size() > 1
+	if cleaned.is_empty():
+		cleaned = MapPlan.default_rects()
+	elif trimmed:
+		cleaned = [cleaned[0]]
+	_state["spawn_rects"] = cleaned
+	_state["spawns"] = MapPlan.cells_from_rects(cleaned)
+	if not (_state.get("roads") is Array):
+		var middle := MapPlan.middle_of(cleaned[0])
+		var blocked := MapPlan.scenery_cells(MapPlan.spawn_lookup(cleaned), starter_props())
+		_state["roads"] = MapPlan.seed_road_cells(middle, blocked)
+	else:
+		_state["roads"] = MapPlan.clean_roads(_state.get("roads"))
 
 
 func state() -> Dictionary:
@@ -39,6 +59,61 @@ func starter_units() -> Array:
 
 func starter_props() -> Array:
 	return _ensure("starter_props")
+
+
+func roads() -> Array:
+	var raw = _state.get("roads", [])
+	if not (raw is Array):
+		raw = []
+		_state["roads"] = raw
+	return raw
+
+
+func is_road(cell: Vector2i) -> bool:
+	return MapPlan.road_lookup(roads()).has(cell)
+
+
+func footprint_block(cell: Vector2i) -> String:
+	var rect := MapPlan.rect_from_middle(cell)
+	if rect.is_empty():
+		return "corner" if MapPlan.is_corner(cell) else "outside"
+	for spot in MapPlan.cells_of_rect(rect):
+		if MapPlan.is_fixed_rock(spot):
+			return "rock"
+		var hit := hit_at(spot)
+		if not hit.is_empty() and str(hit.get("layer", "")) != "spawn":
+			return "spawn_blocked"
+	if not is_road(cell):
+		return "need_road"
+	return ""
+
+
+func toggle_road(cell: Vector2i) -> String:
+	if not MapPlan.in_bounds(cell):
+		return "outside"
+	if MapPlan.is_fixed_rock(cell):
+		return "rock"
+	var rows := roads()
+	for i in rows.size():
+		var raw = rows[i]
+		if raw is Array and raw.size() >= 2 and int(raw[0]) == cell.x and int(raw[1]) == cell.y:
+			rows.remove_at(i)
+			if _spawn_middle_is(cell):
+				return "need_road"
+			return "road_off"
+	rows.append([cell.x, cell.y])
+	return "road_on"
+
+
+func load_note() -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	if trimmed:
+		parts.append(Locale.text("bench.map.spawn_one"))
+	if not spawn_rects().is_empty():
+		var block := footprint_block(MapPlan.middle_of(spawn_rects()[0]))
+		if block == "need_road" or block == "spawn_blocked" or block == "rock":
+			parts.append(Locale.text("bench.map." + block))
+	return " ".join(parts)
 
 
 func touch_spawns() -> void:
@@ -130,6 +205,13 @@ func _entry_at(rows: Array, cell: Vector2i) -> int:
 			if raw is Array and raw.size() >= 2 and int(raw[0]) == cell.x and int(raw[1]) == cell.y:
 				return i
 	return -1
+
+
+func _spawn_middle_is(cell: Vector2i) -> bool:
+	var rows := spawn_rects()
+	if rows.is_empty() or not (rows[0] is Dictionary):
+		return false
+	return MapPlan.middle_of(rows[0]) == cell
 
 
 func _ensure(key: String) -> Array:

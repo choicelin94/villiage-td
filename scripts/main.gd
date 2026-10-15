@@ -292,7 +292,7 @@ func _paint_map() -> void:
 	for cell in spawns:
 		spawn_lookup[cell] = true
 	scenery = MapPlan.scenery_cells(spawn_lookup, Balance.starter_props())
-	var trail := MapPlan.road_cells(scenery, spawns)
+	var trail := MapPlan.road_lookup(Balance.roads())
 	for y in ROWS:
 		for x in COLS:
 			var cell := Vector2i(x, y)

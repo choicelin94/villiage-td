@@ -9,9 +9,6 @@ var _title: Label
 var _status: Label
 var _body: VBoxContainer
 var _scroll: ScrollContainer
-var _popup: PanelContainer
-var _popup_col: VBoxContainer
-var _popup_cell := Vector2i(-1, -1)
 var _narrow_root: Control
 var _narrow_card: PanelContainer
 var _narrow_box: VBoxContainer
@@ -53,7 +50,7 @@ func _bench_probe() -> void:
 	var no_lab := find_child("LabModeButton", true, false) == null
 	var no_stress := find_child("StressModeButton", true, false) == null
 	var title_ok := _title != null and _title.text == Locale.text("bench.title")
-	var roster_ok := Balance.starter_units().size() >= 5 and Balance.spawns().size() >= 3 and Balance.spawn_rects().size() >= 1
+	var roster_ok := Balance.starter_units().size() >= 5 and Balance.spawns().size() == 3 and Balance.spawn_rects().size() == 1
 	var layout_ok := _probe_layout()
 	var thumb_ok := _probe_thumbs()
 	var edit_ok := board != null and board.has_method("probe_edits") and bool(board.probe_edits())
@@ -118,16 +115,9 @@ func _probe_layout() -> bool:
 func _probe_thumbs() -> bool:
 	var ok := true
 	for id in ["Thumb_unit_villager", "Thumb_unit_spearman", "Thumb_unit_gunner", "Thumb_unit_engineer", "Thumb_build_HOUSE", "Thumb_build_WALL", "Thumb_build_LUMBER", "Thumb_prop_tree", "Thumb_prop_rock"]:
-		if find_child(id, true, false) == null:
-			print("BENCH_THUMB missing ", id)
+		if find_child(id, true, false) != null:
+			print("BENCH_THUMB still present ", id)
 			ok = false
-	var tree := find_child("Thumb_prop_tree", true, false)
-	if tree == null or not tree.has_method("_get_drag_data"):
-		return false
-	var data = tree._get_drag_data(Vector2.ZERO)
-	if not (data is Dictionary) or str(data.get("layer", "")) != "prop" or str(data.get("id", "")) != "tree":
-		print("BENCH_DRAG ", data)
-		return false
 	return ok
 
 func _input(event: InputEvent) -> void:
@@ -142,8 +132,9 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_ESCAPE:
-		if _popup and _popup.visible:
-			_hide_popup()
+		var board := find_child("MapBoard", true, false)
+		if board and board.has_method("inspector_open") and bool(board.inspector_open()):
+			board.close_inspector()
 			get_viewport().set_input_as_handled()
 			return
 		_back_to_game()
@@ -205,7 +196,6 @@ func _build_chrome() -> void:
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_body.add_theme_constant_override("separation", 8)
 	_scroll.add_child(_body)
-	_build_popup(layer)
 	_build_narrow_lock()
 
 func _build_narrow_lock() -> void:
@@ -388,28 +378,6 @@ func _probe_click(at: Vector2) -> void:
 	release.position = screen
 	get_viewport().push_input(release)
 
-func _build_popup(layer: CanvasLayer) -> void:
-	_popup = PanelContainer.new()
-	_popup.name = "PlacePopup"
-	_popup.visible = false
-	_popup.mouse_filter = Control.MOUSE_FILTER_STOP
-	_popup.z_index = 40
-	_popup.custom_minimum_size = Vector2(390, 360)
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.1, 0.14, 0.11, 0.98)
-	box.border_color = Color(0.9, 0.78, 0.4)
-	box.set_border_width_all(2)
-	box.set_corner_radius_all(12)
-	box.content_margin_left = 10
-	box.content_margin_right = 10
-	box.content_margin_top = 8
-	box.content_margin_bottom = 8
-	_popup.add_theme_stylebox_override("panel", box)
-	layer.add_child(_popup)
-	_popup_col = VBoxContainer.new()
-	_popup_col.add_theme_constant_override("separation", 6)
-	_popup.add_child(_popup_col)
-
 func _tab_button(tabs: HBoxContainer, tab: String, key: String, node_name: String = "") -> void:
 	var btn := _button(node_name if node_name != "" else "Tab" + tab, Locale.text(key))
 	btn.pressed.connect(_show_tab.bind(tab))
@@ -505,102 +473,16 @@ func _remove_roster(index: int) -> void:
 
 func _fill_map() -> void:
 	_note(Locale.text("bench.map_help"))
-	_body.add_child(_label(Locale.text("bench.palette.units")))
-	_body.add_child(_palette_row(MapPlan.unit_palette()))
-	_body.add_child(_label(Locale.text("bench.palette.builds")))
-	_body.add_child(_palette_row(MapPlan.build_palette()))
-	_body.add_child(_label(Locale.text("bench.palette.props")))
-	_body.add_child(_palette_row(MapPlan.prop_palette()))
 	var board := MapBoard.new()
 	board.name = "MapBoard"
 	board.setup(_state, _font)
-	board.place_requested.connect(_open_place_popup)
 	board.hint_changed.connect(_show_hint)
-	board.changed.connect(_hide_popup)
 	_body.add_child(board)
 
-func _palette_row(items: Array) -> ScrollContainer:
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(0, 112)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	scroll.add_child(row)
-	for spec in items:
-		if spec is Dictionary:
-			row.add_child(_make_thumb(spec, false))
-	return scroll
-
-func _make_thumb(spec: Dictionary, click_places: bool) -> CubeThumb:
-	var thumb := CubeThumb.new()
-	if not click_places:
-		thumb.name = "Thumb_%s_%s" % [str(spec.get("layer", "")), str(spec.get("id", ""))]
-	thumb.layer = str(spec.get("layer", ""))
-	thumb.item_id = str(spec.get("id", ""))
-	thumb.volume_key = str(spec.get("volume", "walker"))
-	thumb.tint = spec.get("tint", Color.WHITE)
-	thumb.label_key = str(spec.get("label", ""))
-	thumb.click_places = click_places
-	return thumb
-
-func _open_place_popup(cell: Vector2i, at: Vector2) -> void:
-	if _popup == null or _popup_col == null:
-		return
-	_popup_cell = cell
-	for child in _popup_col.get_children():
-		child.queue_free()
-	var title := _label(Locale.format("bench.pick_title", [cell.x, cell.y]))
-	title.add_theme_font_size_override("font_size", 20)
-	_popup_col.add_child(title)
-	var help := _label(Locale.text("bench.pick_help"))
-	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	help.custom_minimum_size = Vector2(360, 0)
-	_popup_col.add_child(help)
-	var close := _button("PlaceClose", Locale.text("bench.pick_close"))
-	close.pressed.connect(_hide_popup)
-	_popup_col.add_child(close)
-	_popup_col.add_child(_label(Locale.text("bench.palette.units")))
-	_popup_col.add_child(_popup_grid(MapPlan.unit_palette()))
-	_popup_col.add_child(_label(Locale.text("bench.palette.builds")))
-	_popup_col.add_child(_popup_grid(MapPlan.build_palette()))
-	_popup.visible = true
-	_popup.global_position = at + Vector2(12, 12)
-	_clamp_popup()
-
-func _popup_grid(items: Array) -> GridContainer:
-	var grid := GridContainer.new()
-	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 6)
-	for spec in items:
-		if not (spec is Dictionary):
-			continue
-		var thumb := _make_thumb(spec, true)
-		thumb.chosen.connect(_place_from_popup)
-		grid.add_child(thumb)
-	return grid
-
-func _place_from_popup(payload: Dictionary) -> void:
-	var board := find_child("MapBoard", true, false)
-	if board and board.has_method("place_payload") and board.place_payload(payload, _popup_cell):
-		_hide_popup()
-
 func _hide_popup() -> void:
-	if _popup:
-		_popup.visible = false
-
-func _clamp_popup() -> void:
-	if _popup == null:
-		return
-	var view := get_viewport_rect().size
-	var sz := _popup.size
-	if sz.x < 8.0:
-		sz = _popup.custom_minimum_size
-	var pos := _popup.global_position
-	pos.x = clampf(pos.x, 8.0, maxf(8.0, view.x - sz.x - 8.0))
-	pos.y = clampf(pos.y, 8.0, maxf(8.0, view.y - sz.y - 8.0))
-	_popup.global_position = pos
+	var board := find_child("MapBoard", true, false)
+	if board and board.has_method("close_inspector"):
+		board.close_inspector()
 
 func _show_hint(text: String) -> void:
 	if _status:
@@ -697,10 +579,15 @@ func _write_path(path: Array, value) -> void:
 
 func _save() -> void:
 	var rects: Array = _state.get("spawn_rects", []) if _state.get("spawn_rects", []) is Array else []
-	_state["spawn_rects"] = MapPlan.clean_rects(rects)
-	if (_state["spawn_rects"] as Array).is_empty():
-		_state["spawn_rects"] = MapPlan.default_rects()
-	_state["spawns"] = MapPlan.cells_from_rects(_state["spawn_rects"])
+	var cleaned := MapPlan.clean_rects(rects)
+	if cleaned.is_empty():
+		cleaned = MapPlan.default_rects()
+	elif cleaned.size() > 1:
+		cleaned = [cleaned[0]]
+	_state["spawn_rects"] = cleaned
+	_state["spawns"] = MapPlan.cells_from_rects(cleaned)
+	if _state.get("roads") is Array:
+		_state["roads"] = MapPlan.clean_roads(_state["roads"])
 	_doc.data = _state
 	_doc.save()
 	_state = _doc.data
