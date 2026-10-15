@@ -514,13 +514,7 @@ func _normalize_setup() -> void:
 	if _setup.get("roads") is Array:
 		_setup["roads"] = _Plan.clean_roads(_setup["roads"])
 	else:
-		var middle := Vector2i(-1, -1)
-		if not rects.is_empty():
-			middle = _Plan.middle_of(rects[0])
-		var scenery: Dictionary = _Plan.scenery_cells(_Plan.spawn_lookup(rects), _setup.get("starter_props", []))
-		_setup["roads"] = _Plan.seed_road_cells(middle, scenery)
-	if not rects.is_empty() and not _Plan.road_lookup(_setup["roads"]).has(_Plan.middle_of(rects[0])):
-		_layout_notes.append("need_road")
+		_setup["roads"] = []
 
 func _apply_setup_stats() -> void:
 	var unit_patch = _setup.get("units", {})

@@ -244,23 +244,6 @@ static func road_lookup(raw) -> Dictionary:
 		out[Vector2i(int(item[0]), int(item[1]))] = true
 	return out
 
-static func seed_road_cells(middle: Vector2i, blocked: Dictionary) -> Array:
-	# One path from the gate's middle cell. Used only when a layout has no
-	# roads field yet. Setting a spawn does not call this.
-	var out: Array = []
-	var seen := {}
-	for cell in _astar(middle, HEART, blocked):
-		if is_fixed_rock(cell):
-			continue
-		var key := "%d,%d" % [cell.x, cell.y]
-		if seen.has(key):
-			continue
-		seen[key] = true
-		out.append([cell.x, cell.y])
-	if out.is_empty() and in_bounds(middle) and not is_fixed_rock(middle):
-		out.append([middle.x, middle.y])
-	return out
-
 static func clean_props(raw, blocked: Dictionary) -> Array:
 	var out: Array = []
 	var seen := {}

@@ -120,7 +120,7 @@ func probe_edits() -> bool:
 	var zoom_btns := find_child("MapZoomIn", true, false) != null and find_child("MapZoomOut", true, false) != null
 	view.reset_view()
 	close_inspector()
-	var ok := commands_ok and corner == "inspect" and str(corner_set.get("action", "")) == "corner" and str(bare.get("action", "")) == "need_road" and str(painted.get("action", "")) == "road_on" and str(spawned.get("action", "")) == "spawn" and cell_ok and road_ok and kept_old and str(blocked.get("action", "")) == "spawn_blocked" and str(south_bare.get("action", "")) == "need_road" and pick == "inspect" and placed and border_reject and rock_reject and prop_ok and art_ok and combat_nodes == 0 and panel_ok and clip_ok and zoom_ok and zoom_btns
+	var ok := commands_ok and corner == "inspect" and str(corner_set.get("action", "")) == "corner" and str(bare.get("action", "")) == "spawn" and str(painted.get("action", "")) == "road_on" and str(spawned.get("action", "")) == "spawn_have" and cell_ok and road_ok and kept_old and str(blocked.get("action", "")) == "spawn_blocked" and str(south_bare.get("action", "")) == "spawn" and pick == "inspect" and placed and border_reject and rock_reject and prop_ok and art_ok and combat_nodes == 0 and panel_ok and clip_ok and zoom_ok and zoom_btns
 	print("BENCH_EDIT corner=", corner, " spawn=", str(spawned.get("action", "")), " cell=", cell_ok, " road=", road_ok, " blocked=", str(blocked.get("action", "")), " pick=", pick, " placed=", placed, " border=", border_reject, " rock=", rock_reject, " prop=", prop_ok, " art=", art_ok, " commands=", commands_ok, " combat=", combat_nodes, " panel=", panel_ok, " clip=", clip_ok, " zoom=", zoom_ok)
 	return ok
 

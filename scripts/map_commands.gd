@@ -125,7 +125,7 @@ static func move_spawn(doc: SetupDocument, index: int, cell: Vector2i) -> Dictio
 
 static func _road(doc: SetupDocument, cell: Vector2i) -> Dictionary:
 	var action := doc.toggle_road(cell)
-	var ok := action == "road_on" or action == "road_off" or action == "need_road"
+	var ok := action == "road_on" or action == "road_off"
 	return {"ok": ok, "action": action, "cell": cell}
 
 
@@ -174,21 +174,21 @@ static func _expect_gates(failures: Array[String]) -> void:
 	var north := MapPlan.cells_of_rect(doc.spawn_rects()[0])
 	if not _flat(north, true, Vector2i(10, 0)):
 		failures.append("default north")
-	if not doc.is_road(Vector2i(10, 0)) or doc.is_road(Vector2i(9, 0)) or doc.is_road(Vector2i(11, 0)):
-		failures.append("middle on road")
+	if doc.is_road(Vector2i(10, 0)) or not doc.roads().is_empty():
+		failures.append("blank roads empty")
 	var again: Dictionary = set_spawn(doc, Vector2i(10, 0))
 	if str(again.get("action", "")) != "spawn_have" or doc.spawn_rects().size() != 1:
 		failures.append("duplicate middle")
 	var bare: Dictionary = set_spawn(doc, Vector2i(3, 0))
-	if str(bare.get("action", "")) != "need_road" or doc.spawn_rects().size() != 1:
-		failures.append("need road")
-	if doc.is_road(Vector2i(3, 1)):
+	if str(bare.get("action", "")) != "spawn" or doc.spawn_rects().size() != 1:
+		failures.append("spawn without road")
+	if doc.is_road(Vector2i(3, 0)) or doc.is_road(Vector2i(3, 1)) or doc.is_road(Vector2i(2, 0)) or doc.is_road(Vector2i(4, 0)):
 		failures.append("spawn painted a road")
 	var painted: Dictionary = apply(doc, {"op": "toggle_road", "cell": Vector2i(3, 0)})
 	if str(painted.get("action", "")) != "road_on" or not doc.is_road(Vector2i(3, 0)) or doc.is_road(Vector2i(3, 1)):
 		failures.append("paint one cell")
 	var added: Dictionary = set_spawn(doc, Vector2i(3, 0))
-	if str(added.get("action", "")) != "spawn" or doc.spawn_rects().size() != 1:
+	if str(added.get("action", "")) != "spawn_have" or doc.spawn_rects().size() != 1:
 		failures.append("set spawn action")
 	var gate := MapPlan.cells_of_rect(doc.spawn_rects()[0])
 	if not _flat(gate, true, Vector2i(3, 0)):
@@ -200,23 +200,22 @@ static func _expect_gates(failures: Array[String]) -> void:
 	if str(blocked.get("action", "")) != "spawn_blocked" or doc.spawn_rects().size() != 1:
 		failures.append("spawn blocked")
 	doc.starter_props().clear()
-	var west_paint: Dictionary = apply(doc, {"op": "toggle_road", "cell": Vector2i(0, 8)})
 	var west: Dictionary = set_spawn(doc, Vector2i(0, 8))
-	if not west_paint.get("ok", false) or not west.get("ok", false) or doc.spawn_rects().size() != 1 or not _flat(MapPlan.cells_of_rect(doc.spawn_rects()[0]), false, Vector2i(0, 8)):
+	if not west.get("ok", false) or doc.spawn_rects().size() != 1 or not _flat(MapPlan.cells_of_rect(doc.spawn_rects()[0]), false, Vector2i(0, 8)):
 		failures.append("west vertical")
-	var south_bare: Dictionary = set_spawn(doc, Vector2i(4, 19))
-	if str(south_bare.get("action", "")) != "need_road":
-		failures.append("south needs road")
-	apply(doc, {"op": "toggle_road", "cell": Vector2i(4, 19)})
+	if doc.is_road(Vector2i(0, 8)):
+		failures.append("west painted a road")
 	var south: Dictionary = set_spawn(doc, Vector2i(4, 19))
 	if not south.get("ok", false) or doc.spawn_rects().size() != 1 or not _flat(MapPlan.cells_of_rect(doc.spawn_rects()[0]), true, Vector2i(4, 19)):
 		failures.append("south horizontal")
-	apply(doc, {"op": "toggle_road", "cell": Vector2i(19, 3)})
+	if doc.is_road(Vector2i(4, 19)):
+		failures.append("south painted a road")
 	var east: Dictionary = set_spawn(doc, Vector2i(19, 3))
 	if not east.get("ok", false) or doc.spawn_rects().size() != 1 or not _flat(MapPlan.cells_of_rect(doc.spawn_rects()[0]), false, Vector2i(19, 3)):
 		failures.append("east vertical")
+	apply(doc, {"op": "toggle_road", "cell": Vector2i(19, 3)})
 	var cleared: Dictionary = apply(doc, {"op": "toggle_road", "cell": Vector2i(19, 3)})
-	if str(cleared.get("action", "")) != "need_road" or doc.is_road(Vector2i(19, 3)) or doc.spawn_rects().size() != 1:
+	if str(cleared.get("action", "")) != "road_off" or doc.is_road(Vector2i(19, 3)) or doc.spawn_rects().size() != 1:
 		failures.append("clear road keeps spawn")
 	var bad: Dictionary = set_spawn(doc, Vector2i(0, 0))
 	if str(bad.get("action", "")) != "corner":
