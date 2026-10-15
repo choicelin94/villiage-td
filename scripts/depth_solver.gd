@@ -17,7 +17,8 @@ extends RefCounted
 # that compare. Static props keep the pair result until one of them moves.
 # apply_reference() is the previous all-pairs sort, used to time the old path
 # on the stress page. Debug builds assert that no ground pair overlaps and
-# that the order has no cycle.
+# that the order has no cycle. The match sets allow_walker_overlap so two
+# villagers may share ground; props, terrain, and zombies still count.
 
 const PAD := 8.0
 const MISS := 2
@@ -31,6 +32,7 @@ static var last_hits := 0
 static var last_overlaps := 0
 static var last_cycle := false
 static var audit := true
+static var allow_walker_overlap := false
 
 static var _batch: Array = []
 static var _empty: Array = []
@@ -88,12 +90,17 @@ static func apply_reference(volumes: Array) -> void:
 static var _overlap_reported := false
 
 static func count_overlaps(volumes: Array) -> int:
+	return _count_overlaps(volumes, false)
+
+static func _count_overlaps(volumes: Array, skip_walkers: bool) -> int:
 	var n := volumes.size()
 	var found := 0
 	for i in n:
 		var a: IsoVolume = volumes[i]
 		for j in range(i + 1, n):
 			var b: IsoVolume = volumes[j]
+			if skip_walkers and a.node is Villager and b.node is Villager:
+				continue
 			if a.overlaps(b):
 				found += 1
 				if found == 1 and OS.is_debug_build() and not _overlap_reported:
@@ -110,7 +117,7 @@ static func count_overlaps(volumes: Array) -> int:
 static func _enforce(volumes: Array) -> void:
 	if not audit or not OS.is_debug_build():
 		return
-	last_overlaps = count_overlaps(volumes)
+	last_overlaps = _count_overlaps(volumes, allow_walker_overlap)
 	assert(last_overlaps == 0, "Ground volumes overlap")
 	assert(not last_cycle, "Depth order has a cycle")
 

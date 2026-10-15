@@ -145,6 +145,8 @@ func _ready() -> void:
 		_move_shot()
 	elif OS.get_environment("TD_ORDER") == "1":
 		_order_probe()
+	elif OS.get_environment("TD_PASS") == "1":
+		_pass_probe()
 	elif OS.get_environment("TD_SHOT") == "1":
 		_opening_shot()
 
@@ -1899,6 +1901,7 @@ func _hud_menu_ok(tag: String) -> bool:
 func _apply_iso_sort() -> void:
 	if actors == null:
 		return
+	DepthSolver.allow_walker_overlap = true
 	var vols: Array = []
 	for node in get_tree().get_nodes_in_group("iso"):
 		if not is_instance_valid(node) or not (node is CanvasItem):
@@ -1964,11 +1967,14 @@ func _oval_clear(world: Vector2, ignore: Node, also: Node) -> bool:
 	for prop in _prop_cache:
 		if mine.overlaps(prop):
 			return false
-	for node in get_tree().get_nodes_in_group("villagers"):
-		if not _walker_counts(node, ignore, also):
-			continue
-		if mine.overlaps((node as Villager).get_iso_volume()):
-			return false
+	# Villagers, including fighters, do not block each other. Zombies still do.
+	var skip_villagers := ignore == null or ignore is Villager
+	if not skip_villagers:
+		for node in get_tree().get_nodes_in_group("villagers"):
+			if not _walker_counts(node, ignore, also):
+				continue
+			if mine.overlaps((node as Villager).get_iso_volume()):
+				return false
 	for node in get_tree().get_nodes_in_group("zombies"):
 		if not _walker_counts(node, ignore, also):
 			continue
@@ -2006,6 +2012,8 @@ func _separate_walkers() -> void:
 			for j in range(i + 1, bodies.size()):
 				if not is_instance_valid(bodies[j]):
 					continue
+				if bodies[i] is Villager and bodies[j] is Villager:
+					continue
 				var delta := bodies[i].global_position - bodies[j].global_position
 				if absf(delta.x) >= x_lim or absf(delta.y) >= y_lim:
 					continue
@@ -2022,6 +2030,8 @@ func _separate_walkers() -> void:
 			continue
 		for j in range(i + 1, bodies.size()):
 			if not is_instance_valid(bodies[j]):
+				continue
+			if bodies[i] is Villager and bodies[j] is Villager:
 				continue
 			var delta := bodies[i].global_position - bodies[j].global_position
 			if absf(delta.x) >= x_lim or absf(delta.y) >= y_lim:
@@ -2702,6 +2712,72 @@ func _move_shot() -> void:
 	print("STAFF_SELECT ", selected)
 	var ok := (not into) and out and (not into_tree) and (not into_rock) and (not path_hits) and (not clip) and (not entered) and reached and depth_ok and tree_ok and hidden and panel_ok and selected
 	print("MOVE_OK ", ok)
+	get_tree().quit(0 if ok else 1)
+
+func _pass_probe() -> void:
+	await get_tree().process_frame
+	var people := _alive_villagers()
+	if people.size() < 2:
+		print("PASS_OK false missing")
+		get_tree().quit(1)
+		return
+	var mover: Villager = people[0]
+	var other: Villager = people[1]
+	for person in people:
+		person.set_process(false)
+		if person != mover and person != other:
+			person.visible = false
+			person.anchored = true
+	var origin := cell_center(Vector2i(6, 15))
+	mover.visible = true
+	other.visible = true
+	mover.job = null
+	other.job = null
+	mover.ordered = false
+	other.ordered = false
+	mover.global_position = origin
+	other.global_position = origin + Vector2(12, 8)
+	var other_start := other.global_position
+	var overlapped := mover.get_iso_volume().overlaps(other.get_iso_volume())
+	var step_through := can_step(mover.global_position, other.global_position, mover)
+	var stand_on := _stand_ok(world_to_cell(other.global_position))
+	var goal := Vector2i(9, 15)
+	var ordered := mover.command_move(goal)
+	var travelled := 0.0
+	var max_jump := 0.0
+	var prev := mover.global_position
+	if ordered:
+		for _i in 360:
+			mover._process(1.0 / 60.0)
+			_separate_walkers()
+			_apply_iso_sort()
+			var jump := mover.global_position.distance_to(prev)
+			max_jump = maxf(max_jump, jump)
+			travelled += jump
+			prev = mover.global_position
+			if not mover.ordered:
+				break
+	var arrived := world_to_cell(mover.global_position) == goal
+	var other_held := other.global_position.distance_to(other_start) < 2.0
+	var blocked_house := not can_step(cell_center(Vector2i(8, 15)), cell_center(Vector2i(8, 14)), mover)
+	var blocked_tree := not can_step(cell_center(Vector2i(1, 5)), cell_center(Vector2i(0, 5)), mover)
+	var blocked_rock := not can_step(cell_center(Vector2i(5, 8)), cell_center(Vector2i(4, 8)), mover)
+	var zombie := Zombie.new()
+	zombie.set_process(false)
+	zombie.position = cell_center(Vector2i(6, 17))
+	actors.add_child(zombie)
+	var blocked_zombie := not can_step(cell_center(Vector2i(6, 18)), zombie.global_position, mover)
+	var zombie_blocked := not can_step(zombie.global_position + Vector2(0, 90), mover.global_position, zombie)
+	mover.global_position = origin
+	other.global_position = origin + Vector2(6, 18)
+	mover.visible = true
+	other.visible = true
+	var still_overlap := mover.get_iso_volume().overlaps(other.get_iso_volume())
+	_apply_iso_sort()
+	var depth_ok := other.z_index > mover.z_index
+	var ok := overlapped and step_through and stand_on and ordered and arrived and other_held and travelled > 200.0 and max_jump < 48.0 and blocked_house and blocked_tree and blocked_rock and blocked_zombie and zombie_blocked and still_overlap and depth_ok
+	print("PASS overlap=", overlapped, " step=", step_through, " stand=", stand_on, " arrived=", arrived, " held=", other_held, " travel=", travelled, " jump=", max_jump, " house=", blocked_house, " tree=", blocked_tree, " rock=", blocked_rock, " zombie=", blocked_zombie, " zombie_in=", zombie_blocked, " depth=", depth_ok, " z=", mover.z_index, other.z_index)
+	print("PASS_OK ", ok)
 	get_tree().quit(0 if ok else 1)
 
 func _order_probe() -> void:
