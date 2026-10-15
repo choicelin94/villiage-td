@@ -1,8 +1,10 @@
 extends Node2D
 
 # Ground overlay for a villager move or enter order. One line follows the
-# remaining walk path, and a reticle sits on the destination. Both drop out
-# when the order ends.
+# remaining walk path, and a reticle sits on the destination. Both stay up
+# for every unit that still has an order, including after that unit is
+# deselected. They drop out when the order finishes, is replaced, or is
+# cancelled (panic, stuck, arrival, enter). Selection is not consulted.
 
 var _shown := false
 

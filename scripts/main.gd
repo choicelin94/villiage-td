@@ -147,6 +147,8 @@ func _ready() -> void:
 		_order_probe()
 	elif OS.get_environment("TD_PASS") == "1":
 		_pass_probe()
+	elif OS.get_environment("TD_STACK") == "1":
+		_stack_probe()
 	elif OS.get_environment("TD_SHOT") == "1":
 		_opening_shot()
 
@@ -1132,7 +1134,25 @@ func _restart() -> void:
 
 func _left_click(world: Vector2) -> void:
 	var building := _building_at_world(world)
-	var person := _villager_at(world)
+	var hits := _villagers_hit(world)
+	var person := _pick_villager(hits, world)
+	# The selected villager already owns clicks that land on their pile.
+	# A different cell (or a building) is a command. Their own cell cycles
+	# the pile so someone standing behind can still be chosen.
+	if person != null and person == selected_villager:
+		var own_cell := building == null and world_to_cell(world) == world_to_cell(person.global_position)
+		if person.is_fighter():
+			if own_cell and hits.size() > 1:
+				person = _next_stacked(hits, person, world)
+			else:
+				return
+		elif own_cell:
+			if hits.size() > 1:
+				person = _next_stacked(hits, person, world)
+			else:
+				return
+		else:
+			person = null
 	if person != null:
 		hud.close_panel()
 		_clear_villager_selection()
@@ -1504,21 +1524,61 @@ func _building_at_world(world: Vector2) -> Building:
 		return buildings[cell]
 	return null
 
-func _villager_at(world: Vector2) -> Villager:
-	var best: Villager = null
+func _villager_pick_radius() -> float:
 	var zoom_v := camera.zoom.x if camera else 1.0
-	var best_d := maxf(48.0, 34.0 / maxf(zoom_v, 0.05))
-	best_d = minf(best_d, 96.0)
+	return minf(maxf(48.0, 34.0 / maxf(zoom_v, 0.05)), 96.0)
+
+func _villager_pick_point(v: Villager) -> Vector2:
+	return v.global_position + Vector2(0, -30)
+
+func _villagers_hit(world: Vector2) -> Array[Villager]:
+	var hits: Array[Villager] = []
+	var radius := _villager_pick_radius()
 	for v in _alive_villagers():
 		if v.job != null and is_instance_valid(v.job):
 			continue
-		var d := world.distance_to(v.global_position + Vector2(0, -30))
-		if d < best_d:
-			best_d = d
-			best = v
-	return best
+		if world.distance_to(_villager_pick_point(v)) < radius:
+			hits.append(v)
+	return hits
+
+# Clicks on a shared footprint use one rule:
+# the selected villager wins when the click reaches them, so a neighbor in
+# the pile cannot steal the click before a move. Otherwise the frontmost
+# sprite wins (highest z_index, the depth rank). Ties break toward the
+# nearer pick point, then the lower instance id.
+func _pick_villager(hits: Array[Villager], world: Vector2) -> Villager:
+	if hits.is_empty():
+		return null
+	if selected_villager != null and is_instance_valid(selected_villager) and hits.has(selected_villager):
+		return selected_villager
+	return _sort_hits(hits, world)[0]
+
+func _next_stacked(hits: Array[Villager], current: Villager, world: Vector2) -> Villager:
+	var ranked := _sort_hits(hits, world)
+	var at := ranked.find(current)
+	if at < 0:
+		return ranked[0]
+	return ranked[(at + 1) % ranked.size()]
+
+func _sort_hits(hits: Array[Villager], world: Vector2) -> Array[Villager]:
+	var ranked: Array[Villager] = []
+	ranked.assign(hits)
+	ranked.sort_custom(func(a: Villager, b: Villager) -> bool:
+		return _villager_before(a, b, world)
+	)
+	return ranked
+
+func _villager_before(a: Villager, b: Villager, world: Vector2) -> bool:
+	if a.z_index != b.z_index:
+		return a.z_index > b.z_index
+	var da := world.distance_squared_to(_villager_pick_point(a))
+	var db := world.distance_squared_to(_villager_pick_point(b))
+	if absf(da - db) > 0.01:
+		return da < db
+	return a.get_instance_id() < b.get_instance_id()
 
 func _clear_villager_selection() -> void:
+	# Highlight only. Move and enter orders are not part of the selection.
 	if selected_villager != null and is_instance_valid(selected_villager):
 		selected_villager.selected = false
 	selected_villager = null
@@ -2779,6 +2839,183 @@ func _pass_probe() -> void:
 	print("PASS overlap=", overlapped, " step=", step_through, " stand=", stand_on, " arrived=", arrived, " held=", other_held, " travel=", travelled, " jump=", max_jump, " house=", blocked_house, " tree=", blocked_tree, " rock=", blocked_rock, " zombie=", blocked_zombie, " zombie_in=", zombie_blocked, " depth=", depth_ok, " z=", mover.z_index, other.z_index)
 	print("PASS_OK ", ok)
 	get_tree().quit(0 if ok else 1)
+
+func _stack_probe() -> void:
+	await get_tree().process_frame
+	var people := _alive_villagers()
+	if people.size() < 3:
+		print("STACK_OK false missing")
+		get_tree().quit(1)
+		return
+	var front: Villager = people[0]
+	var back: Villager = people[1]
+	var other: Villager = people[2]
+	var park := 0
+	for person in people:
+		person.set_process(false)
+		person.job = null
+		person.ordered = false
+		person.pending_job = null
+		person.selected = false
+		person.anchored = person != front and person != back and person != other
+		person.visible = person == front or person == back or person == other
+		if person != front and person != back and person != other:
+			person.global_position = cell_center(Vector2i(2, 2 + park))
+			park += 1
+	selected_villager = null
+	var failed := false
+	if not _place_stack(front, back, Vector2i(6, 15)):
+		print("STACK_OK false place")
+		get_tree().quit(1)
+		return
+	var select_at := (_villager_pick_point(front) + _villager_pick_point(back)) * 0.5
+	var select_hits := _villagers_hit(select_at)
+	_left_click(select_at)
+	var picked_front := selected_villager == front and front.selected and not back.selected
+	if not picked_front or not select_hits.has(front) or not select_hits.has(back):
+		failed = true
+	var command_at := _stack_command_point(front)
+	var command_cell := world_to_cell(command_at)
+	var overlapped := front.get_iso_volume().overlaps(back.get_iso_volume())
+	var back_at := back.global_position
+	_left_click(command_at)
+	var commanded := front.ordered and front.pending_job == null and selected_villager == front and world_to_cell(front.order_goal) == command_cell
+	var still_piled := front.global_position.distance_to(back.global_position) < 30.0
+	if command_at == Vector2.INF or not overlapped or not commanded or not still_piled:
+		failed = true
+	var goal_before := front.order_goal
+	var path_before := front._path_i
+	_left_click(cell_center(Vector2i(4, 8)))
+	var blocked_kept := front.ordered and front.order_goal.distance_to(goal_before) < 1.0 and front._path_i == path_before
+	if not blocked_kept or front.command_move(Vector2i(-1, -1)) or front.order_goal.distance_to(goal_before) > 1.0:
+		failed = true
+	var buildings_before := buildings.size()
+	_right_click(cell_center(Vector2i(2, 12)))
+	var cleared := selected_villager == null and not front.selected and front.ordered and front.guide_points().size() >= 2
+	if not cleared or buildings.size() != buildings_before:
+		failed = true
+	other.global_position = cell_center(Vector2i(3, 17))
+	other.visible = true
+	other.anchored = true
+	_left_click(_villager_pick_point(other))
+	var switched := selected_villager == other and other.selected and not front.selected and front.ordered and front.guide_points().size() >= 2
+	if not switched:
+		failed = true
+	var arrived := false
+	var max_jump := 0.0
+	var prev := front.global_position
+	for _i in 360:
+		front._process(1.0 / 60.0)
+		_separate_walkers()
+		var jump := front.global_position.distance_to(prev)
+		max_jump = maxf(max_jump, jump)
+		prev = front.global_position
+		if not front.ordered:
+			arrived = world_to_cell(front.global_position) == command_cell
+			break
+	var held := back.global_position.distance_to(back_at) < 2.0
+	if not arrived or not held or max_jump > 48.0 or not front.guide_points().is_empty():
+		failed = true
+	var house: Building = buildings[Vector2i(8, 14)]
+	front.global_position = cell_center(Vector2i(8, 16))
+	front.job = null
+	front.ordered = false
+	front.pending_job = null
+	var entered := false
+	var enter_kept := false
+	if front.command_enter(house):
+		for _i in 8:
+			front._process(1.0 / 60.0)
+		_clear_villager_selection()
+		enter_kept = front.ordered and front.pending_job == house and front.guide_points().size() >= 2 and selected_villager == null
+		for _i in 400:
+			front._process(1.0 / 60.0)
+			if front.job == house and not front.visible:
+				entered = true
+				break
+	if not enter_kept or not entered or not front.guide_points().is_empty():
+		failed = true
+	if not _place_stack(front, back, Vector2i(5, 17)):
+		failed = true
+	else:
+		front.global_position = cell_center(Vector2i(5, 17))
+		back.global_position = front.global_position
+		_apply_iso_sort()
+		_clear_villager_selection()
+		_left_click(_villager_pick_point(front))
+		var piled := selected_villager
+		var same_spot := front.global_position.distance_to(back.global_position) < 1.0
+		var far := Vector2i(5, 13)
+		if not _stand_ok(far):
+			far = Vector2i(4, 17)
+		_left_click(cell_center(far))
+		if piled == null or not piled.ordered or not same_spot or world_to_cell(piled.order_goal) != far:
+			failed = true
+		else:
+			var cycle_goal := piled.order_goal
+			# Click the feet. The body pick point sits 30px north and can land in the next cell.
+			_left_click(piled.global_position)
+			var cycled := selected_villager != null and selected_villager != piled and selected_villager.selected and piled.ordered and piled.order_goal.distance_to(cycle_goal) < 1.0
+			if not cycled:
+				failed = true
+	var step_through := can_step(front.global_position, back.global_position, front)
+	var blocked_house := not can_step(cell_center(Vector2i(8, 15)), cell_center(Vector2i(8, 14)), front)
+	var blocked_tree := not can_step(cell_center(Vector2i(1, 5)), cell_center(Vector2i(0, 5)), front)
+	var blocked_rock := not can_step(cell_center(Vector2i(5, 8)), cell_center(Vector2i(4, 8)), front)
+	if not step_through or not blocked_house or not blocked_tree or not blocked_rock:
+		failed = true
+	front.ordered = false
+	front.pending_job = null
+	front.unit_id = "spearman"
+	_clear_villager_selection()
+	selected_villager = front
+	front.selected = true
+	_left_click(cell_center(Vector2i(5, 13)))
+	var fighter_still := not front.ordered and front.guide_points().is_empty() and selected_villager == front
+	front.unit_id = "villager"
+	if not fighter_still:
+		failed = true
+	print("STACK pick=", picked_front, " command=", commanded, " cell=", command_cell, " kept=", blocked_kept, " clear=", cleared, " switch=", switched, " arrived=", arrived, " held=", held, " jump=", max_jump, " enter=", enter_kept, entered, " through=", step_through, " house=", blocked_house, " tree=", blocked_tree, " rock=", blocked_rock, " fighter=", fighter_still)
+	print("STACK_OK ", not failed)
+	get_tree().quit(0 if not failed else 1)
+
+func _place_stack(front: Villager, back: Villager, home: Vector2i) -> bool:
+	var center := cell_center(home)
+	for unit in [front, back]:
+		if unit.job != null and is_instance_valid(unit.job):
+			unit.job.dismiss(unit)
+		unit.job = null
+		unit.visible = true
+		unit.ordered = false
+		unit.pending_job = null
+	for dir in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
+		front.global_position = center + dir * 48.0
+		back.global_position = front.global_position + Vector2(0, -14)
+		if world_to_cell(front.global_position) != home or world_to_cell(back.global_position) != home:
+			continue
+		if not front.get_iso_volume().overlaps(back.get_iso_volume()):
+			continue
+		_apply_iso_sort()
+		if front.z_index <= back.z_index:
+			continue
+		if _stack_command_point(front) == Vector2.INF:
+			continue
+		return true
+	return false
+
+func _stack_command_point(person: Villager) -> Vector2:
+	var origin := _villager_pick_point(person)
+	var own := world_to_cell(person.global_position)
+	for dir in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1), Vector2(1, 1), Vector2(1, -1)]:
+		for dist in [20.0, 28.0, 36.0, 44.0]:
+			var spot: Vector2 = origin + dir * dist
+			if spot.distance_to(origin) >= _villager_pick_radius():
+				continue
+			if world_to_cell(spot) == own or not _stand_ok(world_to_cell(spot)):
+				continue
+			if _villagers_hit(spot).has(person):
+				return spot
+	return Vector2.INF
 
 func _order_probe() -> void:
 	await get_tree().process_frame

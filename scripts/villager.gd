@@ -86,11 +86,13 @@ func stand_at(world: Vector2) -> void:
 	_held_job = false
 
 func command_move(cell: Vector2i) -> bool:
-	pending_job = null
 	var game := _game()
 	if game == null:
 		return false
-	return _begin_order(cell, game.cell_center(cell))
+	if not _begin_order(cell, game.cell_center(cell)):
+		return false
+	pending_job = null
+	return true
 
 func command_enter(building: Building) -> bool:
 	var game := _game()
@@ -102,16 +104,23 @@ func command_enter(building: Building) -> bool:
 	var cell: Vector2i = game.world_to_cell(door)
 	if game.has_method("_stand_ok") and not bool(game._stand_ok(cell)):
 		return false
-	pending_job = building
 	if not _begin_order(cell, door):
-		pending_job = null
 		return false
+	pending_job = building
 	return true
 
 func _begin_order(cell: Vector2i, goal: Vector2) -> bool:
 	var game := _game()
 	if game == null:
 		return false
+	# A failed retarget must not drop the order already being walked.
+	var old_ordered := ordered
+	var old_goal := order_goal
+	var old_path: Array[Vector2i] = []
+	old_path.assign(_path)
+	var old_i := _path_i
+	var old_stand := stand_left
+	var old_walk := _goal
 	stand_left = 0.0
 	var here: Vector2i = game.world_to_cell(global_position)
 	_path = game.route_cells(here, cell)
@@ -120,9 +129,13 @@ func _begin_order(cell: Vector2i, goal: Vector2) -> bool:
 		_path_i += 1
 	var close := global_position.distance_to(goal) <= ENTER_REACH * IsoVolume.WORLD_SCALE
 	if _path.is_empty() or (_path_i >= _path.size() and here != cell and not close):
+		ordered = old_ordered
+		order_goal = old_goal
 		_path.clear()
-		_path_i = 0
-		ordered = false
+		_path.append_array(old_path)
+		_path_i = old_i
+		stand_left = old_stand
+		_goal = old_walk
 		return false
 	order_goal = goal
 	ordered = true
