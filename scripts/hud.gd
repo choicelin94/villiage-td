@@ -11,6 +11,7 @@ signal staff_selected(person: Villager)
 signal staff_dismissed(person: Villager)
 signal codex_pressed
 signal bench_pressed
+signal unit_closed
 
 var _font: Font
 var _theme: Theme
@@ -52,6 +53,7 @@ var _won := false
 var _ground := Vector2i(-1, -1)
 var _ground_open := false
 var _inspected: Building = null
+var _unit: Villager = null
 
 func _ready() -> void:
 	_font = CatalogPaths.load_font()
@@ -80,6 +82,8 @@ func _process(delta: float) -> void:
 			_hint.text = _idle_hint()
 	if _inspected != null and not is_instance_valid(_inspected):
 		close_panel()
+	elif _unit != null and not is_instance_valid(_unit):
+		close_panel()
 
 func has_ground() -> bool:
 	return _ground_open
@@ -90,12 +94,30 @@ func ground_cell() -> Vector2i:
 func inspected_building() -> Building:
 	return _inspected
 
+func inspected_unit() -> Villager:
+	return _unit
+
+func panel_visible() -> bool:
+	return _panel != null and _panel.visible
+
+func panel_text() -> String:
+	var parts: PackedStringArray = []
+	if _list == null:
+		return ""
+	for child in _list.get_children():
+		if child is Label and (child as Label).text != "":
+			parts.append((child as Label).text)
+		elif child is Button and (child as Button).text != "":
+			parts.append((child as Button).text)
+	return "\n".join(parts)
+
 func is_blocking() -> bool:
 	return _end.visible
 
 func close_panel() -> void:
 	_ground_open = false
 	_inspected = null
+	_unit = null
 	if _panel:
 		_panel.visible = false
 
@@ -103,6 +125,7 @@ func open_ground(cell: Vector2i) -> void:
 	_ground = cell
 	_ground_open = true
 	_inspected = null
+	_unit = null
 	_fill_ground()
 	_panel.visible = true
 	_layout()
@@ -110,7 +133,19 @@ func open_ground(cell: Vector2i) -> void:
 func open_building(building: Building) -> void:
 	_ground_open = false
 	_inspected = building
+	_unit = null
 	_fill_building(building)
+	_panel.visible = true
+	_layout()
+
+func open_unit(person: Villager) -> void:
+	if person == null or not is_instance_valid(person):
+		close_panel()
+		return
+	_ground_open = false
+	_inspected = null
+	_unit = person
+	_fill_unit(person)
 	_panel.visible = true
 	_layout()
 
@@ -166,6 +201,8 @@ func _on_language() -> void:
 		_fill_ground()
 	elif _inspected != null and is_instance_valid(_inspected):
 		_fill_building(_inspected)
+	elif _unit != null and is_instance_valid(_unit):
+		_fill_unit(_unit)
 
 func _layout() -> void:
 	var view := get_viewport().get_visible_rect().size
@@ -579,13 +616,28 @@ func _fill_building(building: Building) -> void:
 	_list.add_child(sell)
 	_list.add_child(_close_button())
 
+func _fill_unit(person: Villager) -> void:
+	_clear_list()
+	var def := Balance.unit(person.unit_id)
+	var name_key := str(def.get("display_key", "unit.villager"))
+	if name_key == "":
+		name_key = "unit.villager"
+	_list.add_child(_title(Locale.text(name_key)))
+	if person.unit_id == "" or person.unit_id == "villager":
+		_list.add_child(_body(Locale.text("villager.female" if person.sex == "f" else "villager.male")))
+	var intro_key := str(def.get("intro_key", ""))
+	if intro_key != "":
+		_list.add_child(_body(Locale.text(intro_key)))
+	_list.add_child(_close_button())
+
 func _emit_place(kind: int) -> void:
 	place_requested.emit(kind)
 
 func _clear_list() -> void:
+	# The pressed button may still be in this list. queue_free is safe there.
 	for child in _list.get_children():
 		_list.remove_child(child)
-		child.free()
+		child.queue_free()
 
 func _body(text: String) -> Label:
 	var label := Label.new()
@@ -665,8 +717,14 @@ func _close_button() -> Button:
 	btn.add_theme_font_size_override("font_size", 18)
 	btn.text = Locale.text("panel.close")
 	_style_button(btn, Color(0.16, 0.18, 0.16), Color(0.45, 0.48, 0.42))
-	btn.pressed.connect(close_panel)
+	btn.pressed.connect(_on_close_pressed)
 	return btn
+
+func _on_close_pressed() -> void:
+	var had_unit := _unit != null
+	close_panel()
+	if had_unit:
+		unit_closed.emit()
 
 func _icon_button(node_name: String, kind: String, bg: Color, border: Color) -> Button:
 	var btn := Button.new()
