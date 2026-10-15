@@ -284,6 +284,10 @@ func _build_world() -> void:
 	decals.z_as_relative = false
 	decals.z_index = -4000
 	add_child(decals)
+	var order_guide := Node2D.new()
+	order_guide.name = "OrderGuide"
+	order_guide.set_script(load("res://scripts/order_guide.gd"))
+	decals.add_child(order_guide)
 	fx = Node2D.new()
 	fx.name = "Fx"
 	fx.z_as_relative = false
@@ -2722,6 +2726,14 @@ func _order_probe() -> void:
 		person.global_position = cell_center(Vector2i(2, 2 + park))
 		park += 1
 	var failed := false
+	walker.unit_id = "spearman"
+	walker.ordered = true
+	walker.order_goal = walker.global_position + Vector2(40, 0)
+	var fighter_clear := walker.guide_points().is_empty()
+	walker.unit_id = "villager"
+	walker.ordered = false
+	if not fighter_clear:
+		failed = true
 	walker.visible = true
 	walker.global_position = cell_center(Vector2i(7, 15))
 	walker.job = null
@@ -2736,9 +2748,14 @@ func _order_probe() -> void:
 	walker.ordered = false
 	walker.pending_job = null
 	var max_jump := 0.0
+	var guide_move := false
+	var guide_done := false
+	var guide_pixels := false
 	if not walker.command_move(Vector2i(5, 15)):
 		failed = true
 	else:
+		guide_move = _guide_ends_at(walker, cell_center(Vector2i(5, 15))) and _guide_passes(walker, cell_center(Vector2i(6, 15)))
+		guide_pixels = await _guide_shot(walker)
 		var move_prev := walker.global_position
 		for _i in 240:
 			walker._process(1.0 / 60.0)
@@ -2749,6 +2766,9 @@ func _order_probe() -> void:
 				break
 		if max_jump > 48.0 or world_to_cell(walker.global_position) != Vector2i(5, 15):
 			failed = true
+		guide_done = walker.guide_points().is_empty()
+	if not guide_move or not guide_done or not guide_pixels:
+		failed = true
 	var house: Building = buildings[Vector2i(8, 14)]
 	walker.global_position = cell_center(Vector2i(8, 16))
 	walker.job = null
@@ -2757,9 +2777,12 @@ func _order_probe() -> void:
 	var saw_walk := false
 	var hidden_inside := false
 	var enter_jump := 0.0
+	var guide_door := false
+	var guide_inside := false
 	if not walker.command_enter(house):
 		failed = true
 	else:
+		guide_door = _guide_ends_at(walker, door)
 		var enter_prev := walker.global_position
 		for _i in 400:
 			var had := walker.job
@@ -2779,6 +2802,9 @@ func _order_probe() -> void:
 			failed = true
 		if door.distance_to(house.global_position) < 24.0:
 			failed = true
+		guide_inside = walker.guide_points().is_empty()
+	if not guide_door or not guide_inside:
+		failed = true
 	var spot := front_of(house)
 	hud.open_building(house)
 	_on_staff_dismissed(walker)
@@ -2793,15 +2819,76 @@ func _order_probe() -> void:
 		dest = Vector2i(7, 16)
 	_left_click(cell_center(dest))
 	var order_ok := walker.ordered and walker.pending_job == null and selected_villager == walker
-	if not selected_ok or not order_ok:
+	var guide_retarget := _guide_ends_at(walker, cell_center(dest))
+	if not selected_ok or not order_ok or not guide_retarget:
 		failed = true
 	var step_prev := walker.global_position
 	walker._process(1.0 / 60.0)
 	if walker.global_position.distance_to(step_prev) > 48.0:
 		failed = true
-	print("ORDER grass=", grass, " road=", road, " jump=", max_jump, " enter=", enter_jump, " front=", front_d, " center=", center_d, " door=", door, " selected=", selected_ok, " order=", order_ok, " hidden=", hidden_inside)
+	print("ORDER grass=", grass, " road=", road, " jump=", max_jump, " enter=", enter_jump, " front=", front_d, " center=", center_d, " door=", door, " selected=", selected_ok, " order=", order_ok, " hidden=", hidden_inside, " guide=", guide_move, guide_done, guide_pixels, guide_door, guide_inside, guide_retarget, " fighter=", fighter_clear)
 	print("ORDER_OK ", not failed)
 	get_tree().quit(0 if not failed else 1)
+
+func _guide_passes(walker: Villager, spot: Vector2) -> bool:
+	for point in walker.guide_points():
+		if point.distance_to(spot) < 12.0:
+			return true
+	return false
+
+
+func _guide_ends_at(walker: Villager, goal: Vector2) -> bool:
+	var points := walker.guide_points()
+	if points.size() < 2:
+		return false
+	return points[0].distance_to(walker.global_position) < 8.0 and points[points.size() - 1].distance_to(goal) < 8.0
+
+
+func _guide_shot(walker: Villager) -> bool:
+	var mid := (walker.global_position + walker.order_goal) * 0.5
+	camera.position = mid
+	camera.zoom = Vector2(1.55, 1.55)
+	_cam_user = true
+	_clamp_camera()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var image := await _grab()
+	if image == null:
+		return false
+	var path := "/opt/cursor/artifacts/order-guide.png"
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	image.save_png(path)
+	var xform := get_viewport().get_canvas_transform()
+	var color := walker.guide_color()
+	var marker := _tint_near(image, xform * walker.order_goal, 40, color)
+	var line_hits := 0
+	for t in [0.2, 0.4, 0.6, 0.8]:
+		var spot := walker.global_position.lerp(walker.order_goal, t)
+		if _tint_near(image, xform * spot, 16, color):
+			line_hits += 1
+	print("GUIDE_SHOT marker=", marker, " line=", line_hits, " size=", image.get_width(), "x", image.get_height())
+	return marker and line_hits >= 2
+
+
+func _tint_near(image: Image, at: Vector2, radius: int, color: Color) -> bool:
+	var hits := 0
+	var x0 := int(at.x) - radius
+	var y0 := int(at.y) - radius
+	var x1 := int(at.x) + radius
+	var y1 := int(at.y) + radius
+	for y in range(y0, y1 + 1):
+		for x in range(x0, x1 + 1):
+			if x < 0 or y < 0 or x >= image.get_width() or y >= image.get_height():
+				continue
+			var pixel := image.get_pixel(x, y)
+			var near := absf(pixel.r - color.r) + absf(pixel.g - color.g) + absf(pixel.b - color.b) < 0.72
+			var bright := pixel.r > 0.85 and pixel.g > 0.85 and pixel.b > 0.85
+			if near or bright:
+				hits += 1
+				if hits >= 6:
+					return true
+	return false
+
 
 func _sample_travel(walker: Villager, start: Vector2i, goal: Vector2i, frames: int) -> float:
 	walker.job = null
