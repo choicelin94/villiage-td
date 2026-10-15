@@ -37,6 +37,7 @@ var font: Font
 
 var buildings := {}
 var scenery := {}
+var road_lookup := {}
 var _prop_cache: Array = []
 var _prop_ready := false
 var _center_block := {}
@@ -142,6 +143,8 @@ func _ready() -> void:
 		call_deferred("_open_workbench")
 	elif OS.get_environment("TD_MOVE") == "1":
 		_move_shot()
+	elif OS.get_environment("TD_ORDER") == "1":
+		_order_probe()
 	elif OS.get_environment("TD_SHOT") == "1":
 		_opening_shot()
 
@@ -292,7 +295,8 @@ func _paint_map() -> void:
 	for cell in spawns:
 		spawn_lookup[cell] = true
 	scenery = MapPlan.scenery_cells(spawn_lookup, Balance.starter_props())
-	var trail := MapPlan.road_lookup(Balance.roads())
+	road_lookup = MapPlan.road_lookup(Balance.roads())
+	var trail := road_lookup
 	for y in ROWS:
 		for x in COLS:
 			var cell := Vector2i(x, y)
@@ -614,6 +618,50 @@ func nearest_spawn(world: Vector2) -> Vector2i:
 func walkable(world: Vector2) -> bool:
 	var cell := world_to_cell(world)
 	return in_bounds(cell) and not _blocked(cell)
+
+func on_road(world: Vector2) -> bool:
+	return road_lookup.has(world_to_cell(world))
+
+func _stand_ok(cell: Vector2i) -> bool:
+	if not in_bounds(cell):
+		return false
+	if scenery.has(cell) or buildings.has(cell) or _is_spawn(cell) or _blocked(cell):
+		return false
+	return _oval_clear(cell_center(cell), null, null)
+
+func _point_standable(world: Vector2) -> bool:
+	if not _stand_ok(world_to_cell(world)):
+		return false
+	return _oval_clear(world, null, null)
+
+func front_of(building: Building) -> Vector2:
+	if building == null or not is_instance_valid(building):
+		return Vector2.ZERO
+	var ideal := building.global_position + Vector2(0, 96)
+	if building.has_method("get_iso_volume"):
+		ideal = IsoVolume.iso_to_world(_feet_iso(building.get_iso_volume(), Vector2(0, 1)))
+	if _point_standable(ideal):
+		return ideal
+	var origin := world_to_cell(ideal)
+	var best := ideal
+	var found := false
+	var best_score := 999999
+	for radius in range(1, 5):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if maxi(absi(dx), absi(dy)) != radius:
+					continue
+				var cell := origin + Vector2i(dx, dy)
+				if not _stand_ok(cell):
+					continue
+				var score := (origin.y - cell.y) * 100 + absi(dx) * 8 + absi(dy)
+				if not found or score < best_score:
+					found = true
+					best_score = score
+					best = cell_center(cell)
+		if found:
+			return best
+	return ideal
 
 func should_panic(v: Villager) -> bool:
 	if wave_number <= 0 or phase == "win" or phase == "lose":
@@ -1079,10 +1127,6 @@ func _restart() -> void:
 func _left_click(world: Vector2) -> void:
 	var building := _building_at_world(world)
 	var person := _villager_at(world)
-	if selected_villager != null and is_instance_valid(selected_villager) and building != null:
-		hud.close_panel()
-		_assign(selected_villager, building)
-		return
 	if person != null:
 		hud.close_panel()
 		_clear_villager_selection()
@@ -1090,6 +1134,18 @@ func _left_click(world: Vector2) -> void:
 		person.selected = true
 		inspected = null
 		hud.flash(Locale.text("flash.assign_next"))
+		return
+	if selected_villager != null and is_instance_valid(selected_villager):
+		if building != null:
+			hud.close_panel()
+			_order_staff(selected_villager, building)
+			return
+		var ordered_cell := world_to_cell(world)
+		hud.close_panel()
+		if not _stand_ok(ordered_cell):
+			hud.flash(Locale.text("flash.no_path"))
+			return
+		_order_move(selected_villager, ordered_cell)
 		return
 	if building != null:
 		_clear_villager_selection()
@@ -1141,8 +1197,7 @@ func _on_staff_dismissed(person: Villager) -> void:
 		return
 	building.dismiss(person)
 	person.job = null
-	person.visible = true
-	person.global_position = building.global_position + Vector2(0, 72)
+	_place_in_front(person, building, 0)
 	_popup(building.global_position + Vector2(0, -80), Locale.text("popup.dismissed"), Color(0.85, 0.95, 0.75))
 	_refresh_beds()
 	_refresh_hud()
@@ -1157,34 +1212,100 @@ func _on_sell_requested() -> void:
 	hud.close_panel()
 
 func _assign(v: Villager, building: Building) -> void:
-	if v.infected or v.leaving or v.fallen:
-		return
-	if not building.is_functional():
-		hud.flash(Locale.text("flash.wall_no_staff"))
+	_commit_staff(v, building)
+
+func _order_move(v: Villager, cell: Vector2i) -> void:
+	if v == null or not is_instance_valid(v) or v.infected or v.leaving or v.fallen:
 		return
 	if v.is_fighter():
 		hud.flash(Locale.text("flash.fighter_stay"))
 		return
+	if v.job != null and is_instance_valid(v.job):
+		_step_outside(v, v.job)
+	if not v.command_move(cell):
+		hud.flash(Locale.text("flash.no_path"))
+		return
+	hud.flash(Locale.text("flash.walking"))
+
+func _order_staff(v: Villager, building: Building) -> void:
+	if not _can_staff(v, building):
+		return
+	if v.job != null and is_instance_valid(v.job) and v.job != building:
+		_step_outside(v, v.job)
+	if not v.command_enter(building):
+		hud.flash(Locale.text("flash.no_path"))
+		return
+	hud.flash(Locale.text("flash.walking"))
+
+func _can_staff(v: Villager, building: Building) -> bool:
+	if v == null or building == null or not is_instance_valid(v) or not is_instance_valid(building):
+		return false
+	if v.infected or v.leaving or v.fallen:
+		return false
+	if not building.is_functional():
+		hud.flash(Locale.text("flash.wall_no_staff"))
+		return false
+	if v.is_fighter():
+		hud.flash(Locale.text("flash.fighter_stay"))
+		return false
 	if building.kind == Building.Kind.LUMBER and v.unit_id != "villager":
 		hud.flash(Locale.text("flash.mill_villager"))
-		return
+		return false
 	if building.holds(v):
 		_clear_villager_selection()
+		return false
+	if building.staff_count() >= building.staff_cap() and building.staff_cap() > 1:
+		hud.flash(Locale.format("flash.mill_full", [building.staff_cap()]))
+		return false
+	return true
+
+func _step_outside(v: Villager, building: Building) -> void:
+	if building != null and is_instance_valid(building) and building.holds(v):
+		building.dismiss(v)
+	v.job = null
+	v.visible = true
+	_place_in_front(v, building, 0)
+
+func _place_in_front(person: Villager, building: Building, slot: int) -> void:
+	if person == null or not is_instance_valid(person) or building == null or not is_instance_valid(building):
 		return
-	if building.staff_count() >= building.staff_cap():
-		if building.staff_cap() <= 1:
-			for old in building.dismiss_all():
-				var prior := old as Villager
-				if prior:
-					prior.job = null
-		else:
-			hud.flash(Locale.format("flash.mill_full", [building.staff_cap()]))
-			return
+	var spot := front_of(building)
+	if slot != 0:
+		var dir := 1.0 if slot % 2 == 1 else -1.0
+		var shifted := spot + Vector2(dir * float((slot + 1) / 2) * 28.0, 0.0)
+		if _point_standable(shifted):
+			spot = shifted
+	person.job = null
+	person.visible = true
+	person.stand_at(spot)
+
+func complete_staff(v: Villager, building: Building) -> void:
+	_commit_staff(v, building)
+
+func order_stuck() -> void:
+	if hud:
+		hud.flash(Locale.text("flash.no_path"))
+
+func _commit_staff(v: Villager, building: Building) -> void:
+	if not _can_staff(v, building):
+		return
+	if building.staff_count() >= building.staff_cap() and building.staff_cap() <= 1:
+		var slot := 0
+		for old in building.dismiss_all():
+			var prior := old as Villager
+			if prior and prior != v:
+				prior.job = null
+				_place_in_front(prior, building, slot)
+				slot += 1
 	if v.job != null and is_instance_valid(v.job) and v.job != building:
-		v.job.dismiss(v)
+		var previous: Building = v.job
+		previous.dismiss(v)
 		v.job = null
+		_place_in_front(v, previous, 0)
 	building.add_crew(v)
 	v.job = building
+	v.ordered = false
+	v.pending_job = null
 	v.refugee = false
 	v.claim_left = -1.0
 	_clear_villager_selection()
@@ -1231,10 +1352,13 @@ func _remove_building(cell: Vector2i, refund: bool) -> void:
 		return
 	var building: Building = buildings[cell]
 	var people := building.dismiss_all()
+	var slot := 0
 	for node in people:
 		var person := node as Villager
 		if person != null and is_instance_valid(person):
 			person.job = null
+			_place_in_front(person, building, slot)
+			slot += 1
 	if refund:
 		var stats: Dictionary = Balance.building_by_kind(Building.kind_key(building.kind))
 		var cost: Dictionary = stats.get("cost", {})
@@ -1572,8 +1696,7 @@ func _balance_probe() -> int:
 			version_ok = int(upgraded.get("config_version", 0)) == Balance.config_version() and Balance.difficulty_id() == "hard" and int(econ.get("start_wood", 0)) == 100
 		if not version_ok:
 			failed = true
-		DirAccess.remove_absolute(user_path)
-		Balance.reload()
+		Balance.reset_editor_state()
 		if Balance.difficulty_id() != "normal" or Balance.config_version() < 1:
 			failed = true
 	print("BALANCE units=", units, " enemies=", enemies, " buildings=", buildings_ids, " spawns=", Balance.spawns(), " rects=", Balance.spawn_rects().size())
@@ -2243,9 +2366,16 @@ func _flow_shot() -> void:
 	print("FLOW_VILLAGER_SELECTED ", selected_villager == people[0])
 	await _capture("/tmp/shots/selected.png")
 	_click_world(spear.global_position + Vector2(0, -70))
-	await get_tree().process_frame
-	await get_tree().process_frame
-	print("FLOW_ASSIGNED ", spear.has_staff() and spear.primary_staff() == people[0])
+	var flow_scale := Engine.time_scale
+	Engine.time_scale = 8.0
+	var assigned := false
+	for _i in 240:
+		await get_tree().process_frame
+		if spear.has_staff() and spear.primary_staff() == people[0]:
+			assigned = true
+			break
+	Engine.time_scale = flow_scale
+	print("FLOW_ASSIGNED ", assigned)
 	await _capture("/tmp/shots/assigned.png")
 	var restart := _restart_button()
 	print("FLOW_RESTART_BUTTON ", restart != null)
@@ -2569,6 +2699,128 @@ func _move_shot() -> void:
 	var ok := (not into) and out and (not into_tree) and (not into_rock) and (not path_hits) and (not clip) and (not entered) and reached and depth_ok and tree_ok and hidden and panel_ok and selected
 	print("MOVE_OK ", ok)
 	get_tree().quit(0 if ok else 1)
+
+func _order_probe() -> void:
+	await get_tree().process_frame
+	var people := _alive_villagers()
+	var walker: Villager = null
+	for person in people:
+		if person.unit_id == "villager" and person.job == null:
+			walker = person
+			break
+	if walker == null:
+		print("ORDER_OK false missing")
+		get_tree().quit(1)
+		return
+	var park := 0
+	for person in people:
+		person.set_process(false)
+		if person == walker:
+			continue
+		person.visible = false
+		person.anchored = true
+		person.global_position = cell_center(Vector2i(2, 2 + park))
+		park += 1
+	var failed := false
+	walker.visible = true
+	walker.global_position = cell_center(Vector2i(7, 15))
+	walker.job = null
+	var grass := _sample_travel(walker, Vector2i(6, 15), Vector2i(8, 15), 45)
+	var road := _sample_travel(walker, Vector2i(10, 6), Vector2i(10, 8), 45)
+	if grass < 20.0 or road < grass * 1.4 or road > grass * 2.1:
+		failed = true
+	if not on_road(cell_center(Vector2i(10, 7))) or on_road(cell_center(Vector2i(6, 15))):
+		failed = true
+	walker.global_position = cell_center(Vector2i(7, 15))
+	walker.job = null
+	walker.ordered = false
+	walker.pending_job = null
+	var max_jump := 0.0
+	if not walker.command_move(Vector2i(5, 15)):
+		failed = true
+	else:
+		var move_prev := walker.global_position
+		for _i in 240:
+			walker._process(1.0 / 60.0)
+			var jump := walker.global_position.distance_to(move_prev)
+			max_jump = maxf(max_jump, jump)
+			move_prev = walker.global_position
+			if not walker.ordered:
+				break
+		if max_jump > 48.0 or world_to_cell(walker.global_position) != Vector2i(5, 15):
+			failed = true
+	var house: Building = buildings[Vector2i(8, 14)]
+	walker.global_position = cell_center(Vector2i(8, 16))
+	walker.job = null
+	walker.ordered = false
+	var door := front_of(house)
+	var saw_walk := false
+	var hidden_inside := false
+	var enter_jump := 0.0
+	if not walker.command_enter(house):
+		failed = true
+	else:
+		var enter_prev := walker.global_position
+		for _i in 400:
+			var had := walker.job
+			walker._process(1.0 / 60.0)
+			var jump := walker.global_position.distance_to(enter_prev)
+			if had == null and walker.job == null:
+				if jump > 48.0:
+					failed = true
+				if walker.visible:
+					saw_walk = true
+			if walker.job == house and not walker.visible and walker.global_position.distance_to(house.global_position) < 4.0:
+				enter_jump = jump
+				hidden_inside = true
+				break
+			enter_prev = walker.global_position
+		if not saw_walk or not hidden_inside or enter_jump > 180.0:
+			failed = true
+		if door.distance_to(house.global_position) < 24.0:
+			failed = true
+	var spot := front_of(house)
+	hud.open_building(house)
+	_on_staff_dismissed(walker)
+	var front_d := walker.global_position.distance_to(spot)
+	var center_d := walker.global_position.distance_to(house.global_position)
+	if front_d > 6.0 or center_d < 36.0 or not walker.visible or walker.job != null:
+		failed = true
+	_left_click(walker.global_position + Vector2(0, -30))
+	var selected_ok := selected_villager == walker and walker.selected
+	var dest := Vector2i(6, 16)
+	if not _stand_ok(dest):
+		dest = Vector2i(7, 16)
+	_left_click(cell_center(dest))
+	var order_ok := walker.ordered and walker.pending_job == null and selected_villager == walker
+	if not selected_ok or not order_ok:
+		failed = true
+	var step_prev := walker.global_position
+	walker._process(1.0 / 60.0)
+	if walker.global_position.distance_to(step_prev) > 48.0:
+		failed = true
+	print("ORDER grass=", grass, " road=", road, " jump=", max_jump, " enter=", enter_jump, " front=", front_d, " center=", center_d, " door=", door, " selected=", selected_ok, " order=", order_ok, " hidden=", hidden_inside)
+	print("ORDER_OK ", not failed)
+	get_tree().quit(0 if not failed else 1)
+
+func _sample_travel(walker: Villager, start: Vector2i, goal: Vector2i, frames: int) -> float:
+	walker.job = null
+	walker.ordered = false
+	walker.pending_job = null
+	walker.stand_left = 0.0
+	walker.global_position = cell_center(start)
+	walker.visible = true
+	if not _stand_ok(goal) or not walker.command_move(goal):
+		return -1.0
+	var dist := 0.0
+	var prev := walker.global_position
+	for _i in frames:
+		if not walker.ordered:
+			break
+		walker._process(1.0 / 60.0)
+		dist += walker.global_position.distance_to(prev)
+		prev = walker.global_position
+	return dist
 
 func _actor_near(pos: Vector2) -> Node2D:
 	for child in actors.get_children():

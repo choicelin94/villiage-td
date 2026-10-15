@@ -18,6 +18,13 @@ var leaving := false
 var claim_left := -1.0
 var job: Building = null
 var selected := false
+var ordered := false
+var order_goal := Vector2.ZERO
+var pending_job: Building = null
+var stand_left := 0.0
+
+const ROAD_BONUS := 1.65
+const ENTER_REACH := 56.0
 
 var _actor: SpineActor
 var _skin := 0
@@ -66,6 +73,65 @@ func _ready() -> void:
 	_goal = global_position
 	_retarget = randf_range(0.2, 1.0)
 
+func stand_at(world: Vector2) -> void:
+	ordered = false
+	pending_job = null
+	stand_left = 2.5
+	global_position = world
+	visible = true
+	_path.clear()
+	_path_i = 0
+	_goal = world
+	_retarget = stand_left
+	_held_job = false
+
+func command_move(cell: Vector2i) -> bool:
+	pending_job = null
+	var game := _game()
+	if game == null:
+		return false
+	return _begin_order(cell, game.cell_center(cell))
+
+func command_enter(building: Building) -> bool:
+	var game := _game()
+	if game == null or building == null or not is_instance_valid(building):
+		return false
+	if not game.has_method("front_of"):
+		return false
+	var door: Vector2 = game.front_of(building)
+	var cell: Vector2i = game.world_to_cell(door)
+	if game.has_method("_stand_ok") and not bool(game._stand_ok(cell)):
+		return false
+	pending_job = building
+	if not _begin_order(cell, door):
+		pending_job = null
+		return false
+	return true
+
+func _begin_order(cell: Vector2i, goal: Vector2) -> bool:
+	var game := _game()
+	if game == null:
+		return false
+	stand_left = 0.0
+	var here: Vector2i = game.world_to_cell(global_position)
+	_path = game.route_cells(here, cell)
+	_path_i = 0
+	while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 10.0 * IsoVolume.WORLD_SCALE:
+		_path_i += 1
+	var close := global_position.distance_to(goal) <= ENTER_REACH * IsoVolume.WORLD_SCALE
+	if _path.is_empty() or (_path_i >= _path.size() and here != cell and not close):
+		_path.clear()
+		_path_i = 0
+		ordered = false
+		return false
+	order_goal = goal
+	ordered = true
+	if _path_i < _path.size():
+		_goal = game.cell_center(_path[_path_i])
+	else:
+		_goal = goal
+	return true
+
 func face_texture() -> AtlasTexture:
 	if _actor:
 		return _actor.portrait()
@@ -85,6 +151,9 @@ func _process(delta: float) -> void:
 		_held_job = true
 		_path.clear()
 		_path_i = 0
+		ordered = false
+		pending_job = null
+		stand_left = 0.0
 		return
 	if anchored:
 		queue_redraw()
@@ -100,9 +169,10 @@ func _process(delta: float) -> void:
 	if _held_job:
 		_held_job = false
 		visible = true
-		_retarget = 0.0
 		_path.clear()
 		_path_i = 0
+		if stand_left <= 0.0 and not ordered:
+			_retarget = 0.0
 	visible = true
 	if is_fighter():
 		_fight(delta, game)
@@ -113,6 +183,8 @@ func _process(delta: float) -> void:
 		if claim_left <= 0.0 and game.phase != "win" and game.phase != "lose":
 			if not housed:
 				leaving = true
+				ordered = false
+				pending_job = null
 				_path.clear()
 				_path_i = 0
 				_goal = global_position + Vector2(0, -800)
@@ -120,11 +192,77 @@ func _process(delta: float) -> void:
 				return
 			refugee = false
 			claim_left = -1.0
+	if game.should_panic(self):
+		if ordered:
+			ordered = false
+			pending_job = null
+			_path.clear()
+			_path_i = 0
+			_retarget = 0.0
+		stand_left = 0.0
+		_retarget -= delta
+		if _retarget <= 0.0:
+			_pick_goal(game)
+		_walk(delta, game)
+		queue_redraw()
+		return
+	if ordered:
+		_follow_order(delta, game)
+		queue_redraw()
+		return
+	if selected or stand_left > 0.0:
+		if stand_left > 0.0:
+			stand_left = maxf(stand_left - delta, 0.0)
+		_hold_idle(delta)
+		queue_redraw()
+		return
 	_retarget -= delta
 	if _retarget <= 0.0:
 		_pick_goal(game)
 	_walk(delta, game)
 	queue_redraw()
+
+func _follow_order(delta: float, game: Node) -> void:
+	if pending_job != null and not is_instance_valid(pending_job):
+		pending_job = null
+		ordered = false
+		return
+	if _at_door():
+		_finish_enter(game)
+		return
+	_walk(delta, game)
+	if not ordered:
+		return
+	if _at_door():
+		_finish_enter(game)
+		return
+	var arrived := pending_job == null and global_position.distance_to(order_goal) <= 24.0 * IsoVolume.WORLD_SCALE
+	if arrived:
+		ordered = false
+		_path.clear()
+		if not selected:
+			stand_left = 1.2
+			_retarget = stand_left
+		return
+	var stuck := _path.is_empty() or _path_i >= _path.size()
+	if stuck and global_position.distance_to(order_goal) > ENTER_REACH * IsoVolume.WORLD_SCALE:
+		ordered = false
+		pending_job = null
+		_path.clear()
+		if game.has_method("order_stuck"):
+			game.order_stuck()
+
+func _at_door() -> bool:
+	return pending_job != null and is_instance_valid(pending_job) and global_position.distance_to(order_goal) <= ENTER_REACH * IsoVolume.WORLD_SCALE
+
+func _finish_enter(game: Node) -> void:
+	var building := pending_job
+	ordered = false
+	pending_job = null
+	_path.clear()
+	_path_i = 0
+	if building != null and game.has_method("complete_staff"):
+		game.complete_staff(self, building)
 
 func _pick_goal(game: Node) -> void:
 	var panic: bool = game.should_panic(self)
@@ -157,7 +295,7 @@ func _walk(delta: float, game: Node) -> void:
 		_hold_idle(delta)
 		return
 	var dir := vel.normalized()
-	var step_speed := speed if is_fighter() else speed * (1.15 if panic else 0.72)
+	var step_speed := speed if is_fighter() else speed * _pace(game, panic)
 	var step := minf(step_speed * delta, vel.length())
 	var nxt: Vector2 = global_position + dir * step
 	if game.can_step(global_position, nxt, self):
@@ -310,7 +448,10 @@ func _leave(delta: float) -> void:
 			while _path_i < _path.size() and global_position.distance_to(game.cell_center(_path[_path_i])) < 10.0 * IsoVolume.WORLD_SCALE:
 				_path_i += 1
 		if _path_i >= _path.size():
-			var vel := Vector2(0, -speed)
+			var flee := speed
+			if not is_fighter() and game.has_method("on_road") and bool(game.on_road(global_position)):
+				flee *= ROAD_BONUS
+			var vel := Vector2(0, -flee)
 			global_position += vel * delta
 			_step_anim(vel, delta)
 			if global_position.y < game.cell_center(Vector2i(0, 0)).y - 80.0:
@@ -322,7 +463,10 @@ func _leave(delta: float) -> void:
 		_path_i += 1
 		return
 	var dir := vel.normalized()
-	var nxt: Vector2 = global_position + dir * minf(speed * delta, vel.length())
+	var leave_speed := speed
+	if not is_fighter() and game.has_method("on_road") and bool(game.on_road(global_position)):
+		leave_speed *= ROAD_BONUS
+	var nxt: Vector2 = global_position + dir * minf(leave_speed * delta, vel.length())
 	if game.can_step(global_position, nxt, self):
 		global_position = nxt
 		_step_anim(dir, delta)
@@ -331,6 +475,12 @@ func _leave(delta: float) -> void:
 		_path_i = 0
 		if not is_fighter():
 			_retarget = 0.45
+
+func _pace(game: Node, panic: bool) -> float:
+	var pace := 1.15 if panic else 0.72
+	if game.has_method("on_road") and bool(game.on_road(global_position)):
+		pace *= ROAD_BONUS
+	return pace
 
 func _game() -> Node:
 	return get_tree().get_first_node_in_group("game")

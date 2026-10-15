@@ -7,8 +7,8 @@ var code := "zh"
 
 const TEXT := {
 	"hint.idle": {
-		"zh": "点空地，在右侧建造。击杀只掉金币。木坊要派村民才产木材。房屋、矛兵营、枪兵营和工坊提供对应空缺，清波后有机会补人。塔不用派人。",
-		"en": "Tap empty ground, then build on the right. Kills pay gold only. The lumber mill makes wood only while villagers are stationed. Houses, barracks, and the workshop open vacancies filled after a wave. Towers need no crew.",
+		"zh": "点空地，在右侧建造。击杀只掉金币。木坊要派村民才产木材。房屋、矛兵营、枪兵营和工坊提供对应空缺，清波后有机会补人。塔不用派人。点村民再点空地，他会走过去；点建筑则走到门口再进去。遣散后出现在建筑南侧。",
+		"en": "Tap empty ground, then build on the right. Kills pay gold only. The lumber mill makes wood only while villagers are stationed. Houses, barracks, and the workshop open vacancies filled after a wave. Towers need no crew. Tap a villager, then open ground to walk, or a building to walk to the door and enter. Dismissed villagers appear on the south side.",
 	},
 	"flash.wave_in": {"zh": "第 %d 波来袭", "en": "Wave %d"},
 	"flash.wave_clear": {
@@ -22,9 +22,11 @@ const TEXT := {
 	"flash.mill_villager": {"zh": "木坊只收村民。", "en": "Only villagers can work the lumber mill."},
 	"flash.fighter_stay": {"zh": "战斗单位留在场上。", "en": "Fighters stay on the field."},
 	"flash.assign_next": {
-		"zh": "再点房屋、农场、工坊或塔，把这个人收进去。",
-		"en": "Now tap a house, farm, workshop, or tower to shelter them.",
+		"zh": "再点空地，这个人会走过去。点房屋、农场、工坊或塔，他会走到门口再进去。",
+		"en": "Tap open ground and they walk there. Tap a house, farm, workshop, or tower and they walk to the door, then enter.",
 	},
+	"flash.walking": {"zh": "正在走过去。", "en": "Walking there."},
+	"flash.no_path": {"zh": "这里走不过去", "en": "Can't walk there."},
 	"flash.cant_build": {"zh": "这里不能建造", "en": "Can't build here"},
 	"flash.need_tile": {"zh": "先点一块空地。", "en": "Tap an empty tile first."},
 	"flash.wall_no_staff": {"zh": "木墙不能收人。", "en": "Walls cannot shelter a villager."},
@@ -65,7 +67,7 @@ const TEXT := {
 	"bench.tab.waves": {"zh": "波次", "en": "Waves"},
 	"bench.diff_help": {"zh": "难度倍率作用在出怪数量、生命、移速和击杀金币上。", "en": "Difficulty scales spawn counts, health, speed, and kill gold."},
 	"bench.people_help": {"zh": "房屋床位是村民空缺，矛兵营是矛兵空缺，枪兵营是枪兵空缺，工坊是工兵空缺。清波后，某类还有空缺时，以概率 P 入驻 1 到 min(每波上限, 空缺)。不是把村民转成兵。", "en": "House beds are villager vacancies. Barracks and the workshop open their own unit vacancies. After a wave, a type with room settles 1 to min(cap, room) with probability P."},
-	"bench.map_help": {"zh": "点地图上的一格，右侧面板停在这块黑色地图里：可以放置友方、建筑、景物，或把最外一圈（四个边角除外）设成唯一的出怪口。出怪是长 3 宽 1 的红罩，正中那一格必须已经是路面，红罩对齐路口。路面可以单独铺或去掉；铺路不改变怪物怎么走，设出怪口也不会自动画一条路到村子中心。滚轮或＋／－缩放，在空地上拖动可以平移，画面不会画出这块黑区域。全图只留一个出怪口，最后这一个不能删。出怪的三格上不能有景物、建筑或单位。", "en": "Click a cell. The panel stays inside this black map: place a friendly, a building, or scenery, or turn an outer-ring cell (not a corner) into the single enemy gate. The gate is a 3×1 red mask and its middle cell must already be road, so the mask sits on the entrance. Road tiles are painted on their own. Painting them does not change how monsters walk, and setting the gate does not draw a road to the village. Scroll or ＋／－ to zoom, drag empty ground to pan, and the picture stays inside the black area. Only one gate is kept, and that last one cannot be removed. The three gate cells must be clear of scenery, buildings, and units."},
+	"bench.map_help": {"zh": "点地图上的一格，右侧面板停在这块黑色地图里：可以放置友方、建筑、景物，或把最外一圈（四个边角除外）设成唯一的出怪口。出怪是长 3 宽 1 的红罩，和路面没有关系。路面可以单独铺或去掉，只让村民走得更快，不改变怪物怎么走；设出怪口也不会自动画一条路。滚轮或＋／－缩放，在空地上拖动可以平移，画面不会画出这块黑区域。全图只留一个出怪口，最后这一个不能删。出怪的三格上不能有景物、建筑或单位。", "en": "Click a cell. The panel stays inside this black map: place a friendly, a building, or scenery, or turn an outer-ring cell (not a corner) into the single enemy gate. The gate is a 3×1 red mask and is not tied to road tiles. Road tiles are painted on their own and only make villagers walk faster. Painting them does not change how monsters walk, and setting the gate does not draw a road. Scroll or ＋／－ to zoom, drag empty ground to pan, and the picture stays inside the black area. Only one gate is kept, and that last one cannot be removed. The three gate cells must be clear of scenery, buildings, and units."},
 	"bench.palette.units": {"zh": "友方单位", "en": "Friendly units"},
 	"bench.palette.builds": {"zh": "建筑", "en": "Buildings"},
 	"bench.palette.props": {"zh": "景物（拖到地图）", "en": "Props (drag onto the map)"},
@@ -110,11 +112,11 @@ const TEXT := {
 	"panel.station_count": {"zh": "驻岗 %d", "en": "Stationed %d"},
 	"panel.crew_count": {"zh": "驻守 %d/%d", "en": "Crew %d/%d"},
 	"panel.lumber_rate": {"zh": "每 %.0f 秒，每名村民 +%d 木。没人则不产。", "en": "Every %.0f s, each villager makes +%d wood. Empty makes none."},
-	"panel.mill_empty": {"zh": "木坊空着不产木材。先点村民再点这里，最多 %d 人。", "en": "An empty mill makes no wood. Tap a villager, then tap here. Cap %d."},
+	"panel.mill_empty": {"zh": "木坊空着不产木材。先点村民再点这里，他会走过来再进去，最多 %d 人。", "en": "An empty mill makes no wood. Tap a villager, then tap here. They walk over and enter. Cap %d."},
 	"panel.vacancy": {"zh": "空缺：%s × %d", "en": "Vacancies: %s × %d"},
 	"panel.dismiss": {"zh": "遣散", "en": "Dismiss"},
-	"panel.reassign": {"zh": "点头像选中这个人，再点另一座建筑来换岗。", "en": "Tap the portrait to select them, then tap another building."},
-	"panel.empty": {"zh": "没有人躲在这里。建筑自己会工作。先点村民，再点这里可以把人收进来。", "en": "Nobody is sheltering here. This building works on its own. Tap a villager, then tap here to shelter them."},
+	"panel.reassign": {"zh": "点头像选中这个人。再点空地他会走过去；点另一座建筑，他会走到门口再进去。", "en": "Tap the portrait to select them. Tap open ground and they walk there, or another building and they walk to the door, then enter."},
+	"panel.empty": {"zh": "没有人躲在这里。建筑自己会工作。先点村民，再点这里，他会走过来再进去。", "en": "Nobody is sheltering here. This building works on its own. Tap a villager, then tap here and they walk over and enter."},
 	"villager.male": {"zh": "男村民", "en": "Male villager"},
 	"villager.female": {"zh": "女村民", "en": "Female villager"},
 	"unit.villager": {"zh": "村民", "en": "Villager"},

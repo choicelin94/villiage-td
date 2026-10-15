@@ -153,9 +153,6 @@ def check_spawn(setup: dict) -> None:
         if cell in ROCKS:
             die(f"road cell {cell} is a fixed rock")
         seen.add(cell)
-    middle = (int(setup["spawn_rects"][0]["middle"][0]), int(setup["spawn_rects"][0]["middle"][1]))
-    if middle not in seen:
-        die(f"spawn middle {middle} must sit on a road cell")
 
 
 def cross(o, a, b) -> float:

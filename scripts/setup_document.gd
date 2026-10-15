@@ -30,9 +30,7 @@ func normalize() -> void:
 	_state["spawn_rects"] = cleaned
 	_state["spawns"] = MapPlan.cells_from_rects(cleaned)
 	if not (_state.get("roads") is Array):
-		var middle := MapPlan.middle_of(cleaned[0])
-		var blocked := MapPlan.scenery_cells(MapPlan.spawn_lookup(cleaned), starter_props())
-		_state["roads"] = MapPlan.seed_road_cells(middle, blocked)
+		_state["roads"] = []
 	else:
 		_state["roads"] = MapPlan.clean_roads(_state.get("roads"))
 
@@ -83,8 +81,6 @@ func footprint_block(cell: Vector2i) -> String:
 		var hit := hit_at(spot)
 		if not hit.is_empty() and str(hit.get("layer", "")) != "spawn":
 			return "spawn_blocked"
-	if not is_road(cell):
-		return "need_road"
 	return ""
 
 
@@ -98,8 +94,6 @@ func toggle_road(cell: Vector2i) -> String:
 		var raw = rows[i]
 		if raw is Array and raw.size() >= 2 and int(raw[0]) == cell.x and int(raw[1]) == cell.y:
 			rows.remove_at(i)
-			if _spawn_middle_is(cell):
-				return "need_road"
 			return "road_off"
 	rows.append([cell.x, cell.y])
 	return "road_on"
@@ -111,7 +105,7 @@ func load_note() -> String:
 		parts.append(Locale.text("bench.map.spawn_one"))
 	if not spawn_rects().is_empty():
 		var block := footprint_block(MapPlan.middle_of(spawn_rects()[0]))
-		if block == "need_road" or block == "spawn_blocked" or block == "rock":
+		if block == "spawn_blocked" or block == "rock":
 			parts.append(Locale.text("bench.map." + block))
 	return " ".join(parts)
 
@@ -205,13 +199,6 @@ func _entry_at(rows: Array, cell: Vector2i) -> int:
 			if raw is Array and raw.size() >= 2 and int(raw[0]) == cell.x and int(raw[1]) == cell.y:
 				return i
 	return -1
-
-
-func _spawn_middle_is(cell: Vector2i) -> bool:
-	var rows := spawn_rects()
-	if rows.is_empty() or not (rows[0] is Dictionary):
-		return false
-	return MapPlan.middle_of(rows[0]) == cell
 
 
 func _ensure(key: String) -> Array:
