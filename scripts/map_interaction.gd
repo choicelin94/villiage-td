@@ -2,9 +2,12 @@ class_name MapInteraction
 extends RefCounted
 
 # One pointer policy for click and for drag-drop.
-# A click inspects the cell. The docked panel places actors, paints a road
-# cell, or sets the single 3×1 gate. Dragging an actor still moves it.
-# Dragging empty ground pans the map and does not issue a command.
+# A click inspects the cell and replaces the selection with that cell.
+# Ctrl-click toggles the cell in the multi-selection instead.
+# Right-drag selects every cell the box touches: it replaces the selection,
+# or adds to it when Ctrl is held. A right click without a drag still removes
+# that one cell. Dragging an actor still moves it. Dragging empty ground with
+# the left button pans the map and does not issue a command.
 # North and south gates run along x. West and east run along y.
 
 var pressing := false
@@ -59,6 +62,18 @@ static func op_for(cell: Vector2i, carrying: Dictionary, occupied: bool) -> Dict
 			"cell": cell,
 		}
 	return {"op": "place", "layer": layer, "id": str(carrying.get("id", "")), "cell": cell}
+
+
+static func with_ctrl(cmd: Dictionary, ctrl: bool, was_dragging: bool) -> Dictionary:
+	if ctrl and not was_dragging and str(cmd.get("op", "")) == "inspect":
+		return {"op": "toggle_select", "cell": cmd.get("cell", Vector2i(-1, -1))}
+	return cmd
+
+
+static func right_gesture(dragged: bool, cell: Vector2i, cells: Array, ctrl: bool, anchor: Vector2i) -> Dictionary:
+	if not dragged:
+		return {"op": "remove", "cell": cell}
+	return {"op": "box_select", "cells": cells, "additive": ctrl, "anchor": anchor}
 
 
 func arm(cell: Vector2i, pos: Vector2, hit: Dictionary) -> void:

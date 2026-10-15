@@ -86,6 +86,22 @@ func _bench_probe() -> void:
 		print("BENCH_SHOT ", image.get_width(), " ", image.get_height(), " reds=", reds, " run=", longest)
 		if reds < 8 or longest < 24:
 			passed = false
+	if board != null and board.has_method("present_multi_demo"):
+		board.present_multi_demo()
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var multi := get_viewport().get_texture().get_image()
+		if multi and not multi.is_empty():
+			multi.save_png("/tmp/map-multi.png")
+		if board.has_method("settle_multi_demo"):
+			board.settle_multi_demo()
+			await get_tree().process_frame
+			await get_tree().process_frame
+			var settled := get_viewport().get_texture().get_image()
+			if settled and not settled.is_empty():
+				settled.save_png("/tmp/map-multi-settled.png")
+		if board.has_method("end_multi_demo"):
+			board.end_multi_demo()
 	var narrow_ok := await _probe_narrow_lock()
 	passed = passed and narrow_ok
 	get_tree().quit(0 if passed else 1)

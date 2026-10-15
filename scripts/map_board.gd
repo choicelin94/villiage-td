@@ -18,6 +18,7 @@ var _font: Font
 var _panel: PanelContainer
 var _panel_box: VBoxContainer
 var _selected := Vector2i(-1, -1)
+var _picked: Dictionary = {}
 var _status_text := ""
 var _last_action := ""
 
@@ -71,10 +72,12 @@ func inspect_cell(cell: Vector2i) -> void:
 
 
 func close_inspector() -> void:
+	_picked.clear()
 	_selected = Vector2i(-1, -1)
 	if _panel:
 		_panel.visible = false
 	_fit_view()
+	_sync_view()
 
 
 func inspector_open() -> bool:
@@ -119,10 +122,130 @@ func probe_edits() -> bool:
 	var zoom_ok := view.zoom_level() > 1.2 and view.zoom_level() < 2.0
 	var zoom_btns := find_child("MapZoomIn", true, false) != null and find_child("MapZoomOut", true, false) != null
 	view.reset_view()
+	_fit_view()
+	var multi_ok := _probe_multi()
 	close_inspector()
-	var ok := commands_ok and corner == "inspect" and str(corner_set.get("action", "")) == "corner" and str(bare.get("action", "")) == "spawn" and str(painted.get("action", "")) == "road_on" and str(spawned.get("action", "")) == "spawn_have" and cell_ok and road_ok and kept_old and str(blocked.get("action", "")) == "spawn_blocked" and str(south_bare.get("action", "")) == "spawn" and pick == "inspect" and placed and border_reject and rock_reject and prop_ok and art_ok and combat_nodes == 0 and panel_ok and clip_ok and zoom_ok and zoom_btns
-	print("BENCH_EDIT corner=", corner, " spawn=", str(spawned.get("action", "")), " cell=", cell_ok, " road=", road_ok, " blocked=", str(blocked.get("action", "")), " pick=", pick, " placed=", placed, " border=", border_reject, " rock=", rock_reject, " prop=", prop_ok, " art=", art_ok, " commands=", commands_ok, " combat=", combat_nodes, " panel=", panel_ok, " clip=", clip_ok, " zoom=", zoom_ok)
+	var ok := commands_ok and corner == "inspect" and str(corner_set.get("action", "")) == "corner" and str(bare.get("action", "")) == "spawn" and str(painted.get("action", "")) == "road_on" and str(spawned.get("action", "")) == "spawn_have" and cell_ok and road_ok and kept_old and str(blocked.get("action", "")) == "spawn_blocked" and str(south_bare.get("action", "")) == "spawn" and pick == "inspect" and placed and border_reject and rock_reject and prop_ok and art_ok and combat_nodes == 0 and panel_ok and clip_ok and zoom_ok and zoom_btns and multi_ok
+	print("BENCH_EDIT corner=", corner, " spawn=", str(spawned.get("action", "")), " cell=", cell_ok, " road=", road_ok, " blocked=", str(blocked.get("action", "")), " pick=", pick, " placed=", placed, " border=", border_reject, " rock=", rock_reject, " prop=", prop_ok, " art=", art_ok, " commands=", commands_ok, " combat=", combat_nodes, " panel=", panel_ok, " clip=", clip_ok, " zoom=", zoom_ok, " multi=", multi_ok)
 	return ok
+
+
+func present_multi_demo() -> void:
+	var cells: Array = [
+		Vector2i(6, 5), Vector2i(7, 5), Vector2i(8, 5),
+		Vector2i(6, 6), Vector2i(7, 6), Vector2i(8, 6),
+	]
+	for cell in cells:
+		if not doc.is_road(cell):
+			MapCommands.apply(doc, {"op": "toggle_road", "cell": cell})
+	_on_command({"op": "box_select", "cells": cells, "additive": false, "anchor": Vector2i(6, 5)})
+	_fit_view()
+	if view == null:
+		return
+	var a := view.cell_screen_rect(Vector2i(6, 5))
+	var b := view.cell_screen_rect(Vector2i(8, 6))
+	view.show_box_preview(a.position, b.end, false)
+
+
+func settle_multi_demo() -> void:
+	if view:
+		view.clear_box_preview()
+
+
+func end_multi_demo() -> void:
+	if view:
+		view.clear_box_preview()
+	close_inspector()
+
+
+func _probe_multi() -> bool:
+	var ctrl_click: Dictionary = MapInteraction.with_ctrl({"op": "inspect", "cell": Vector2i(8, 8)}, true, false)
+	var plain_click: Dictionary = MapInteraction.with_ctrl({"op": "inspect", "cell": Vector2i(8, 8)}, false, false)
+	var drag_keeps: Dictionary = MapInteraction.with_ctrl({"op": "inspect", "cell": Vector2i(8, 8)}, true, true)
+	var right_click: Dictionary = MapInteraction.right_gesture(false, Vector2i(4, 4), [], false, Vector2i(4, 4))
+	var right_box: Dictionary = MapInteraction.right_gesture(true, Vector2i(6, 6), [Vector2i(5, 5)], false, Vector2i(5, 5))
+	var right_add: Dictionary = MapInteraction.right_gesture(true, Vector2i(6, 6), [Vector2i(5, 5)], true, Vector2i(5, 5))
+	var policy_ok := str(ctrl_click.get("op", "")) == "toggle_select" and str(plain_click.get("op", "")) == "inspect" and str(drag_keeps.get("op", "")) == "inspect" and str(right_click.get("op", "")) == "remove" and str(right_box.get("op", "")) == "box_select" and not bool(right_box.get("additive", true)) and bool(right_add.get("additive", false))
+	inspect_cell(Vector2i(8, 8))
+	_on_command({"op": "toggle_select", "cell": Vector2i(9, 8)})
+	var added := _picked.size() == 2 and _picked.has(Vector2i(8, 8)) and _picked.has(Vector2i(9, 8)) and _selected == Vector2i(9, 8) and inspector_open()
+	_on_command({"op": "toggle_select", "cell": Vector2i(9, 8)})
+	var removed := _picked.size() == 1 and _picked.has(Vector2i(8, 8)) and _selected == Vector2i(8, 8)
+	inspect_cell(Vector2i(10, 8))
+	var replaced := _picked.size() == 1 and _selected == Vector2i(10, 8)
+	var ra := view.cell_screen_rect(Vector2i(12, 12))
+	var rb := view.cell_screen_rect(Vector2i(13, 13))
+	var geom: Array = view.cells_in_screen_box(ra.get_center(), rb.get_center())
+	var geom_ok := geom.size() == 4 and geom.has(Vector2i(12, 12)) and geom.has(Vector2i(13, 12)) and geom.has(Vector2i(12, 13)) and geom.has(Vector2i(13, 13))
+	for cell in [Vector2i(2, 2), Vector2i(3, 2), Vector2i(2, 3)]:
+		if doc.is_road(cell):
+			MapCommands.apply(doc, {"op": "toggle_road", "cell": cell})
+	_on_command({
+		"op": "box_select",
+		"cells": [Vector2i(2, 2), Vector2i(3, 2), Vector2i(2, 3)],
+		"additive": false,
+		"anchor": Vector2i(2, 2),
+	})
+	var box_ok := _picked.size() == 3 and not _picked.has(Vector2i(10, 8)) and _selected == Vector2i(2, 2) and inspector_open()
+	var summary_ok := _panel_has(Locale.format("bench.map.multi", [3])) and _panel_has(Locale.text("bench.road.paint_many")) and _panel_has(Locale.text("bench.road.clear_many")) and _panel_has(Locale.text("bench.map.remove_many"))
+	var view_ok := view.selected.size() == 3 and view.primary == Vector2i(2, 2)
+	_on_command({"op": "paint_roads"})
+	var paint_ok := doc.is_road(Vector2i(2, 2)) and doc.is_road(Vector2i(3, 2)) and doc.is_road(Vector2i(2, 3))
+	_on_command({"op": "clear_roads"})
+	var clear_ok := not doc.is_road(Vector2i(2, 2)) and not doc.is_road(Vector2i(3, 2)) and not doc.is_road(Vector2i(2, 3))
+	if doc.is_road(Vector2i(5, 8)):
+		MapCommands.apply(doc, {"op": "toggle_road", "cell": Vector2i(5, 8)})
+	_on_command({
+		"op": "box_select",
+		"cells": [Vector2i(4, 8), Vector2i(5, 8)],
+		"additive": false,
+		"anchor": Vector2i(5, 8),
+	})
+	_on_command({"op": "paint_roads"})
+	var rock_ok := not doc.is_road(Vector2i(4, 8)) and doc.is_road(Vector2i(5, 8))
+	if doc.is_road(Vector2i(5, 8)):
+		MapCommands.apply(doc, {"op": "toggle_road", "cell": Vector2i(5, 8)})
+	_on_command({
+		"op": "box_select",
+		"cells": [Vector2i(2, 2)],
+		"additive": true,
+		"anchor": Vector2i(2, 2),
+	})
+	var add_ok := _picked.has(Vector2i(4, 8)) and _picked.has(Vector2i(5, 8)) and _picked.has(Vector2i(2, 2)) and _picked.size() == 3
+	var prop_a := place_payload({"layer": "prop", "id": "rock", "volume": "rock"}, Vector2i(14, 12))
+	var prop_b := place_payload({"layer": "prop", "id": "rock", "volume": "rock"}, Vector2i(15, 12))
+	_on_command({
+		"op": "box_select",
+		"cells": [Vector2i(14, 12), Vector2i(15, 12)],
+		"additive": false,
+		"anchor": Vector2i(14, 12),
+	})
+	_on_command({"op": "remove_selected"})
+	var wipe_ok := prop_a and prop_b and doc.hit_at(Vector2i(14, 12)).is_empty() and doc.hit_at(Vector2i(15, 12)).is_empty()
+	var gate := Vector2i(4, 19)
+	var before_n := doc.spawn_rects().size()
+	_on_command({"op": "box_select", "cells": [gate, Vector2i(14, 14)], "additive": false, "anchor": gate})
+	_on_command({"op": "remove_selected"})
+	var spawn_ok := before_n == 1 and doc.spawn_rects().size() == 1 and doc.middle_exists(gate)
+	inspect_cell(Vector2i(8, 8))
+	var single_ok := _picked.size() == 1 and _selected == Vector2i(8, 8) and inspector_open() and view.selected.size() == 1
+	var ok := policy_ok and added and removed and replaced and geom_ok and box_ok and summary_ok and view_ok and paint_ok and clear_ok and rock_ok and add_ok and wipe_ok and spawn_ok and single_ok
+	print("BENCH_MULTI policy=", policy_ok, " toggle=", added and removed, " replace=", replaced, " geom=", geom_ok, " box=", box_ok, " summary=", summary_ok, " view=", view_ok, " paint=", paint_ok, " clear=", clear_ok, " rock=", rock_ok, " add=", add_ok, " wipe=", wipe_ok, " spawn=", spawn_ok, " single=", single_ok)
+	return ok
+
+
+func _panel_has(fragment: String) -> bool:
+	if _panel_box == null:
+		return false
+	for child in _panel_box.get_children():
+		var shown := ""
+		if child is Label:
+			shown = child.text
+		elif child is Button:
+			shown = child.text
+		if shown.find(fragment) >= 0:
+			return true
+	return false
 
 
 func _notification(what: int) -> void:
@@ -151,8 +274,22 @@ func _on_command(cmd: Dictionary) -> void:
 	var cell: Vector2i = cmd.get("cell", Vector2i(-1, -1))
 	if op == "inspect":
 		_open_inspector(cell)
-		if view:
-			view.queue_redraw()
+		return
+	if op == "toggle_select":
+		_toggle_select(cell)
+		return
+	if op == "box_select":
+		var anchor: Vector2i = cmd.get("anchor", Vector2i(-1, -1))
+		_box_select(cmd.get("cells", []), bool(cmd.get("additive", false)), anchor)
+		return
+	if op == "paint_roads":
+		_batch_roads(true)
+		return
+	if op == "clear_roads":
+		_batch_roads(false)
+		return
+	if op == "remove_selected":
+		_batch_remove()
 		return
 	if op == "none":
 		return
@@ -165,10 +302,131 @@ func _on_command(cmd: Dictionary) -> void:
 func _open_inspector(cell: Vector2i) -> void:
 	if not MapPlan.in_bounds(cell):
 		return
+	_picked.clear()
+	_picked[cell] = true
 	_selected = cell
+	_show_inspector()
+
+
+func _show_inspector() -> void:
+	if not _picked.has(_selected):
+		_selected = _first_picked()
+	if not MapPlan.in_bounds(_selected):
+		close_inspector()
+		return
 	_panel.visible = true
 	_rebuild_panel()
 	_fit_view()
+	_sync_view()
+
+
+func _toggle_select(cell: Vector2i) -> void:
+	if not MapPlan.in_bounds(cell):
+		return
+	if _picked.has(cell):
+		_picked.erase(cell)
+		if _selected == cell:
+			_selected = _first_picked()
+	else:
+		_picked[cell] = true
+		_selected = cell
+	_show_inspector()
+
+
+func _box_select(cells: Array, additive: bool, anchor: Vector2i) -> void:
+	var next: Dictionary = {}
+	if additive:
+		for key in _picked:
+			next[key] = true
+	for item in cells:
+		if item is Vector2i and MapPlan.in_bounds(item):
+			next[item] = true
+	if next.is_empty():
+		if not additive:
+			close_inspector()
+		return
+	_picked = next
+	if _picked.has(anchor):
+		_selected = anchor
+	elif not _picked.has(_selected):
+		_selected = _first_picked()
+	_show_inspector()
+
+
+func _batch_roads(paint: bool) -> void:
+	var changed := 0
+	var last_cell := _selected
+	var last_action := ""
+	for key in _picked:
+		var cell: Vector2i = key
+		if not MapPlan.in_bounds(cell) or MapPlan.is_fixed_rock(cell):
+			continue
+		if doc.is_road(cell) == paint:
+			continue
+		var result: Dictionary = MapCommands.apply(doc, {"op": "toggle_road", "cell": cell})
+		if bool(result.get("ok", false)):
+			changed += 1
+			last_cell = cell
+			last_action = str(result.get("action", ""))
+	if changed <= 0:
+		return
+	if changed == 1:
+		_after({"ok": true, "action": last_action, "cell": last_cell})
+	else:
+		_after({
+			"ok": true,
+			"action": "road_on_many" if paint else "road_off_many",
+			"cell": _selected,
+			"count": changed,
+		})
+	if inspector_open():
+		call_deferred("_rebuild_panel")
+
+
+func _batch_remove() -> void:
+	var changed := 0
+	var last: Dictionary = {}
+	var blocked := ""
+	var blocked_cell := _selected
+	for key in _picked.keys():
+		var cell: Vector2i = key
+		var result: Dictionary = MapCommands.apply(doc, {"op": "remove", "cell": cell})
+		var action := str(result.get("action", ""))
+		if bool(result.get("ok", false)) and action == "removed":
+			changed += 1
+			last = result
+		elif action == "need_spawn":
+			blocked = action
+			blocked_cell = cell
+	if changed > 1:
+		_after({"ok": true, "action": "removed_many", "cell": _selected, "count": changed})
+	elif changed == 1:
+		_after(last)
+	elif blocked != "":
+		_after({"ok": false, "action": blocked, "cell": blocked_cell})
+	else:
+		return
+	if inspector_open():
+		call_deferred("_rebuild_panel")
+
+
+func _first_picked() -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var found := false
+	for key in _picked:
+		var cell: Vector2i = key
+		if not found or cell.y < best.y or (cell.y == best.y and cell.x < best.x):
+			best = cell
+			found = true
+	return best
+
+
+func _sync_view() -> void:
+	if view == null:
+		return
+	view.selected = _picked.duplicate()
+	view.primary = _selected
+	view.queue_redraw()
 
 
 func _after(result: Dictionary) -> void:
@@ -203,6 +461,12 @@ func _hint_for(result: Dictionary) -> String:
 			return Locale.text("bench.road.on")
 		"road_off":
 			return Locale.text("bench.road.off")
+		"road_on_many":
+			return Locale.format("bench.road.on_many", [int(result.get("count", 0))])
+		"road_off_many":
+			return Locale.format("bench.road.off_many", [int(result.get("count", 0))])
+		"removed_many":
+			return Locale.format("bench.map.removed_many", [int(result.get("count", 0))])
 		"placed", "moved":
 			return Locale.format("bench.map.moved", [cell.x, cell.y])
 		"removed":
@@ -267,15 +531,27 @@ func _rebuild_panel() -> void:
 		status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		status.add_theme_color_override("font_color", Color(1, 0.82, 0.45))
 		_panel_box.add_child(status)
-	if not MapPlan.is_fixed_rock(_selected):
-		var road_key := "bench.road.clear" if doc.is_road(_selected) else "bench.road.paint"
-		_panel_box.add_child(_action_button(Locale.text(road_key), {"op": "toggle_road", "cell": _selected}))
+	var count := _picked.size()
+	var hit := doc.hit_at(_selected)
+	if count > 1:
+		var summary := _label(Locale.format("bench.map.multi", [count]))
+		summary.add_theme_color_override("font_color", Color(0.55, 0.88, 1.0))
+		_panel_box.add_child(summary)
+		var note := _label(Locale.text("bench.map.multi_note"))
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_panel_box.add_child(note)
+		_panel_box.add_child(_action_button(Locale.text("bench.road.paint_many"), {"op": "paint_roads"}))
+		_panel_box.add_child(_action_button(Locale.text("bench.road.clear_many"), {"op": "clear_roads"}))
+		_panel_box.add_child(_action_button(Locale.text("bench.map.remove_many"), {"op": "remove_selected"}))
+	else:
+		if not MapPlan.is_fixed_rock(_selected):
+			var road_key := "bench.road.clear" if doc.is_road(_selected) else "bench.road.paint"
+			_panel_box.add_child(_action_button(Locale.text(road_key), {"op": "toggle_road", "cell": _selected}))
+		if not hit.is_empty():
+			_panel_box.add_child(_action_button(Locale.text("bench.map.remove"), {"op": "remove", "cell": _selected}))
 	if MapInteraction.zone_of(_selected) == "gate":
 		_panel_box.add_child(_action_button(Locale.text("bench.spawn.set"), {"op": "set_spawn", "cell": _selected}))
-	var hit := doc.hit_at(_selected)
-	if not hit.is_empty():
-		_panel_box.add_child(_action_button(Locale.text("bench.map.remove"), {"op": "remove", "cell": _selected}))
-	if _can_place(hit):
+	if count <= 1 and _can_place(hit):
 		_add_place_group(Locale.text("bench.palette.units"), MapPlan.unit_palette())
 		_add_place_group(Locale.text("bench.palette.builds"), MapPlan.build_palette())
 		_add_place_group(Locale.text("bench.inspect.props"), MapPlan.prop_palette())

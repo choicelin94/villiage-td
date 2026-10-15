@@ -21,6 +21,15 @@ var _zoom := 1.0
 var _pan := Vector2.ZERO
 var _zoom_in: Button
 var _zoom_out: Button
+var selected: Dictionary = {}
+var primary := Vector2i(-1, -1)
+var _boxing := false
+var _box_drag := false
+var _box_ctrl := false
+var _box_from := Vector2.ZERO
+var _box_to := Vector2.ZERO
+
+const _DRAG_PX := 8.0
 
 
 func setup(p_doc: SetupDocument, p_interaction: MapInteraction, p_font: Font) -> void:
@@ -69,6 +78,8 @@ func _gui_input(event: InputEvent) -> void:
 	if doc == null or interaction == null:
 		return
 	if event is InputEventMouseMotion:
+		if _boxing:
+			return
 		var motion := event as InputEventMouseMotion
 		var was_dragging := interaction.dragging
 		interaction.note_motion(_cell_at(motion.position), motion.position)
@@ -86,7 +97,11 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 			return
 		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
-			command_issued.emit({"op": "remove", "cell": _cell_at(mb.position)})
+			_boxing = true
+			_box_drag = false
+			_box_ctrl = mb.ctrl_pressed
+			_box_from = mb.position
+			_box_to = mb.position
 			accept_event()
 			return
 		if mb.button_index != MOUSE_BUTTON_LEFT:
@@ -97,10 +112,83 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 		else:
 			var cell := _cell_at(mb.position)
+			var was_dragging := interaction.dragging
 			var cmd := interaction.release(cell, doc)
-			command_issued.emit(cmd)
+			command_issued.emit(MapInteraction.with_ctrl(cmd, mb.ctrl_pressed, was_dragging))
 			queue_redraw()
 			accept_event()
+
+
+func _input(event: InputEvent) -> void:
+	if not _boxing or doc == null or interaction == null:
+		return
+	if event is InputEventMouseMotion:
+		var motion := event as InputEventMouseMotion
+		var local := _event_local(motion.position)
+		_box_to = local
+		_box_ctrl = motion.ctrl_pressed
+		if _box_from.distance_to(_box_to) > _DRAG_PX:
+			_box_drag = true
+		interaction.note_motion(_cell_at(local), local)
+		queue_redraw()
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index != MOUSE_BUTTON_RIGHT or mb.pressed:
+			return
+		_finish_box(_event_local(mb.position), mb.ctrl_pressed)
+		get_viewport().set_input_as_handled()
+
+
+func cells_in_screen_box(a: Vector2, b: Vector2) -> Array:
+	var box := Rect2(a, Vector2.ZERO).expand(b)
+	var fit := _fit()
+	var tile := MapPlan.TILE
+	var cells: Array = []
+	for y in MapPlan.ROWS:
+		for x in MapPlan.COLS:
+			var world := Rect2(float(x) * tile, float(y) * tile, tile, tile)
+			var screen := Rect2(fit.origin + world.position * fit.scale, world.size * fit.scale)
+			if screen.intersects(box):
+				cells.append(Vector2i(x, y))
+	return cells
+
+
+func cell_screen_rect(cell: Vector2i) -> Rect2:
+	var fit := _fit()
+	var tile := MapPlan.TILE
+	var world := Rect2(float(cell.x) * tile, float(cell.y) * tile, tile, tile)
+	return Rect2(fit.origin + world.position * fit.scale, world.size * fit.scale)
+
+
+func show_box_preview(a: Vector2, b: Vector2, ctrl: bool) -> void:
+	_boxing = true
+	_box_drag = true
+	_box_ctrl = ctrl
+	_box_from = a
+	_box_to = b
+	queue_redraw()
+
+
+func clear_box_preview() -> void:
+	_boxing = false
+	_box_drag = false
+	queue_redraw()
+
+
+func _finish_box(local: Vector2, ctrl: bool) -> void:
+	var dragged := _box_drag or _box_from.distance_to(local) > _DRAG_PX
+	var anchor := _cell_at(_box_from)
+	var cells: Array = cells_in_screen_box(_box_from, local) if dragged else []
+	_boxing = false
+	_box_drag = false
+	command_issued.emit(MapInteraction.right_gesture(dragged, _cell_at(local), cells, ctrl, anchor))
+	queue_redraw()
+
+
+func _event_local(viewport_pos: Vector2) -> Vector2:
+	return make_canvas_position_local(viewport_pos)
 
 
 func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
@@ -145,7 +233,16 @@ func _draw() -> void:
 	draw_set_transform(origin, 0.0, Vector2(drawn, drawn))
 	_draw_world()
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_draw_box()
 	_draw_screen_labels(origin, drawn)
+
+
+func _draw_box() -> void:
+	if not _boxing or not _box_drag:
+		return
+	var box := Rect2(_box_from, Vector2.ZERO).expand(_box_to)
+	draw_rect(box, Color(0.35, 0.78, 1.0, 0.22), true)
+	draw_rect(box, Color(0.62, 0.94, 1.0, 0.98), false, 2.0)
 
 
 func _draw_world() -> void:
@@ -174,8 +271,35 @@ func _draw_world() -> void:
 			var wash := MapPlan.SPAWN_MASK
 			wash.a = 0.28
 			_draw_mask(ghost, wash)
+	_draw_selection()
 	if MapPlan.in_bounds(interaction.hover):
 		draw_rect(Rect2(float(interaction.hover.x) * tile, float(interaction.hover.y) * tile, tile, tile), Color(1, 0.95, 0.7, 0.95), false, 4.0)
+
+
+func _draw_selection() -> void:
+	var tile := MapPlan.TILE
+	for key in _highlight_cells():
+		var cell: Vector2i = key
+		if not MapPlan.in_bounds(cell):
+			continue
+		var rect := Rect2(float(cell.x) * tile, float(cell.y) * tile, tile, tile)
+		var main := cell == primary
+		var fill := Color(1.0, 0.62, 0.12, 0.62) if main else Color(0.2, 0.62, 1.0, 0.46)
+		var edge := Color(1.0, 0.86, 0.2, 1.0) if main else Color(0.45, 0.9, 1.0, 1.0)
+		draw_rect(rect, fill, true)
+		draw_rect(rect.grow(-4.0), edge, false, 10.0)
+
+
+func _highlight_cells() -> Dictionary:
+	if _boxing and _box_drag:
+		var preview: Dictionary = {}
+		if _box_ctrl:
+			for key in selected:
+				preview[key] = true
+		for cell in cells_in_screen_box(_box_from, _box_to):
+			preview[cell] = true
+		return preview
+	return selected
 
 
 func _draw_actors() -> void:
