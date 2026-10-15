@@ -78,7 +78,7 @@ Distances and speeds are already world units. Do not scale them again. `attack_s
 
 `id`, `display_key`, `faction`（`ally`）, `role`, `character`, `skin` 和/或 `skins[]`, `hp`, `defense`, `attack`, `attack_speed`, `move_speed`, `attack_range`, `cost.wood`, `cost.gold`, `train_time`.
 
-可选 `notes`。人的体积键是 `walker`，不写进这条 JSON。村民的 `skins` 是出场时的外观池（狼、企鹅、浣熊、青蛙、骷髅）。矛兵用 `knight`，工匠用 `robot`，这两张图在 `characters.json` 里，不在村民的外观池里。
+可选 `notes` 和 `intro_key`。`intro_key` 指向 `scripts/locale.gd` 里的一句简介，选中单位时显示在右侧面板。人的体积键是 `walker`，不写进这条 JSON。村民的 `skins` 是出场时的外观池（狼、企鹅、浣熊、青蛙、骷髅）。矛兵用 `knight`，工匠用 `robot`，这两张图在 `characters.json` 里，不在村民的外观池里。
 
 `main.gd` 会用 `Balance.unit("villager")`、`Balance.unit("spearman")`、`Balance.unit("gunner")` 和 `Balance.unit("engineer")` 登记这四个 id。村民开局就在场上。矛兵、枪兵、工兵在对应空缺里，于清波时按概率入驻。枪兵用村民序列里的 `raccoon`。
 

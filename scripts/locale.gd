@@ -123,6 +123,22 @@ const TEXT := {
 	"unit.spearman": {"zh": "矛兵", "en": "Spearman"},
 	"unit.engineer": {"zh": "工兵", "en": "Engineer"},
 	"unit.gunner": {"zh": "枪兵", "en": "Gunner"},
+	"unit.villager.intro": {
+		"zh": "可以走到空地，或走到门口再进房屋、农场、木坊和塔。狼、企鹅、浣熊、青蛙和骷髅这些外形都是村民。",
+		"en": "They walk to open ground, or to a door and then into a house, farm, mill, or tower. Wolf, penguin, raccoon, frog, and skeleton looks are all villagers.",
+	},
+	"unit.spearman.intro": {
+		"zh": "近战。从矛兵营的空缺入驻，用骑士外形，留在场上作战，不进建筑。",
+		"en": "Melee. They fill spear barracks vacancies, use the knight look, and stay on the field.",
+	},
+	"unit.engineer.intro": {
+		"zh": "从工坊的空缺入驻，用机器人外形。修墙和修塔更快，留在场上。",
+		"en": "They fill workshop vacancies and use the robot look. They repair walls and towers faster, and stay on the field.",
+	},
+	"unit.gunner.intro": {
+		"zh": "远程。从枪兵营的空缺入驻，留在场上射击，不进建筑。",
+		"en": "Ranged. They fill gun barracks vacancies and stay on the field to shoot.",
+	},
 	"enemy.spear_normal": {"zh": "持矛僵尸", "en": "Spear zombie"},
 	"enemy.spear_fast": {"zh": "迅捷僵尸", "en": "Fast zombie"},
 	"enemy.spear_infected": {"zh": "被感染的村民", "en": "Infected villager"},

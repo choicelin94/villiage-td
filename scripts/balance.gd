@@ -204,6 +204,7 @@ func _norm_unit(raw: Dictionary) -> Dictionary:
 	def["train_time"] = float(def.get("train_time", 0.0))
 	def["character"] = str(def.get("character", "villager"))
 	def["skin"] = str(def.get("skin", ""))
+	def["intro_key"] = str(def.get("intro_key", ""))
 	return def
 
 func _norm_enemy(raw: Dictionary) -> Dictionary:
